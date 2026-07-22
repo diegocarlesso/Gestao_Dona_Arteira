@@ -70,10 +70,10 @@ Consequências normativas:
 
 ## Trabalho decorrente (antes de qualquer código — regra docs-first)
 
-| Documento | Revisão necessária |
-|---|---|
-| [06-Frontend](../06-Frontend/README.md) | Reescrever: padrões Inertia, estrutura de páginas, formulários, tabelas — em vez de SPA + client gerado |
-| [07-API](../07-API/README.md) e [07/01](../07-API/01-fluxo-openapi.md) | Reduzir escopo: contrato passa a cobrir só a API de integração |
+| Documento | Revisão necessária | Status |
+|---|---|---|
+| [06-Frontend](../06-Frontend/README.md) | Reescrever: padrões Inertia, estrutura de páginas, formulários, tabelas — em vez de SPA + client gerado | ✅ **feito em 2026-07-22** |
+| [07-API](../07-API/README.md) e [07/01](../07-API/01-fluxo-openapi.md) | Reduzir escopo: contrato passa a cobrir só a API de integração | ✅ **feito em 2026-07-22** |
 | [23-Deploy](../23-Deploy/README.md) | Deploy único no plano Business; build de assets no CI, não no host |
 | [03-Arquitetura/01-visao-c4](../03-Arquitetura/01-visao-c4.md) | Diagrama de contêineres: uma aplicação, não duas |
 | [05-Backend](../05-Backend/README.md) | Controllers retornam respostas Inertia nas rotas internas |

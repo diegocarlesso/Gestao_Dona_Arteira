@@ -66,14 +66,14 @@ Ausência de `symlink` significa **deploy sem troca atômica** — aceitável, m
 
 | # | Verificar | Por quê | Resultado |
 |---|---|---|---|
-| M-1 | **Acesso SSH** e **Composer** disponíveis | sem eles, deploy e `artisan` viram upload manual de FTP | |
-| M-2 | **Cron aceita execução a cada 1 minuto** | é como a fila roda sem worker persistente ([ADR-0014](../27-ADR/ADR-0014-fila-database.md)); cron de 5 em 5 min degrada a sync do Woo | |
-| M-3 | **Limite de processos simultâneos** do plano | jobs concorrendo com o WordPress no mesmo plano | |
-| M-4 | **Subdomínio `gestao.donaarteira.com.br` apontável para pasta própria**, com document root em `public/` | Laravel exige document root específico; sem isso, expõe-se o código-fonte | |
-| M-5 | **Backup automatizado e acesso a dumps** | RPO documentado no ADR-0016 é de 24 h | |
-| M-6 | **Versão do MariaDB** ≥ 10.6 | [ADR-0002](../27-ADR/ADR-0002-mariadb.md) | |
-| M-7 | **Quantos bancos de dados** o plano permite criar | ERP + staging da migração + o WordPress já existente | |
-| M-8 | Local fora do webroot para o **certificado A1** | [BR/pasta 25](../25-Seguranca/README.md) — o `.pfx` jamais pode ser acessível por URL | |
+| M-1 | **Acesso SSH** e **Composer** disponíveis | sem eles, deploy e `artisan` viram upload manual de FTP | ✅ SSH confirmado (`br-asc-web1076`) · ⏳ **Composer a confirmar** |
+| M-2 | **Cron aceita execução a cada 1 minuto** | é como a fila roda sem worker persistente ([ADR-0014](../27-ADR/ADR-0014-fila-database.md)); cron de 5 em 5 min degrada a sync do Woo | ⏳ **pendente — a mais importante** |
+| M-3 | **Limite de processos simultâneos** do plano | jobs concorrendo com o WordPress no mesmo plano | ✅ **120 processos / 60 PHP workers**; uso atual: 3 e 1 (§7.4) |
+| M-4 | **Subdomínio `gestao.donaarteira.com.br` apontável para pasta própria**, com document root em `public/` | Laravel exige document root específico; sem isso, expõe-se o código-fonte | ⏳ **pendente — impeditiva se falhar.** A pasta `gestao/` já existe no servidor |
+| M-5 | **Backup automatizado e acesso a dumps** | RPO documentado no ADR-0016 é de 24 h | ⏳ pendente |
+| M-6 | **Versão do MariaDB** ≥ 10.6 | [ADR-0002](../27-ADR/ADR-0002-mariadb.md) | ✅ **11.8.8** com InnoDB |
+| M-7 | **Quantos bancos de dados** o plano permite criar | ERP + staging da migração + o WordPress já existente | ⏳ pendente |
+| M-8 | Local fora do webroot para o **certificado A1** | [BR/pasta 25](../25-Seguranca/README.md) — o `.pfx` jamais pode ser acessível por URL | ⏳ pendente (depende de M-4) |
 
 **M-4 e M-8 são silenciosamente perigosos:** se o document root não puder apontar para `public/`, todo o código (incluindo `.env` com senhas e o certificado) fica acessível pela web. Isso é impeditivo, não inconveniente.
 
@@ -146,7 +146,10 @@ E o CLI (a execução que de fato importa) foi ainda melhor que o web:
 | ~~P-1~~ | ~~Execução via CLI não feita~~ | — | ✅ **Resolvido em 17:30.** CLI passou com 0 falhas e `max_execution_time` ilimitado |
 | ~~P-3~~ | ~~Conectividade com a SEFAZ não comprovada~~ | — | ✅ **Resolvido.** Os três endpoints, incluindo o webservice da SVRS, responderam como alcançáveis |
 | ~~P-9~~ | ~~Conexão com o banco não testada~~ | — | ✅ **Resolvido.** MariaDB 11.8.8 com InnoDB |
-| **P-11** | **O ERP compartilha o plano com o WordPress em produção** — o usuário `u917402451` é o mesmo do dump do site | 🟠 **Alta** | Limites de processo, CPU e I/O são **compartilhados**. Um pico de tráfego no site (Natal) concorre com a fila do ERP. É exatamente o cenário do risco R9 (oversell em pico sazonal). Monitorar; é gatilho de reabertura do [ADR-0016](../27-ADR/ADR-0016-hospedagem.md) |
+| ~~P-8~~ | ~~Cota real de disco desconhecida~~ | — | ✅ **Resolvido (§7.4):** 11,26 GB de 50 GB em uso. Folga ampla |
+| ~~M-3~~ | ~~Limite de processos desconhecido~~ | — | ✅ **Resolvido (§7.4):** 3 de 120 processos e 1 de 60 PHP workers em uso |
+| **P-11** | O ERP compartilha o plano com o WordPress em produção (usuário `u917402451`) | 🟢 **Baixa** *(rebaixado de Alta em §7.4)* | Os dados de consumo mostram o WordPress usando **12% de CPU e 3 de 120 processos**. A folga é grande; a concorrência que eu temia não se sustenta nos números. Segue sob monitoramento como gatilho do [ADR-0016](../27-ADR/ADR-0016-hospedagem.md), mas não é preocupação de curto prazo |
+| **P-12** | **Inodes**: 91.387 de 600.000 em uso | 🟡 Média | `vendor/` + `node_modules/` de um projeto Laravel somam facilmente 50–100 mil arquivos. Se o build rodasse no servidor, a cota apertaria rápido. Reforça a regra de **buildar assets no CI e subir só `public/build/`** ([06-Frontend §8](../06-Frontend/README.md)) |
 | P-2 | CA bundle não configurado | 🟡 Média | Baixar `cacert.pem` (curl.se) para fora do webroot e apontar `curl.cainfo` via php.ini customizado no hPanel. Reexecutar o script para confirmar. Sem isso, cada chamada HTTPS precisa carregar o bundle explicitamente |
 | P-4 | `symlink` bloqueada | 🟡 Média | `artisan storage:link` não funciona **e não há deploy atômico por symlink**. Duas decisões a registrar na reescrita da pasta 23: (a) uploads gravados direto em `public/` ou servidos por rota controlada; (b) estratégia de release e rollback sem troca de symlink |
 | P-5 | `exec` / `shell_exec` bloqueadas | 🟢 Baixa | Sem impacto: `proc_open` está disponível e é o que o Laravel usa. Atenção a pacotes de terceiros que façam shell |
@@ -155,7 +158,24 @@ E o CLI (a execução que de fato importa) foi ainda melhor que o web:
 | P-8 | Espaço em disco reportado é do volume do host | 🟡 Média | Conferir a **cota real** no hPanel — XMLs de 5 anos + backups precisam de espaço garantido |
 | P-10 | Verificações manuais **M-2, M-3, M-4, M-5, M-7** pendentes | 🟠 Alta | M-1 (SSH) ✅ confirmado pela própria execução. Falta confirmar Composer. **M-2 (cron de 1 min) e M-4 (document root → `public/`) são as duas que ainda podem doer** |
 
-### 7.4 Saída completa da execução
+### 7.4 Recursos do plano (painel Hostinger, 2026-07-22)
+
+Consumo médio das últimas 24 h, com o **WordPress em produção** já rodando — ou seja, é a linha de base que o ERP vai encontrar.
+
+| Recurso | Em uso | Disponível | Folga | Leitura |
+|---|---|---|---|---|
+| **Disco** | 11,26 GB | 50 GB | 77% | Confortável. XMLs de NF-e são pequenos (~15 KB); 5 anos de guarda cabem com sobra. O consumo real virá de imagens de produto e dumps de backup |
+| **Inodes** | 91.387 | 600.000 | 85% | ⚠️ O item a vigiar. `vendor/` + `node_modules/` somam dezenas de milhares de arquivos — ver P-12 |
+| **CPU** | 12% | 100% | 88% | O WordPress é leve (coerente com 85 pedidos em 4,5 anos, [pasta 31](../31-Inventario-Legado/07-pedidos.md)) |
+| **Memória** | 51 MB | 3.072 MB | 98% | Ampla. Note que `memory_limit` por processo é 2.048 MB: cabe **um** processo pesado de ETL por vez, não vários |
+| **I/O** | 85 KB/s | 20.480 KB/s | 99% | 20 MB/s é o teto. Suficiente, mas é o gargalo provável do ETL da migração — planejar carga em lotes |
+| **IOPS** | 1 | 512 | 99% | Idem: o ETL e a fila são os únicos candidatos a pressionar |
+| **PHP Workers** | 1 | 60 | 98% | Muito espaço para a fila |
+| **Processos** | 3 | 120 | 97% | Muito espaço para worker + cron |
+
+**Conclusão — e correção da minha própria avaliação:** eu havia classificado o compartilhamento do plano com o WordPress como risco 🟠 **Alto** (P-11). Os números não sustentam isso: o site consome uma fração mínima da capacidade contratada. **Rebaixado para 🟢 Baixo.** O risco real de recursos não é a concorrência com o WordPress — é o **ETL da migração** (I/O e IOPS) e os **inodes** durante o deploy.
+
+### 7.5 Saída completa das execuções
 
 ```
 ========================================================================
