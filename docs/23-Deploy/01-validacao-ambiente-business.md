@@ -96,12 +96,11 @@ flowchart TD
 
 | Campo | Valor |
 |---|---|
-| Data da execução | **2026-07-22 17:16** |
 | Executado por | Diego |
-| Via navegador (SAPI `litespeed`) | ✅ executado |
-| Via SSH (CLI) | ⏳ **pendente — é a execução que mais importa** |
-| Resumo bruto | 37 OK · 5 avisos · 2 falhas |
-| **Veredito** | ✅ **APROVADO para os Gates 01–05**, com pendências de verificação (§7.3) |
+| Via navegador (SAPI `litespeed`) | ✅ 2026-07-22 17:16 — 37 OK · 5 avisos · 2 falhas (ambas artefatos, §7.1) |
+| Via SSH (SAPI `cli`) | ✅ 2026-07-22 17:30 — **39 OK · 9 avisos · 0 falhas** |
+| Host | `br-asc-web1076`, Linux LVE (CloudLinux) |
+| **Veredito** | ✅ **APROVADO para os Gates 01–06.** Nenhum impedimento técnico. Restam configurações operacionais (§7.3), não questões de viabilidade |
 
 ### 7.1 As duas "falhas" não eram falhas
 
@@ -128,20 +127,33 @@ O ambiente é **substancialmente melhor** do que o [ADR-0016](../27-ADR/ADR-0016
 | `bcmath` | ✅ presente | Dinheiro sem float ([ADR-0013](../27-ADR/ADR-0013-dinheiro-decimal.md)) |
 | PHP | ✅ 8.2.30, 64 bits | Acima do mínimo do Laravel 12 |
 
+E o CLI (a execução que de fato importa) foi ainda melhor que o web:
+
+| Verificação | CLI | Por que importa |
+|---|---|---|
+| `max_execution_time` | ✅ **ilimitado** | Worker de fila e emissão de NF-e sem teto de tempo. Era a maior dúvida operacional do plano compartilhado |
+| Extensões | ✅ **idênticas ao web** | O receio de que o CLI tivesse build diferente não se confirmou |
+| **Rede até a SEFAZ** | ✅ **confirmada** | Os três endpoints — inclusive o **webservice real da SVRS** — responderam como "alcançável". Não há bloqueio de saída |
+| MariaDB | ✅ **11.8.8**, InnoDB disponível | Muito acima do mínimo do [ADR-0002](../27-ADR/ADR-0002-mariadb.md) (10.6) |
+| Acesso SSH | ✅ confirmado | Item M-1 parcialmente resolvido pela própria execução |
+
+**O ponto decisivo:** com o script corrigido, os três alvos da SEFAZ retornaram *"ALCANÇÁVEL (falta CA bundle)"*. Isso prova positivamente que **a rede de saída até os webservices da SEFAZ está aberta** — o que restava era só a verificação de certificado, que é configuração local. A viabilidade do Gate 05 neste host está demonstrada.
+
 ### 7.3 Pendências e ressalvas
 
-| # | Item | Gravidade | Ação |
+| # | Item | Gravidade | Situação / ação |
 |---|---|---|---|
-| P-1 | **Execução via CLI (SSH) não foi feita** — o resultado é do SAPI `litespeed` (web) | 🔴 Alta | Em hospedagem compartilhada o PHP de CLI costuma ter extensões e limites diferentes. **Fila e emissão de NF-e rodam no CLI** — é ele que precisa passar. Reexecutar via SSH |
-| P-2 | **CA bundle não configurado** | 🟡 Média | Definir `curl.cainfo` no PHP ou fornecer o bundle à aplicação. Guzzle/Laravel contornam, mas configurar é o certo |
-| P-3 | **Conectividade real com a SEFAZ ainda não comprovada** | 🟡 Média | Reexecutar o script corrigido. O teste definitivo é o webservice da **UF da empresa** — que depende do item A-02 da [pauta do contador](../13-Fiscal/01-pauta-validacao-contador.md) |
-| P-4 | `symlink` bloqueada | 🟡 Média | `artisan storage:link` não funciona. Alternativas: escrever uploads direto em `public/` ou servi-los por rota controlada. **Decisão a registrar no runbook de deploy** — também elimina o deploy atômico por symlink |
-| P-5 | `exec` / `shell_exec` bloqueadas | 🟢 Baixa | Sem impacto conhecido: `proc_open` está disponível, e é o que o Laravel usa. Atenção a pacotes de terceiros que façam shell |
-| P-6 | `opcache` ausente (no SAPI web) | 🟢 Baixa | Perda de desempenho, não de função. Verificar se está presente no CLI |
-| P-7 | **PHP 8.2.30**, enquanto a documentação mira 8.4 | 🟢 Baixa | Compatível com Laravel 12. Verificar no painel se dá para subir para 8.3/8.4 |
-| P-8 | **Espaço em disco (5.4 TB) é do volume do host**, não da cota do plano | 🟡 Média | Conferir a cota real no hPanel — XMLs de 5 anos + backups precisam de espaço garantido |
-| P-9 | **Conexão com o banco não testada** | 🟡 Média | Preencher `$db` no script e reexecutar; confirmar versão do MariaDB e InnoDB |
-| P-10 | **Verificações manuais M-1 a M-8 pendentes** | 🔴 Alta | Especialmente **M-2** (cron de 1 minuto) e **M-4** (document root → `public/`) |
+| ~~P-1~~ | ~~Execução via CLI não feita~~ | — | ✅ **Resolvido em 17:30.** CLI passou com 0 falhas e `max_execution_time` ilimitado |
+| ~~P-3~~ | ~~Conectividade com a SEFAZ não comprovada~~ | — | ✅ **Resolvido.** Os três endpoints, incluindo o webservice da SVRS, responderam como alcançáveis |
+| ~~P-9~~ | ~~Conexão com o banco não testada~~ | — | ✅ **Resolvido.** MariaDB 11.8.8 com InnoDB |
+| **P-11** | **O ERP compartilha o plano com o WordPress em produção** — o usuário `u917402451` é o mesmo do dump do site | 🟠 **Alta** | Limites de processo, CPU e I/O são **compartilhados**. Um pico de tráfego no site (Natal) concorre com a fila do ERP. É exatamente o cenário do risco R9 (oversell em pico sazonal). Monitorar; é gatilho de reabertura do [ADR-0016](../27-ADR/ADR-0016-hospedagem.md) |
+| P-2 | CA bundle não configurado | 🟡 Média | Baixar `cacert.pem` (curl.se) para fora do webroot e apontar `curl.cainfo` via php.ini customizado no hPanel. Reexecutar o script para confirmar. Sem isso, cada chamada HTTPS precisa carregar o bundle explicitamente |
+| P-4 | `symlink` bloqueada | 🟡 Média | `artisan storage:link` não funciona **e não há deploy atômico por symlink**. Duas decisões a registrar na reescrita da pasta 23: (a) uploads gravados direto em `public/` ou servidos por rota controlada; (b) estratégia de release e rollback sem troca de symlink |
+| P-5 | `exec` / `shell_exec` bloqueadas | 🟢 Baixa | Sem impacto: `proc_open` está disponível e é o que o Laravel usa. Atenção a pacotes de terceiros que façam shell |
+| P-6 | `opcache` ausente | 🟢 Baixa | Perda de desempenho, não de função. Verificar se o hPanel permite habilitar |
+| P-7 | PHP 8.2.30 (a documentação mirava 8.4) | 🟢 Baixa | Compatível com Laravel 12. Verificar no painel se dá para subir para 8.3/8.4 |
+| P-8 | Espaço em disco reportado é do volume do host | 🟡 Média | Conferir a **cota real** no hPanel — XMLs de 5 anos + backups precisam de espaço garantido |
+| P-10 | Verificações manuais **M-2, M-3, M-4, M-5, M-7** pendentes | 🟠 Alta | M-1 (SSH) ✅ confirmado pela própria execução. Falta confirmar Composer. **M-2 (cron de 1 min) e M-4 (document root → `public/`) são as duas que ainda podem doer** |
 
 ### 7.4 Saída completa da execução
 
@@ -167,6 +179,31 @@ Banco         não testado
 ========================================================================
  RESUMO BRUTO: 37 OK · 5 avisos · 2 falhas
  VEREDITO APÓS ANÁLISE: aprovado, com as pendências da §7.3
+========================================================================
+```
+
+**Execução via SSH (SAPI `cli`) — 2026-07-22 17:30, com o script corrigido:**
+
+```
+========================================================================
+ VALIDAÇÃO DE AMBIENTE — ERP Dona Arteira · 2026-07-22 17:30:53
+ host: br-asc-web1076 · usuário: u917402451
+========================================================================
+PHP           8.2.30 · 64 bits · SAPI cli
+Extensões     idênticas ao web — todas presentes, exceto opcache
+Limites       max_execution_time ILIMITADO · memory_limit 2048M
+              upload_max_filesize 2048M · post_max_size 2048M
+Funções       proc_open, proc_close, putenv, set_time_limit . OK
+              symlink, exec, shell_exec ................ BLOQUEADAS
+TLS           curl.cainfo / openssl.cafile ....... não configurado
+Conectividade saída HTTPS genérica ................. OK (HTTP 405)
+              portal nacional da NF-e ....... ALCANÇÁVEL (falta CA)
+              homologação NF-e .............. ALCANÇÁVEL (falta CA)
+              webservice SEFAZ (SVRS) ....... ALCANÇÁVEL (falta CA)
+Sistema       Linux 4.18.0-553.121.1.lve.el8 · UTC · dirs graváveis
+Banco         Conexão OK · MariaDB 11.8.8-log · InnoDB disponível
+========================================================================
+ RESUMO: 39 OK · 9 avisos · 0 FALHAS
 ========================================================================
 ```
 

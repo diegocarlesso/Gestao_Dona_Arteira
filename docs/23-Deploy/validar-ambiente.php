@@ -15,10 +15,10 @@
  * Ver docs/23-Deploy/01-validacao-ambiente-business.md para a leitura dos resultados.
  */
 
-$TOKEN = 'TROQUE-ESTE-VALOR';
+$TOKEN = 'PeqE0rlpAdEXlQ8YuzawrOV_thacucrotriPhitrIpHi8lpHiboYETr1HEPorAfl';
 
 $viaCli = PHP_SAPI === 'cli';
-if (!$viaCli && (($_GET['token'] ?? '') !== $TOKEN || $TOKEN === 'TROQUE-ESTE-VALOR')) {
+if (!$viaCli && (($_GET['token'] ?? '') !== $TOKEN || $TOKEN === 'PeqE0rlpAdEXlQ8YuzawrOV_thacucrotriPhitrIpHi8lpHiboYETr1HEPorAfl')) {
     http_response_code(403);
     exit('Token inválido ou não configurado.');
 }
@@ -187,7 +187,7 @@ checar('Sistema', 'Espaço livre no volume', $livre ? round($livre / 1073741824,
 
 // ------------------------------------------------- Banco de dados
 // Preencher se quiser testar a conexão; deixar vazio para pular.
-$db = ['host' => '', 'porta' => 3306, 'nome' => '', 'usuario' => '', 'senha' => ''];
+$db = ['host' => '127.0.0.1', 'porta' => 3306, 'nome' => 'u917402451_gestao', 'usuario' => 'u917402451_root', 'senha' => 'TUreye@wO43p'];
 if ($db['host'] !== '' && extension_loaded('pdo_mysql')) {
     try {
         $pdo = new PDO(

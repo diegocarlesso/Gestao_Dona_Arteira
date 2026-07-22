@@ -36,9 +36,16 @@ Se a validação reprovar, este ADR é reaberto imediatamente (é o primeiro gat
 
 A validação foi executada no mesmo dia. **O plano Business suporta a emissão de NF-e**: `soap`, `openssl` e toda a cadeia de XML estão presentes, `max_execution_time` é de 360 s e `memory_limit` de 2 GB — folga confortável. As duas falhas reportadas pelo script eram artefatos (um hostname errado no próprio script e ausência de CA bundle, não bloqueio de rede) — análise em [23-Deploy/01 §7.1](../23-Deploy/01-validacao-ambiente-business.md#71-as-duas-falhas-não-eram-falhas).
 
-**O risco de ambiente que motivava a recomendação de VPS caiu substancialmente.** A decisão pelo plano Business está, até aqui, validada pelos fatos.
+A execução via **CLI** (17:30), que é a que realmente importa para fila e emissão, fechou com **0 falhas**: `max_execution_time` **ilimitado**, extensões idênticas às do web, MariaDB 11.8.8 com InnoDB e — o ponto decisivo — **os três endpoints da SEFAZ, incluindo o webservice da SVRS, confirmados como alcançáveis**. Não há bloqueio de saída.
 
-Permanecem em verificação, sem invalidar o veredito: execução via CLI (SSH), granularidade do cron, document root apontável para `public/` e cota real de disco — [§7.3](../23-Deploy/01-validacao-ambiente-business.md#73-pendências-e-ressalvas). Os gatilhos de reabertura abaixo seguem ativos.
+**O risco de ambiente que motivava a recomendação de VPS caiu substancialmente. A decisão pelo plano Business está validada pelos fatos.**
+
+Duas ressalvas que a validação revelou e que seguem ativas como gatilho:
+
+1. **O ERP compartilha o plano com o WordPress em produção** (mesmo usuário `u917402451` do dump do site). Limites de processo, CPU e I/O são disputados entre os dois — um pico sazonal no site concorre com a fila do ERP. É a materialização mais provável do primeiro gatilho abaixo.
+2. **`symlink` bloqueada**: não há deploy atômico por troca de symlink nem `storage:link`. A estratégia de release e o tratamento de uploads precisam ser redesenhados na pasta 23.
+
+Permanecem em verificação, sem invalidar o veredito: granularidade do cron, document root apontável para `public/` e cota real de disco — [§7.3](../23-Deploy/01-validacao-ambiente-business.md#73-pendências-e-ressalvas).
 
 ## Decisão original (recomendação técnica — não seguida)
 
