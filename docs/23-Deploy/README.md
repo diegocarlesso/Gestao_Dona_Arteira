@@ -2,7 +2,7 @@
 
 > **Status:** ⚠️ **Requer reescrita** — foi escrito assumindo SPA separada e ADR-0016 pendente · **Última atualização:** 2026-07-03 · **Responsável:** devops-specialist
 > **ADRs:** [0014](../27-ADR/ADR-0014-fila-database.md) (filas) · [**0016**](../27-ADR/ADR-0016-hospedagem.md) (hospedagem — **plano Business, aceito em 2026-07-22**) · [**0019**](../27-ADR/ADR-0019-inertia-substitui-spa.md) (Inertia — deploy passa a ser único)
-> **Documentos:** [Validação do ambiente Business](01-validacao-ambiente-business.md) ← **executar na semana 1 do Gate 01, antes de qualquer código**
+> **Documentos:** [Validação do ambiente Business](01-validacao-ambiente-business.md) ✅ executada · [Verificar cron e document root](02-verificar-cron-e-docroot.md) ⏳ **pendente — últimas duas verificações antes do código**
 
 ## 1. Objetivo
 

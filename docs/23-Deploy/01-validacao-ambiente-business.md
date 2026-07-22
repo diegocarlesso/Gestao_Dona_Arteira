@@ -67,9 +67,9 @@ Ausência de `symlink` significa **deploy sem troca atômica** — aceitável, m
 | # | Verificar | Por quê | Resultado |
 |---|---|---|---|
 | M-1 | **Acesso SSH** e **Composer** disponíveis | sem eles, deploy e `artisan` viram upload manual de FTP | ✅ SSH confirmado (`br-asc-web1076`) · ⏳ **Composer a confirmar** |
-| M-2 | **Cron aceita execução a cada 1 minuto** | é como a fila roda sem worker persistente ([ADR-0014](../27-ADR/ADR-0014-fila-database.md)); cron de 5 em 5 min degrada a sync do Woo | ⏳ **pendente — a mais importante** |
+| M-2 | **Cron aceita execução a cada 1 minuto** | é como a fila roda sem worker persistente ([ADR-0014](../27-ADR/ADR-0014-fila-database.md)); cron de 5 em 5 min degrada a sync do Woo | ⏳ **pendente** — procedimento em [23/02 §2](02-verificar-cron-e-docroot.md#2-verificação-a--o-cron-honra-1-minuto) |
 | M-3 | **Limite de processos simultâneos** do plano | jobs concorrendo com o WordPress no mesmo plano | ✅ **120 processos / 60 PHP workers**; uso atual: 3 e 1 (§7.4) |
-| M-4 | **Subdomínio `gestao.donaarteira.com.br` apontável para pasta própria**, com document root em `public/` | Laravel exige document root específico; sem isso, expõe-se o código-fonte | ⏳ **pendente — impeditiva se falhar.** A pasta `gestao/` já existe no servidor |
+| M-4 | **Subdomínio `gestao.donaarteira.com.br` apontável para pasta própria**, com document root em `public/` | Laravel exige document root específico; sem isso, expõe-se o código-fonte | ⏳ **pendente — impeditiva se falhar.** Procedimento em [23/02 §3](02-verificar-cron-e-docroot.md#3-verificação-b--o-document-root-aponta-para-public) |
 | M-5 | **Backup automatizado e acesso a dumps** | RPO documentado no ADR-0016 é de 24 h | ⏳ pendente |
 | M-6 | **Versão do MariaDB** ≥ 10.6 | [ADR-0002](../27-ADR/ADR-0002-mariadb.md) | ✅ **11.8.8** com InnoDB |
 | M-7 | **Quantos bancos de dados** o plano permite criar | ERP + staging da migração + o WordPress já existente | ⏳ pendente |
