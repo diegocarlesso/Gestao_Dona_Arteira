@@ -1,6 +1,6 @@
 # 03 — Instalação Inicial (Gate 01, tarefa 1)
 
-> **Status:** Em revisão — **aguardando execução** · **Última atualização:** 2026-07-22 · **Responsável:** devops-specialist
+> **Status:** ⏳ **Em execução** — aplicação no ar em `gestao.donaarteira.com.br` desde 2026-07-22, canários aprovados. Pendem banco, permissões e cron (§12) · **Última atualização:** 2026-07-22 · **Responsável:** devops-specialist
 > **ADRs:** [0016](../27-ADR/ADR-0016-hospedagem.md) (plano Business) · [0019](../27-ADR/ADR-0019-inertia-substitui-spa.md) (Inertia) · [0001](../27-ADR/ADR-0001-monolito-modular.md) · [0002](../27-ADR/ADR-0002-mariadb.md) · [0014](../27-ADR/ADR-0014-fila-database.md)
 > **Pré-requisito:** [validação de ambiente](01-validacao-ambiente-business.md) aprovada e [cron/docroot](02-verificar-cron-e-docroot.md) verificados
 
@@ -259,6 +259,21 @@ done
 
 Esperado: **200 na primeira, 404 (ou 403) em todas as outras.**
 
+> ### ✅ Executado em 2026-07-22 — APROVADO
+>
+> ```
+> https://gestao.donaarteira.com.br/                              200
+> https://gestao.donaarteira.com.br/.env                          404
+> https://gestao.donaarteira.com.br/composer.json                 404
+> https://donaarteira.com.br/erp/.env                             404
+> https://donaarteira.com.br/gestao/.env                          404
+> https://donaarteira.com.br/gestao/storage/logs/laravel.log      403
+> ```
+>
+> A aplicação responde e **nenhum arquivo interno é alcançável por qualquer das duas origens**. O Arranjo A cumpriu o que prometia: o link simbólico é atravessável, mas não permite subir a árvore.
+>
+> O `403` da última linha é aceite válido (acesso negado). Um `404` seria marginalmente melhor por não revelar que há algo protegido ali — vale conferir se o link `public/storage` foi criado, já que sua ausência pode explicar a diferença.
+
 O que cada linha prova:
 
 | # | URL | Prova |
@@ -303,7 +318,23 @@ O que cada linha prova:
 | Deploy quebrar o WordPress | Baixa | Alto | Item 7 da verificação final; as árvores são separadas por construção |
 | `git clone` trazer o histórico inteiro e pesar em inodes | Baixa | Médio | `--depth 1` se necessário; o repositório é leve (1,2 MB) |
 
-## 15. Evoluções futuras
+## 15. Dependências ainda a instalar (exigidas pelos ADRs)
+
+O *starter kit* entrega a base, mas não os pacotes que os ADRs do projeto determinam. Instalar antes de escrever o primeiro módulo:
+
+| Pacote | Por quê | Origem |
+|---|---|---|
+| `pestphp/pest` + `pest-plugin-laravel` | **Regra 8 do projeto:** backend testa com Pest. O kit vem com PHPUnit | [22-Testes](../22-Testes/README.md) |
+| `laravel/sanctum` | Tokens de integração (webhooks, scripts, parceiros) | [ADR-0005](../27-ADR/ADR-0005-autenticacao-sanctum.md) |
+| `spatie/laravel-permission` | RBAC deny-by-default | [ADR-0011](../27-ADR/ADR-0011-rbac.md) |
+| `owen-it/laravel-auditing` | Trilha de auditoria | [ADR-0012](../27-ADR/ADR-0012-auditoria.md) |
+| `brick/money` | Dinheiro sem float | [ADR-0013](../27-ADR/ADR-0013-dinheiro-decimal.md) |
+| `spatie/laravel-query-builder` | Filtros/ordenação da API de integração | [07-API §5](../07-API/README.md) |
+| `vitest` + Testing Library | Testes de componente | [06-Frontend §7](../06-Frontend/README.md) |
+
+> `composer.json` declara `php: ^8.2`. O servidor roda 8.4.19 — compatível, mas vale alinhar para `^8.4` para que o CI valide na mesma versão de produção.
+
+## 16. Evoluções futuras
 
 - Automatizar os passos 4 a 9 em workflow do GitHub Actions (entrega de CI/CD do Gate 01).
 - Deploy atômico por troca de link simbólico — viável, já que `ln -s` funciona no shell.
