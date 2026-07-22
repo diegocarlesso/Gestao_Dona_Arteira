@@ -2,6 +2,7 @@
 
 > **Status:** Rascunho — **BLOQUEADO por validação com contador** · **Última atualização:** 2026-07-03 · **Responsável:** fiscal-specialist
 > **Regras:** BR-601…BR-606 · **Fase:** Gate 05 (regras) — decisões precisam começar antes
+> **Documentos:** [Pauta de validação com o contador](01-pauta-validacao-contador.md) ← *enviar ao contador; destrava a dependência externa de maior lead time*
 
 ## 1. Objetivo
 

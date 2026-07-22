@@ -47,6 +47,7 @@ Esta pasta é a **fonte canônica de conhecimento** do projeto. Regra de ouro: *
 | 28 | [Roadmap](28-Roadmap/README.md) | Fases, gates, critérios de saída | Sempre |
 | 29 | [Glossario](29-Glossario/README.md) | Linguagem ubíqua: negócio + técnica + fiscal | Sempre |
 | 30 | [Dominio-da-Dona-Arteira](30-Dominio-da-Dona-Arteira/README.md) | O negócio: processo artesanal, canais, sazonalidade, descoberta | Sempre |
+| 31 | [Inventario-Legado](31-Inventario-Legado/README.md) | Engenharia reversa do WooCommerce e do desktop: produtos, clientes, pedidos, plugins, qualidade de dados | Gate 01 |
 
 ## Fluxo docs-first (obrigatório)
 

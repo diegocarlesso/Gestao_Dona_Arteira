@@ -42,6 +42,7 @@ Toda a documentação desta pasta `docs/`, agentes, skills, ADRs. **Saída:** de
 
 **Entrega:** títulos automáticos (12), baixas, categorias, fluxo de caixa, aging.
 **Critérios de saída:** 1 mês fechado no ERP batendo com extratos bancários (conferência manual) · plano de categorias aprovado.
+**Solicitação de escopo pendente:** emissão de boletos — ver [M-01](#mudanças-de-escopo-solicitadas) e [ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md). **Ainda não incorporada à entrega**; depende de decisão do dono.
 
 ## Gate 05 — Fiscal / NF-e
 
@@ -62,3 +63,13 @@ Marketplaces · app mobile/PWA de produção · WhatsApp transacional · gateway
 1. Mudança de ordem/escopo de gate = decisão do dono registrada aqui (com data e motivo).
 2. Cada gate fecha com: retro curta, revisão dos docs do módulo, ADRs pendentes resolvidos, tag `gate-0X`.
 3. Débitos técnicos ganham item nomeado no gate seguinte — nunca "depois a gente vê".
+
+## Mudanças de escopo solicitadas
+
+Registro vivo das solicitações que alteram o roadmap. Nada aqui é aplicado antes da decisão do dono (regra 1).
+
+| # | Solicitação | Origem | Data | Impacto | Status |
+|---|---|---|---|---|---|
+| M-01 | **Emissão de boletos pelo ERP** — mover cobrança da fase 7 para o Gate 04 | cliente | 2026-07-22 | +80–120 h no Gate 04 · custo recorrente por boleto · nova superfície de segurança (credencial bancária) · depende de convênio bancário com semanas de lead time | ⚠️ **Aguardando decisão do dono** — [ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md), [doc 12/01](../12-Financeiro/01-cobranca-e-boletos.md) |
+
+**Sobre M-01:** boleto é a materialização de um título a receber — não existe sem o Gate 04. Antecipá-lo isoladamente não é possível; o que se decide é se o **Gate 04 inteiro** sobe na fila ou se a cobrança entra quando ele chegar. Enquanto isso, o cliente pode emitir boletos pelo internet banking e a baixa é manual no ERP (Alternativa D do ADR-0018).

@@ -31,7 +31,8 @@
 | [0015](ADR-0015-camadas-e-repositorios.md) | Camadas Controller→Service→Model e repositórios dosados | ✅ Aceito |
 | [0016](ADR-0016-hospedagem.md) | **Hospedagem: recomendação de VPS vs plano Business** | ⚠️ **Proposto — decisão do dono** |
 | [0017](ADR-0017-midia-canonica.md) | Mídia (imagens): fase 1 no Woo, fase 2 storage próprio | ⚠️ Proposto |
+| [0018](ADR-0018-cobranca-boleto.md) | **Cobrança (boleto e PIX) via adapter, provedor plugável** | ⚠️ **Proposto — decisão do dono** |
 
 ## Backlog de ADRs futuros (escrever quando o tema chegar)
 
-Gateway de pagamento (fase 7) · estratégia de marketplaces (fase 7) · PWA vs app nativo (fase 7) · lote/rastreabilidade de produção (se exigido) · saída do Simples Nacional (se ocorrer).
+Gateway de pagamento completo — cartão/link de pagamento (fase 7, evolução do ADR-0018) · régua de cobrança/protesto/negativação (fase 7) · estratégia de marketplaces (fase 7) · PWA vs app nativo (fase 7) · lote/rastreabilidade de produção (se exigido) · **NFC-e** (se a resposta ao item F-06 da [pauta do contador](../13-Fiscal/01-pauta-validacao-contador.md) exigir) · saída do Simples Nacional (se ocorrer).

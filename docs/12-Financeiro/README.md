@@ -1,7 +1,8 @@
 # 12 — Financeiro
 
 > **Status:** Em revisão · **Última atualização:** 2026-07-03 · **Responsável:** financial-specialist
-> **Regras:** BR-501…BR-504 · **Fase:** Gate 04
+> **Regras:** BR-501…BR-512 · **Fase:** Gate 04
+> **Documentos:** [Cobrança (boleto e PIX com vencimento)](01-cobranca-e-boletos.md) — ⚠️ escopo aguardando decisão do dono ([ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md))
 
 ## 1. Objetivo
 
@@ -56,5 +57,6 @@ Vendas e Compras (origem dos títulos), Fiscal (NF-e ↔ faturamento), Relatóri
 ## 8. Evoluções futuras
 
 - Conciliação bancária por OFX (fase 6).
-- Boleto/PIX cobrança integrada a gateway (fase 7, para atacado).
+- ~~Boleto/PIX cobrança integrada a gateway (fase 7, para atacado).~~ → **Solicitado pelo cliente em 2026-07-22**; desenhado em [01-cobranca-e-boletos.md](01-cobranca-e-boletos.md) e [ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md). Aguarda decisão do dono sobre entrar no Gate 04 ([M-01 do roadmap](../28-Roadmap/README.md#mudanças-de-escopo-solicitadas)).
 - DRE gerencial mensal automatizada (pasta 20, fase 6).
+- Régua de cobrança, protesto e negativação (fase 7, ADR próprio).

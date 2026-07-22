@@ -1,7 +1,7 @@
 # 00 — Visão Geral
 
 > **Status:** Aprovado · **Última atualização:** 2026-07-03 · **Responsável:** chief-architect
-> **Documentos desta pasta:** [Escopo](01-escopo-e-nao-escopo.md) · [Stakeholders](02-stakeholders-e-papeis.md) · [Governança](03-governanca-docs-first.md) · [Análise crítica](04-analise-critica-gate00.md)
+> **Documentos desta pasta:** [Escopo](01-escopo-e-nao-escopo.md) · [Stakeholders](02-stakeholders-e-papeis.md) · [Governança](03-governanca-docs-first.md) · [Análise crítica](04-analise-critica-gate00.md) · [Modelo de custos](05-modelo-de-custos.md)
 
 ## 1. Objetivo
 

@@ -74,6 +74,19 @@ Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data)
 | BR-503 | Todo título tem categoria do plano de contas gerencial (árvore simples) | decisão nova | 💡 definir plano inicial com o dono |
 | BR-504 | Estorno financeiro nunca apaga o título original — gera contrapartida auditada | decisão nova | ✅ princípio de auditoria |
 
+### Cobrança (boleto / PIX com vencimento) — [ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md), [doc 12/01](../12-Financeiro/01-cobranca-e-boletos.md)
+
+| ID | Regra | Origem | Status |
+|---|---|---|---|
+| BR-505 | Cobrança (boleto ou PIX com vencimento) só é emitida a partir de um título a receber existente; não existe cobrança avulsa | decisão nova | 💡 |
+| BR-506 | Cobrança registrada no banco é imutável: alterar valor ou vencimento exige cancelar a cobrança e emitir outra — o título permanece o mesmo | regra bancária | 💡 |
+| BR-507 | Liquidação informada pelo provedor gera baixa **idempotente** do título, com chave no ID da cobrança/evento no provedor; evento reprocessado nunca duplica baixa | decisão nova | 💡 |
+| BR-508 | Multa, juros e desconto são parametrizados por perfil de cobrança versionado por vigência, nunca digitados por cobrança | decisão nova | 💡 confirmar percentuais com o contador (G-03) |
+| BR-509 | Pagamento a menor gera baixa **parcial** e mantém o saldo aberto; nunca baixa total silenciosa. Pagamento a maior registra o excedente como receita de juros | decisão nova | 💡 |
+| BR-510 | Cobrança cancelada, vencida ou falha não baixa o título — ele permanece em aberto e continua no aging | decisão nova | 💡 |
+| BR-511 | Credenciais bancárias de cobrança são cifradas, de **escopo mínimo (somente cobrança, nunca pagamento ou transferência)** e jamais versionadas | segurança (pasta 25) | ✅ princípio de segurança |
+| BR-512 | Venda a prazo com cobrança registrada referencia as duplicatas no grupo de cobrança da NF-e | legislação | 💡 **validar com contador** (G-02) |
+
 ## BR-6xx — Fiscal / NF-e
 
 | ID | Regra | Origem | Status |

@@ -111,8 +111,8 @@ Haverá mesmo app mobile / marketplaces no futuro? Se "não, o Woo é o único c
 - **BR-503:** plano de categorias financeiras inicial.
 Nenhuma bloqueia o começo, mas todas são entrada dos Gates 02–04.
 
-### F6. 🟡 Inicializar o repositório Git
-A fundação já é um ativo valioso e **não está versionada** (o projeto não é um repo git). Recomendo `git init` + primeiro commit da fundação antes de qualquer código, para ter histórico desde a origem.
+### F6. ✅ ~~Inicializar o repositório Git~~ — **resolvido em 2026-07-22**
+A fundação foi versionada (`git init` + commit inicial em `main`). `docs/database_dump/` ficou **deliberadamente fora** do versionamento: 115 MB (99,5% do peso do projeto) contendo dados pessoais reais de clientes — versionar criaria passivo de LGPD irreversível no histórico. O dump permanece local; sua análise está na [pasta 31](../31-Inventario-Legado/README.md).
 
 ## 8. Veredito
 
