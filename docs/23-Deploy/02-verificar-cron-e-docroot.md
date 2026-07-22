@@ -45,19 +45,37 @@ No hPanel: **Advanced → Cron Jobs**. Escolha execução a cada minuto (`* * * 
 >
 > Esta armadilha vale para **todo** cron do projeto, incluindo o `schedule:run` do Laravel em produção.
 
-Com a opção **PHP** marcada, o painel prefixa o binário e o campo recebe só o caminho:
+> ⚠️ **Sempre invoque o interpretador explicitamente.** Se o comando contiver apenas o caminho do `.php`, o cron tenta **executar o arquivo como programa** — e um arquivo iniciado por `<?php`, sem shebang, não é executável. O erro é enganoso:
+>
+> ```
+> timeout: failed to run command '/home/u917402451/cron-test.php': Permission denied
+> ```
+>
+> "Permission denied" aqui **não** significa falta de permissão no arquivo. Tanto que dar `chmod 777` não resolve — e piora: ambientes com suexec/CageFS, como este servidor, **recusam executar arquivos graváveis por todos**. O `777` passa de inútil a causa adicional do problema.
+
+Use a opção **Custom** e informe o comando completo, com o binário do PHP:
 
 ```
-/home/u917402451/cron-test.php
+/usr/bin/php /home/u917402451/cron-test.php
 ```
 
-Para usar outra versão de PHP (ex.: 8.4), marcar **Custom** e informar o comando completo:
+Ou, para fixar a versão 8.4:
 
 ```
 /opt/alt/php84/usr/bin/php /home/u917402451/cron-test.php
 ```
 
-Diagnóstico: o botão **View Output** de cada job mostra a saída e os erros da última execução — é o primeiro lugar a olhar quando um cron parece não rodar.
+Permissão correta do arquivo: `chmod 644` — ele é **lido** pelo PHP, nunca executado.
+
+Diagnóstico: o botão **View Output** de cada job mostra a saída e os erros da última execução — é o primeiro lugar a olhar quando um cron parece não rodar. Para guardar histórico, redirecione: `>> /home/u917402451/cron-debug.log 2>&1`.
+
+> **O mesmo vale para produção.** O cron do agendador do Laravel seguirá exatamente este formato:
+>
+> ```
+> * * * * * /usr/bin/php /home/u917402451/domains/donaarteira.com.br/gestao-app/artisan schedule:run >> /dev/null 2>&1
+> ```
+>
+> Interpretador explícito, caminhos absolutos, arquivo não executável.
 
 ### Passo 4 — esperar e medir
 
