@@ -11,6 +11,10 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <!-- Fronteiras entre módulos (ADR-0020). Requer Pest. -->
+        <testsuite name="Architecture">
+            <directory>tests/Architecture</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
@@ -22,8 +26,27 @@
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+
+        <!--
+            Os testes rodam em MariaDB, não em SQLite (ADR-0002).
+
+            O SQLite não reproduz o que este ERP depende:
+              - SELECT ... FOR UPDATE na numeração fiscal (BR-602)
+              - DECIMAL(15,2) e (15,3) sem conversão para float (ADR-0013)
+              - semântica de transação e FK do ledger de estoque (ADR-0008)
+
+            Testar em SQLite e publicar em MariaDB daria confiança falsa.
+            Local: criar o banco `erp_test` no MariaDB do XAMPP.
+            No CI, estas variáveis são fornecidas pelo workflow e têm
+            precedência (env do processo vence env do phpunit.xml).
+        -->
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
+        <env name="DB_PORT" value="3306"/>
+        <env name="DB_DATABASE" value="erp_test"/>
+        <env name="DB_USERNAME" value="root"/>
+        <env name="DB_PASSWORD" value=""/>
+
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

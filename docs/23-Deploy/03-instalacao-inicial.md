@@ -332,19 +332,67 @@ O que cada linha prova:
 
 ## 15. Dependências ainda a instalar (exigidas pelos ADRs)
 
-O *starter kit* entrega a base, mas não os pacotes que os ADRs do projeto determinam. Instalar antes de escrever o primeiro módulo:
+O *starter kit* entrega a base, mas não os pacotes que os ADRs do projeto determinam.
+
+### 15.1 🔴 Pré-requisito: alinhar o PHP local com a produção
+
+**O PHP local (XAMPP 8.2.12) bloqueia a instalação.** Não é preferência — é fato verificado em 2026-07-22:
+
+```
+spatie/laravel-permission 8.3.0 requires php ^8.3 -> your php version (8.2.12) does not satisfy
+spatie/laravel-query-builder 7.3.0 requires php ^8.3 -> your php version (8.2.12) does not satisfy
+```
+
+O ecossistema Laravel 12 já assume PHP ≥ 8.3. Como a **produção roda 8.4.19**, a decisão é alinhar o ambiente local em **8.4** — o que elimina de uma vez o bloqueio e o risco permanente de "funciona local, quebra em produção".
+
+Depois de atualizar, fixar o alvo no `composer.json` para que a resolução de dependências use sempre a versão de produção, independentemente da máquina:
+
+```json
+"config": {
+    "platform": { "php": "8.4.19" }
+}
+```
+
+### 15.2 Comandos de instalação
+
+Versões confirmadas por resolução real do Composer (2026-07-22), não estimadas:
+
+```bash
+composer require \
+  laravel/sanctum:^4.3 \
+  spatie/laravel-permission:^8.3 \
+  owen-it/laravel-auditing:^14.0 \
+  brick/money:^0.11 \
+  spatie/laravel-query-builder:^7.3
+
+composer require --dev \
+  pestphp/pest:^3.8 \
+  pestphp/pest-plugin-laravel:^3.2 \
+  larastan/larastan:^3.10
+
+npm install
+```
 
 | Pacote | Por quê | Origem |
 |---|---|---|
-| `pestphp/pest` + `pest-plugin-laravel` | **Regra 8 do projeto:** backend testa com Pest. O kit vem com PHPUnit | [22-Testes](../22-Testes/README.md) |
+| `pestphp/pest` + plugin Laravel | **Regra 8:** backend testa com Pest. O kit veio com PHPUnit, e o `tests/Pest.php` que ele deixou é letra morta até a instalação | [22-Testes](../22-Testes/README.md) |
 | `laravel/sanctum` | Tokens de integração (webhooks, scripts, parceiros) | [ADR-0005](../27-ADR/ADR-0005-autenticacao-sanctum.md) |
 | `spatie/laravel-permission` | RBAC deny-by-default | [ADR-0011](../27-ADR/ADR-0011-rbac.md) |
 | `owen-it/laravel-auditing` | Trilha de auditoria | [ADR-0012](../27-ADR/ADR-0012-auditoria.md) |
 | `brick/money` | Dinheiro sem float | [ADR-0013](../27-ADR/ADR-0013-dinheiro-decimal.md) |
 | `spatie/laravel-query-builder` | Filtros/ordenação da API de integração | [07-API §5](../07-API/README.md) |
+| `larastan/larastan` | Análise estática bloqueante no CI | [05-Backend §5](../05-Backend/README.md) |
 | `vitest` + Testing Library | Testes de componente | [06-Frontend §7](../06-Frontend/README.md) |
 
-> `composer.json` declara `php: ^8.2`. O servidor roda 8.4.19 — compatível, mas vale alinhar para `^8.4` para que o CI valide na mesma versão de produção.
+> **O Pest 3.8 traz o plugin de arquitetura embutido** — é o que executa as regras de fronteira do [ADR-0020](../27-ADR/ADR-0020-fronteiras-entre-modulos.md) em `tests/Architecture/`.
+
+### 15.3 Banco de testes local
+
+Os testes rodam em **MariaDB**, não em SQLite ([ADR-0002](../27-ADR/ADR-0002-mariadb.md); justificativa no `phpunit.xml`). Criar uma vez no MariaDB do XAMPP:
+
+```sql
+CREATE DATABASE erp_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
 
 ## 16. Evoluções futuras
 

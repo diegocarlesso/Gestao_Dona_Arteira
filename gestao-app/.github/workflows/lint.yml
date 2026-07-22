@@ -1,45 +1,52 @@
-name: linter
+name: qualidade
 
 on:
   push:
-    branches:
-      - develop
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - develop
-      - main
 
-permissions:
-  contents: write
-
+# O CI é BLOQUEANTE: aqui nada é corrigido automaticamente, tudo é
+# verificado. Um passo que conserta o código em vez de reprovar dá a
+# impressão de qualidade sem entregá-la.
 jobs:
   quality:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Setup PHP
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.4
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
+          extensions: mbstring, bcmath, intl, pdo_mysql, dom, xml, curl, tokenizer
+          tools: composer:v2
+          coverage: none
 
-      - name: Install Dependencies
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Dependências
         run: |
-          composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-          npm install
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci
 
-      - name: Run Pint
-        run: vendor/bin/pint
+      # --test reprova em vez de reescrever os arquivos.
+      - name: Estilo do PHP (Pint)
+        run: vendor/bin/pint --test
 
-      - name: Format Frontend
-        run: npm run format
+      - name: Análise estática (Larastan)
+        run: vendor/bin/phpstan analyse --no-progress
 
-      - name: Lint Frontend
-        run: npm run lint
+      - name: Formatação do frontend (Prettier)
+        run: npm run format:check
 
-      # - name: Commit Changes
-      #   uses: stefanzweifel/git-auto-commit-action@v5
-      #   with:
-      #     commit_message: fix code style
-      #     commit_options: '--no-verify'
+      - name: Lint do frontend (ESLint)
+        run: npm run lint:check
+
+      - name: Tipos do frontend (TypeScript)
+        run: npm run types

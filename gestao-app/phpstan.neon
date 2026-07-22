@@ -1,0 +1,16 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - database
+        - routes
+
+    # Nível 6: exige tipagem em parâmetros e retornos, que a pasta 05 já
+    # torna obrigatória por convenção ("tipos explícitos sempre"). Subir
+    # para 7/8 depois que os primeiros módulos existirem — aumentar o
+    # nível com o código pronto é mais barato que começar frouxo.
+    level: 6
+
+    checkModelProperties: true
