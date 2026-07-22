@@ -1,0 +1,36 @@
+# Ambiente
+.env
+.env.*
+!.env.example
+
+# Dependências (fases futuras)
+/vendor/
+/node_modules/
+
+# Builds
+/public/build/
+/dist/
+
+# Claude Code — configurações locais do desenvolvedor
+.claude/settings.local.json
+
+# Sistema operacional
+Thumbs.db
+.DS_Store
+
+# Certificados e segredos — NUNCA versionar
+*.pfx
+*.p12
+*.pem
+*.key
+
+# Dumps e dados reais — NUNCA versionar (peso + LGPD)
+# Contêm dados pessoais de clientes (CPF, e-mail, telefone, endereço).
+# Guardar fora do repositório; ver docs/17-Migracao/ para a origem das fontes.
+/docs/database_dump/
+*.sql
+!/database/**/*.sql
+
+# Obsidian — estado local do editor
+.obsidian/workspace*.json
+.obsidian/cache/
