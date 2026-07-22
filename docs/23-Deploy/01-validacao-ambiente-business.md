@@ -67,7 +67,7 @@ Ausência de `symlink` significa **deploy sem troca atômica** — aceitável, m
 | # | Verificar | Por quê | Resultado |
 |---|---|---|---|
 | M-1 | **Acesso SSH** e **Composer** disponíveis | sem eles, deploy e `artisan` viram upload manual de FTP | ✅ **Resolvido.** SSH em `br-asc-web1076`; Composer **2.9.8** em `/usr/local/bin/composer` |
-| M-2 | **Cron aceita execução a cada 1 minuto** | é como a fila roda sem worker persistente ([ADR-0014](../27-ADR/ADR-0014-fila-database.md)); cron de 5 em 5 min degrada a sync do Woo | ⏳ **pendente** — procedimento em [23/02 §2](02-verificar-cron-e-docroot.md#2-verificação-a--o-cron-honra-1-minuto) |
+| M-2 | **Cron aceita execução a cada 1 minuto** | é como a fila roda sem worker persistente ([ADR-0014](../27-ADR/ADR-0014-fila-database.md)); cron de 5 em 5 min degrada a sync do Woo | ✅ **Resolvido — mediana de 60 s** em 16 min de observação (2026-07-22). O [ADR-0014](../27-ADR/ADR-0014-fila-database.md) roda como desenhado ([medição](02-verificar-cron-e-docroot.md#4-registro-do-resultado)) |
 | M-3 | **Limite de processos simultâneos** do plano | jobs concorrendo com o WordPress no mesmo plano | ✅ **120 processos / 60 PHP workers**; uso atual: 3 e 1 (§7.4) |
 | M-4 | **Subdomínio `gestao.donaarteira.com.br` apontável para pasta própria**, com document root em `public/` | Laravel exige document root específico; sem isso, expõe-se o código-fonte | ✅ **Resolvido — Arranjo A.** O hPanel força o prefixo `/public_html/`, mas `ln -s` funciona no shell e o servidor segue links. `public_html/gestao` → `../gestao-app/public`; a aplicação fica fora do docroot ([23/02 §3.3](02-verificar-cron-e-docroot.md#arranjo-a-recomendado--aplicação-fora-alcançada-por-link-simbólico)) |
 | M-5 | **Backup automatizado e acesso a dumps** | RPO documentado no ADR-0016 é de 24 h | ⏳ pendente |
@@ -100,7 +100,8 @@ flowchart TD
 | Via navegador (SAPI `litespeed`) | ✅ 2026-07-22 17:16 — 37 OK · 5 avisos · 2 falhas (ambas artefatos, §7.1) |
 | Via SSH (SAPI `cli`) | ✅ 2026-07-22 17:30 — **39 OK · 9 avisos · 0 falhas** |
 | Host | `br-asc-web1076`, Linux LVE (CloudLinux) |
-| **Veredito** | ✅ **APROVADO para os Gates 01–06.** Nenhum impedimento técnico. Restam configurações operacionais (§7.3), não questões de viabilidade |
+| Verificações manuais | ✅ 2026-07-22 — cron de 1 min confirmado (mediana 60 s) e document root resolvido por link simbólico |
+| **Veredito** | ✅ **AMBIENTE VALIDADO E FECHADO para os Gates 01–06.** Nenhum impedimento técnico. Pendem apenas o teste dos canários (após montar a estrutura) e configurações menores (§7.3) |
 
 ### 7.1 As duas "falhas" não eram falhas
 

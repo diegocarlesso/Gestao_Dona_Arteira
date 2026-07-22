@@ -323,9 +323,20 @@ Apague os quatro canários após o teste.
 
 | Verificação | Data | Resultado | Veredito |
 |---|---|---|---|
-| **M-2** — cron de 1 minuto | | intervalo médio: ___ s | ⏳ |
-| **M-4** — estrutura escolhida | | arranjo: ___ (A / B / C) | ⏳ |
-| **M-4** — canários (1 a 6) | | ___ / ___ / ___ / ___ / ___ / ___ | ⏳ |
+| **M-2** — cron de 1 minuto | 2026-07-22 19:44 | 19 execuções em 16 min · **mediana 60 s** (mín. 58, máx. 62 em 15 dos 18 intervalos) | ✅ **1 minuto honrado** |
+| **M-4** — estrutura escolhida | 2026-07-22 | **Arranjo A** — `ln -s` funciona no shell e o servidor segue os links | ✅ |
+| **M-4** — canários (1 a 6) | | ___ / ___ / ___ / ___ / ___ / ___ | ⏳ **executar após montar o Arranjo A** |
+
+**Sobre o resultado do cron:** três intervalos anômalos (41 s, 8 s, 8 s) apareceram **agrupados no início** da janela — assinatura de execuções manuais logo após a configuração, não de irregularidade do agendador. Os 15 intervalos seguintes ficaram entre 58 e 62 s, sem falhas. Se a causa fosse um cron duplicado, os pares apareceriam distribuídos por toda a série, não concentrados no começo.
+
+> Antes de ir a produção, confirmar que existe **um único** job agendado (`crontab -l` ou a lista do painel). Um `schedule:run` duplicado faria o Laravel processar jobs duas vezes.
+
+**Duas armadilhas encontradas no caminho**, ambas aplicáveis ao cron de produção:
+
+| # | Sintoma | Causa | Correção |
+|---|---|---|---|
+| [P-13](01-validacao-ambiente-business.md#73-pendências-e-ressalvas) | `No such file or directory` | Caminho relativo: o cron parte da home, e `~/public_html` é um stub vazio | Caminho absoluto sempre |
+| [P-14](01-validacao-ambiente-business.md#73-pendências-e-ressalvas) | `Permission denied` mesmo com `chmod 777` | Cron tentando executar o `.php` como programa; e suexec/CageFS recusa arquivos graváveis por todos | Interpretador explícito + arquivo em `644` |
 
 Ao concluir, atualizar a tabela de verificações manuais em [01-validacao-ambiente-business.md §5](01-validacao-ambiente-business.md#5-verificações-manuais-o-script-não-alcança).
 

@@ -40,10 +40,21 @@ if (in_array('--relatorio', $argv ?? [], true)) {
     $media   = array_sum($intervalos) / count($intervalos);
     $duracao = strtotime($marcas[$total - 1]) - strtotime($marcas[0]);
 
+    // Mediana: resistente a execuções manuais misturadas ao log.
+    // A média é enganosa aqui — poucos intervalos de segundos a derrubam.
+    $ord = $intervalos;
+    sort($ord);
+    $n = count($ord);
+    $mediana = $n % 2
+        ? $ord[intdiv($n, 2)]
+        : ($ord[$n / 2 - 1] + $ord[$n / 2]) / 2;
+
+    $suspeitos = array_values(array_filter($intervalos, static fn ($i) => $i < 30));
+
     // ---- Sanidade: os dados vieram mesmo de um cron? ----------------
     // Um cron de 1 minuto não produz intervalos de poucos segundos.
     // Sem esta checagem, execuções manuais passam por "aprovado".
-    if ($media < 30) {
+    if ($mediana < 30) {
         echo str_repeat('=', 60), "\n";
         echo " TESTE INVALIDO — ISTO NAO E UM CRON\n";
         echo str_repeat('=', 60), "\n";
@@ -77,17 +88,24 @@ if (in_array('--relatorio', $argv ?? [], true)) {
     echo ' Intervalo mínimo      : ', $menor, " s\n";
     echo ' Intervalo máximo      : ', $maior, " s\n";
     echo ' Intervalo médio       : ', round($media), " s\n";
+    echo ' Intervalo MEDIANO     : ', round($mediana), " s  ← estatística de referência\n";
     echo str_repeat('-', 60), "\n";
 
-    if ($media <= 90) {
+    if ($suspeitos !== []) {
+        echo ' AVISO: ', count($suspeitos), ' intervalo(s) abaixo de 30 s — provavelmente',
+             " execucoes\n manuais misturadas ao log. Ignorados no veredito, que usa a mediana.\n";
+        echo str_repeat('-', 60), "\n";
+    }
+
+    if ($mediana <= 90) {
         echo " VEREDITO: cron de 1 MINUTO honrado.\n";
         echo " A fila roda como planejado (ADR-0014). Nada a mudar.\n";
-    } elseif ($media <= 330) {
-        echo " VEREDITO: intervalo real de ~", round($media / 60), " minuto(s).\n";
+    } elseif ($mediana <= 330) {
+        echo " VEREDITO: intervalo real de ~", round($mediana / 60), " minuto(s).\n";
         echo " O plano NAO honra 1 minuto. A sincronizacao com o Woo fica\n";
         echo " mais lenta que o NFR de 2 min. Ver mitigacao no doc 23/02.\n";
     } else {
-        echo " VEREDITO: intervalo de ~", round($media / 60), " minutos — MUITO alto.\n";
+        echo " VEREDITO: intervalo de ~", round($mediana / 60), " minutos — MUITO alto.\n";
         echo " Gatilho de reabertura do ADR-0016.\n";
     }
 
