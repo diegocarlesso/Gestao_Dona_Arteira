@@ -34,3 +34,8 @@ Thumbs.db
 # Obsidian — estado local do editor
 .obsidian/workspace*.json
 .obsidian/cache/
+
+/Dona_Arteira_Gestao_desktop/
+
+
+/storage/*.key

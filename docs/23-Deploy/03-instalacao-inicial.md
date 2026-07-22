@@ -44,18 +44,19 @@ Verificar localmente que sobe (`php artisan serve`) antes de prosseguir.
 
 ## 4. Passo 2 — versionar
 
-O repositório do projeto já existe (`main`, desde 2026-07-22) e hoje contém só documentação. O código entra nele.
+A aplicação vive no subdiretório **`gestao-app/`** do repositório, ao lado de `docs/`. Essa separação é deliberada: documentação e código versionados juntos (exigência do projeto), mas distinguíveis na hora de publicar.
 
 ```bash
-# na raiz do repositório
 git checkout -b gate-01/estrutura-inicial
-# mover/copiar a aplicação para a raiz do repo (ou para app/, conforme a estrutura final)
 git add -A && git commit -m "feat: esqueleto Laravel 12 + Inertia + React (Gate 01)"
+git push -u origin gate-01/estrutura-inicial
 ```
 
-**Antes do primeiro push, conferir o `.gitignore`:** `.env`, `/vendor/`, `/node_modules/`, `/public/build/` e `/storage/*.key` **nunca** entram. O `.gitignore` do projeto já cobre os principais — revisar após mover a aplicação.
+**Antes do push, conferir o `.gitignore`:** `.env`, `/vendor/`, `/node_modules/`, `public/build/` e chaves **nunca** entram.
 
-> **Repositório remoto:** ainda não existe. Um repositório **privado** no GitHub é pré-requisito do CI/CD previsto no Gate 01. Criar antes do deploy, porque o deploy será por `git clone`/`git pull`.
+> ⚠️ **`.gitignore` não desrastreia o que já foi commitado.** Se um arquivo já está no índice, adicioná-lo ao `.gitignore` não tem efeito — é preciso `git rm -r --cached <caminho>` e commitar a remoção. Verificar com `git ls-files | grep <padrão>`.
+
+**Repositório remoto:** `github.com/diegocarlesso/Gestao_Dona_Arteira`. Deve ser **privado** — contém análise crítica, modelo de custos e o inventário do legado.
 
 ## 5. Passo 3 — criar o banco de dados
 
@@ -70,13 +71,87 @@ Anotar host, nome, usuário e senha. Confirmar quantos bancos o plano permite (i
 
 ## 6. Passo 4 — montar a estrutura no servidor
 
-Arranjo A, definido em [23/02 §3.3](02-verificar-cron-e-docroot.md#arranjo-a-recomendado--aplicação-fora-alcançada-por-link-simbólico):
+Arranjo A, definido em [23/02 §3.3](02-verificar-cron-e-docroot.md#arranjo-a-recomendado--aplicação-fora-alcançada-por-link-simbólico).
+
+### 6.1 Autenticação do servidor no GitHub (deploy key)
+
+O servidor precisa de credencial própria para clonar. Sem ela:
+
+```
+git@github.com: Permission denied (publickey).
+```
+
+**Use uma deploy key somente-leitura**, não a sua chave pessoal: ela vale para **um único repositório**, não dá acesso à sua conta, e é revogável isoladamente se o servidor for comprometido.
+
+```bash
+# 1. Gerar o par de chaves no servidor (sem passphrase — o deploy é automatizado)
+ssh-keygen -t ed25519 -C "deploy@gestao.donaarteira.com.br" \
+           -f ~/.ssh/id_ed25519_gestao -N ""
+
+# 2. Exibir a chave PÚBLICA para copiar
+cat ~/.ssh/id_ed25519_gestao.pub
+```
+
+No GitHub: **repositório → Settings → Deploy keys → Add deploy key**. Colar a chave pública e **deixar "Allow write access" DESMARCADO** — o servidor só lê; quem escreve é a sua máquina.
+
+```bash
+# 3. Dizer ao SSH qual chave usar para o GitHub
+cat >> ~/.ssh/config <<'CFG'
+
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519_gestao
+    IdentitiesOnly yes
+CFG
+
+# 4. Permissões — o SSH recusa chaves com permissão frouxa
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/id_ed25519_gestao ~/.ssh/config
+chmod 644 ~/.ssh/id_ed25519_gestao.pub
+
+# 5. Testar
+ssh -T git@github.com
+```
+
+Resposta esperada (a mensagem sobre shell é normal):
+
+```
+Hi diegocarlesso/Gestao_Dona_Arteira! You've successfully authenticated,
+but GitHub does not provide shell access.
+```
+
+> **Alternativa:** HTTPS com *personal access token*. Funciona, mas o token fica gravado no servidor, costuma ter escopo mais amplo que um repositório e expira — gerando falha de deploy no pior momento. A deploy key é melhor em todos os aspectos.
+
+### 6.2 Clonar e instalar
+
+O repositório contém **mais do que a aplicação**: `docs/`, `.claude/`, `.planning/` e o sistema desktop legado. A aplicação Laravel vive no subdiretório **`gestao-app/`**. Portanto o clone vai para `$BASE/erp`, e o `public/` da aplicação fica em `$BASE/erp/gestao-app/public`.
 
 ```bash
 BASE=~/domains/donaarteira.com.br
+REPO=git@github.com:diegocarlesso/Gestao_Dona_Arteira.git
+```
 
-git clone git@github.com:SEU_USUARIO/SEU_REPO.git $BASE/gestao-app
-cd $BASE/gestao-app
+**Opção recomendada — clone parcial (só a aplicação):**
+
+```bash
+git clone --filter=blob:none --sparse $REPO $BASE/erp
+cd $BASE/erp
+git sparse-checkout set gestao-app
+```
+
+Traz apenas `gestao-app/` para o servidor. A configuração persiste: `git pull` continua funcionando normalmente nos releases seguintes. Mantém em produção só o que roda — a documentação (incluindo modelo de custos e análise crítica, que são material interno) fica fora.
+
+**Alternativa — clone completo:**
+
+```bash
+git clone $REPO $BASE/erp
+```
+
+Mais simples, ao custo de manter documentação e o sistema legado no servidor. Não há exposição pela web (tudo fica fora do `public/`), mas é material que não precisa estar lá.
+
+```bash
+cd $BASE/erp/gestao-app
 
 composer install --no-dev --optimize-autoloader
 cp .env.example .env
@@ -115,18 +190,24 @@ BASE=~/domains/donaarteira.com.br
 
 # 1) Document root do subdomínio → public/ da aplicação
 rm -rf $BASE/public_html/gestao
-ln -s ../gestao-app/public $BASE/public_html/gestao
+ln -s ../erp/gestao-app/public $BASE/public_html/gestao
 
 # 2) Storage público (substitui o artisan storage:link)
-ln -s ../storage/app/public $BASE/gestao-app/public/storage
+ln -s ../storage/app/public $BASE/erp/gestao-app/public/storage
 ```
 
-Conferir: `ls -la $BASE/public_html/gestao` e `ls -la $BASE/gestao-app/public/storage`.
+Conferir que os dois links resolvem:
+
+```bash
+ls -la $BASE/public_html/gestao
+ls -la $BASE/erp/gestao-app/public/storage
+cat $BASE/public_html/gestao/index.php | head -3   # deve mostrar o index.php do Laravel
+```
 
 ## 8. Passo 6 — permissões
 
 ```bash
-cd ~/domains/donaarteira.com.br/gestao-app
+cd ~/domains/donaarteira.com.br/erp/gestao-app
 find . -type f -exec chmod 644 {} \;
 find . -type d -exec chmod 755 {} \;
 chmod -R 775 storage bootstrap/cache
@@ -143,7 +224,7 @@ chmod 600 .env
 # local ou CI
 npm ci && npm run build
 # enviar apenas o resultado
-rsync -avz public/build/ usuario@host:~/domains/donaarteira.com.br/gestao-app/public/build/
+rsync -avz public/build/ usuario@host:~/domains/donaarteira.com.br/erp/gestao-app/public/build/
 ```
 
 O versionamento por hash do Vite resolve o cache-busting — não é preciso limpar cache do navegador a cada release.
@@ -153,7 +234,7 @@ O versionamento por hash do Vite resolve o cache-busting — não é preciso lim
 Um único cron, com **interpretador explícito e caminho absoluto** ([P-13](01-validacao-ambiente-business.md#73-pendências-e-ressalvas)/[P-14](01-validacao-ambiente-business.md#73-pendências-e-ressalvas)):
 
 ```
-* * * * * /usr/bin/php /home/u917402451/domains/donaarteira.com.br/gestao-app/artisan schedule:run >> /dev/null 2>&1
+* * * * * /usr/bin/php /home/u917402451/domains/donaarteira.com.br/erp/gestao-app/artisan schedule:run >> /dev/null 2>&1
 ```
 
 O `schedule:run` dispara o processamento da fila, definido em `routes/console.php`. O cron de 1 minuto foi medido e confirmado (mediana de 60 s).
@@ -169,7 +250,7 @@ for u in \
   "https://gestao.donaarteira.com.br/" \
   "https://gestao.donaarteira.com.br/.env" \
   "https://gestao.donaarteira.com.br/composer.json" \
-  "https://donaarteira.com.br/gestao-app/.env" \
+  "https://donaarteira.com.br/erp/.env" \
   "https://donaarteira.com.br/gestao/.env" \
   "https://donaarteira.com.br/gestao/storage/logs/laravel.log" ; do
   printf "%-72s %s\n" "$u" "$(curl -s -o /dev/null -w '%{http_code}' "$u")"
@@ -177,6 +258,17 @@ done
 ```
 
 Esperado: **200 na primeira, 404 (ou 403) em todas as outras.**
+
+O que cada linha prova:
+
+| # | URL | Prova |
+|---|---|---|
+| 1 | raiz do subdomínio | O link simbólico funciona e o Laravel responde |
+| 2 | `.env` pelo subdomínio | O docroot é `public/`, não a raiz da aplicação |
+| 3 | `composer.json` pelo subdomínio | idem — nenhum arquivo de projeto vaza |
+| 4 | `/erp/.env` pelo domínio principal | O clone está **fora** de `public_html`, inalcançável pelo WordPress |
+| 5 | `/gestao/.env` pelo domínio principal | **O mais importante:** o link é atravessável, mas resolve para `public/` — não dá para subir a árvore por ele |
+| 6 | log pelo domínio principal | `storage/` inalcançável mesmo através do link |
 
 ## 12. Passo 10 — verificação final
 
