@@ -41,12 +41,14 @@ Só existem se o gatilho correspondente for acionado.
 
 | Cenário | Composição | Recorrente estimado |
 |---|---|---|
-| **A — Plano B do ADR-0016** (permanecer no Business) | itens 3, 4, 5 (sem VPS) | **R$ 20–190/mês** + dívidas operacionais documentadas no ADR-0016 |
-| **B — Recomendado, núcleo** (VPS, Gates 01–03) | itens 1, 3, 4, 5, 6 | **R$ 60–290/mês** |
-| **C — Recomendado, com fiscal** (Gates 01–05) | B + itens 2, 8/9 | **R$ 90–420/mês** |
-| **D — Completo com contingências** | C + itens 7, 10, 12 | **R$ 260–980/mês** |
+| **A — Plano Business** ✅ **escolhido em 2026-07-22** | itens 2, 3, 4, 5 (sem VPS) | **R$ 33–215/mês** + dívidas operacionais documentadas no [ADR-0016](../27-ADR/ADR-0016-hospedagem.md) |
+| **B — VPS, núcleo** (Gates 01–03) | itens 1, 3, 4, 5, 6 | R$ 60–290/mês |
+| **C — VPS, com fiscal** (Gates 01–05) | B + itens 2, 8/9 | R$ 90–420/mês |
+| **D — Completo com contingências** | C + itens 7, 10, 12 | R$ 260–980/mês |
 
-O salto de C para D é dominado pela **API fiscal gerenciada** (item 7). Ele não é uma decisão de hoje, mas precisa estar no radar do dono: é a diferença entre R$ 90 e R$ 400/mês.
+**Cenário vigente: A.** O dono optou por permanecer no plano Business já contratado e o escopo contratado é o completo (Gates 01–06). Como o item 2 (certificado A1) é obrigatório no Gate 05, ele entra no cenário A a partir dali.
+
+⚠️ **O cenário A pode migrar para C por força maior.** Se a [validação do ambiente](../23-Deploy/01-validacao-ambiente-business.md) reprovar as extensões necessárias à NF-e, as saídas serão contratar um VPS no Gate 05 ou assinar uma **API fiscal gerenciada** (item 7, R$ 100–300/mês). Essa é a maior incerteza de custo aberta hoje, e ela se resolve em uma hora de verificação — por isso a validação foi antecipada para a semana 1.
 
 ## 5. Custos de implantação (uma vez)
 

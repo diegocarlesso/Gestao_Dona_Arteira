@@ -16,9 +16,9 @@
 |---|---|---|
 | [0001](ADR-0001-monolito-modular.md) | Monolito modular Laravel (não microserviços) | ✅ Aceito |
 | [0002](ADR-0002-mariadb.md) | MariaDB como SGBD único + convenções de identidade | ✅ Aceito |
-| [0003](ADR-0003-api-first-rest.md) | API First: REST versionada + OpenAPI como contrato | ✅ Aceito |
-| [0004](ADR-0004-spa-react-separada.md) | Frontend SPA React separada consumindo a API | ✅ Aceito |
-| [0005](ADR-0005-autenticacao-sanctum.md) | Autenticação: Sanctum (cookie SPA + tokens integração) | ✅ Aceito |
+| [0003](ADR-0003-api-first-rest.md) | API First: REST versionada + OpenAPI como contrato | ✅ Aceito — **escopo reduzido pelo 0019** |
+| [0004](ADR-0004-spa-react-separada.md) | ~~Frontend SPA React separada consumindo a API~~ | ❌ **Substituído pelo [0019](ADR-0019-inertia-substitui-spa.md)** |
+| [0005](ADR-0005-autenticacao-sanctum.md) | Autenticação: Sanctum (tokens de integração) + sessão Laravel | ✅ Aceito — **parcialmente revisto pelo 0019** |
 | [0006](ADR-0006-erp-ssot.md) | ERP como Single Source of Truth; Woo como canal | ✅ Aceito (princípio do projeto) |
 | [0007](ADR-0007-sync-assincrona.md) | Sincronização assíncrona: filas + idempotência + mapeamento + reconciliação | ✅ Aceito |
 | [0008](ADR-0008-ledger-estoque.md) | Estoque como ledger imutável + saldos materializados | ✅ Aceito |
@@ -29,9 +29,10 @@
 | [0013](ADR-0013-dinheiro-decimal.md) | Dinheiro: DECIMAL(15,2) + brick/money (nunca float) | ✅ Aceito |
 | [0014](ADR-0014-fila-database.md) | Fila com driver database (sem Redis) | ✅ Aceito com gatilhos |
 | [0015](ADR-0015-camadas-e-repositorios.md) | Camadas Controller→Service→Model e repositórios dosados | ✅ Aceito |
-| [0016](ADR-0016-hospedagem.md) | **Hospedagem: recomendação de VPS vs plano Business** | ⚠️ **Proposto — decisão do dono** |
+| [0016](ADR-0016-hospedagem.md) | Hospedagem: **plano Business** (Plano B; contraria a recomendação técnica) | ✅ Aceito 2026-07-22 **com gatilhos ativos** |
 | [0017](ADR-0017-midia-canonica.md) | Mídia (imagens): fase 1 no Woo, fase 2 storage próprio | ⚠️ Proposto |
 | [0018](ADR-0018-cobranca-boleto.md) | **Cobrança (boleto e PIX) via adapter, provedor plugável** | ⚠️ **Proposto — decisão do dono** |
+| [0019](ADR-0019-inertia-substitui-spa.md) | **Laravel + Inertia + React** (substitui o 0004) | ✅ Aceito 2026-07-22 |
 
 ## Backlog de ADRs futuros (escrever quando o tema chegar)
 

@@ -1,7 +1,8 @@
 # 23 — Deploy
 
-> **Status:** Em revisão (depende do ADR-0016) · **Última atualização:** 2026-07-03 · **Responsável:** devops-specialist
-> **ADRs:** 0014 (filas) · **0016 (hospedagem — decisão pendente)**
+> **Status:** ⚠️ **Requer reescrita** — foi escrito assumindo SPA separada e ADR-0016 pendente · **Última atualização:** 2026-07-03 · **Responsável:** devops-specialist
+> **ADRs:** [0014](../27-ADR/ADR-0014-fila-database.md) (filas) · [**0016**](../27-ADR/ADR-0016-hospedagem.md) (hospedagem — **plano Business, aceito em 2026-07-22**) · [**0019**](../27-ADR/ADR-0019-inertia-substitui-spa.md) (Inertia — deploy passa a ser único)
+> **Documentos:** [Validação do ambiente Business](01-validacao-ambiente-business.md) ← **executar na semana 1 do Gate 01, antes de qualquer código**
 
 ## 1. Objetivo
 

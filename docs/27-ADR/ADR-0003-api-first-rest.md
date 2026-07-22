@@ -1,7 +1,8 @@
 # ADR-0003: API First — REST versionada + OpenAPI como contrato
 
-> **Status:** Aceito · **Data:** 2026-07-03 · **Decisores:** chief-architect, api-specialist
+> **Status:** ✅ Aceito — **escopo reduzido pelo [ADR-0019](ADR-0019-inertia-substitui-spa.md)** (2026-07-22) · **Data:** 2026-07-03 · **Decisores:** chief-architect, api-specialist
 > **Módulos afetados:** 07, 06, 15, 16
+> ⚠️ O princípio (REST versionada, OpenAPI como contrato, spec antes do controller) **permanece válido para a API de integração**. Deixou de valer para as telas internas do ERP, que passaram a usar Inertia.
 
 ## Contexto
 

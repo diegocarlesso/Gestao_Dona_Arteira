@@ -1,7 +1,8 @@
 # ADR-0004: Frontend SPA React separada consumindo a API
 
-> **Status:** Aceito · **Data:** 2026-07-03 · **Decisores:** chief-architect, react-specialist
+> **Status:** ❌ **Substituído por [ADR-0019](ADR-0019-inertia-substitui-spa.md)** (2026-07-22) · **Data:** 2026-07-03 · **Decisores:** chief-architect, react-specialist
 > **Módulos afetados:** 06, 07, 23
+> ⚠️ **Este ADR não vale mais.** A premissa central — "a API REST vai ter que existir de qualquer forma para o WooCommerce" — não resistiu à reconfirmação prevista no item F4 da [análise crítica](../00-Visao-Geral/04-analise-critica-gate00.md). Mantido no repositório como registro histórico, conforme a regra 3 da [pasta 27](README.md).
 
 ## Contexto
 

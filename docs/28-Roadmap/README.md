@@ -24,8 +24,9 @@ Toda a documentação desta pasta `docs/`, agentes, skills, ADRs. **Saída:** de
 
 ## Gate 01 — Núcleo + Migração
 
-**Entrega:** projeto Laravel+React estruturado (pastas 05/06), CI/CD e ambientes (23), auth+RBAC (18/19), auditoria (26), catálogo, clientes, estoque com ledger (09), health check, **migração executada até a fase 5** (17).
-**Critérios de saída:** dados migrados validados e assinados pelo dono · CI verde bloqueante · estoque operável manualmente no ERP · decisão ADR-0016 tomada e ambiente definitivo provisionado · staging funcionando.
+**Tarefa 0 (bloqueante, antes de qualquer código):** [validação do ambiente Business](../23-Deploy/01-validacao-ambiente-business.md). Com o escopo completo contratado e a hospedagem compartilhada escolhida ([ADR-0016](../27-ADR/ADR-0016-hospedagem.md)), é preciso provar que o plano suporta a NF-e **antes** de investir 1.800 h nele.
+**Entrega:** projeto Laravel + Inertia + React estruturado ([ADR-0019](../27-ADR/ADR-0019-inertia-substitui-spa.md), pastas 05/06), CI/CD e ambientes (23), auth+RBAC (18/19), auditoria (26), catálogo, clientes, estoque com ledger (09), health check, **migração executada até a fase 5** (17).
+**Critérios de saída:** ambiente validado com veredito registrado · dados migrados validados e assinados pelo dono · CI verde bloqueante · estoque operável manualmente no ERP · staging funcionando.
 
 ## Gate 02 — Vendas + Sincronização WooCommerce
 

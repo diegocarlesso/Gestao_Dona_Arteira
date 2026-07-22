@@ -89,8 +89,10 @@ Identifiquei lacunas que valem documento próprio (a criar quando a fase chegar 
 
 Estas são as perguntas que **a documentação não pode responder sozinha**. Estão listadas por urgência.
 
-### F1. 🔴 Hospedagem: VPS ou permanecer no plano Business? (ADR-0016)
-A mais urgente. Hospedagem compartilhada atende **mal** filas persistentes, NF-e e backups próprios. Recomendação técnica: **VPS** (~R$30–80/mês) dedicado ao ERP, mantendo o WordPress onde está. Sem essa decisão, o desenho de deploy, monitoramento e NF-e fica provisório. **Decidir antes do fim do Gate 01.**
+### F1. ✅ ~~Hospedagem: VPS ou permanecer no plano Business?~~ — **decidido em 2026-07-22: plano Business**
+O dono optou pelo **Plano B do [ADR-0016](../27-ADR/ADR-0016-hospedagem.md)** — permanecer no plano Business já contratado, contrariando a recomendação técnica. As dívidas operacionais (fila por cron, sem Redis, RPO 24 h, risco de ambiente para NF-e) foram assumidas conscientemente e os gatilhos de reabertura estão ativos.
+
+**Consequência que passou a valer imediatamente:** como o escopo contratado é o completo (inclui NF-e no Gate 05), a validação de extensões e limites do ambiente foi antecipada de "antes do Gate 05" para **a semana 1 do Gate 01** — [23-Deploy/01](../23-Deploy/01-validacao-ambiente-business.md). Se o plano não suportar `soap`, `openssl` ou saída HTTPS para a SEFAZ, o ADR-0016 reabre antes de qualquer código.
 
 ### F2. 🟠 Reunião de validação fiscal com o contador (pasta 13)
 Regime do Simples, CFOPs, NCMs, CSOSN, obrigações. Bloqueia o Gate 05, mas as respostas influenciam o modelo de dados desde cedo. **Agendar já** — é a dependência externa de maior lead time.
@@ -101,8 +103,10 @@ Regime do Simples, CFOPs, NCMs, CSOSN, obrigações. Bloqueia o Gate 05, mas as 
 - Inventário dos plugins ativos no WordPress (checkout BR, frete, rastreio) — pasta 16/01.
 Sem isso, migração e sincronização não começam.
 
-### F4. 🟡 Reconfirmar a premissa da SPA separada (B1)
-Haverá mesmo app mobile / marketplaces no futuro? Se "não, o Woo é o único canal digital", vale reabrir o ADR-0004 por uma stack mais rápida de manter. Se "sim", a decisão atual está certa.
+### F4. ✅ ~~Reconfirmar a premissa da SPA separada (B1)~~ — **decidido em 2026-07-22: Inertia**
+A premissa não resistiu à reconfirmação. O ADR-0004 apoiava-se em *"a API REST vai ter que existir de qualquer forma para o WooCommerce"* — mas a integração Woo precisa de chamadas de saída e de poucos receptores de webhook, não de uma API REST completa sob contrato OpenAPI. Nenhum consumidor adicional (mobile, marketplace) foi confirmado.
+
+Decisão: **Laravel + Inertia + React** ([ADR-0019](../27-ADR/ADR-0019-inertia-substitui-spa.md), que substitui o [ADR-0004](../27-ADR/ADR-0004-spa-react-separada.md)). Economia estimada de 200–350 h ao longo dos Gates 01–06 e ataque direto ao risco R6 (fadiga de solo dev). Custo: as pastas 06, 07, 23, 03, 05, 22 e 25 precisam de revisão antes do código.
 
 ### F5. 🟡 Regras de negócio que só o dono/operação definem
 - **BR-301:** critério do preço de atacado (cliente marcado? quantidade mínima?).

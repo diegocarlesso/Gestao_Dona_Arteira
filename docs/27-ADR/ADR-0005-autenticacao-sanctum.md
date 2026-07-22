@@ -1,7 +1,8 @@
 # ADR-0005: Autenticação — Laravel Sanctum (cookie SPA + tokens de integração)
 
-> **Status:** Aceito · **Data:** 2026-07-03 · **Decisores:** security-specialist, chief-architect
+> **Status:** ✅ Aceito — **parcialmente revisto pelo [ADR-0019](ADR-0019-inertia-substitui-spa.md)** (2026-07-22) · **Data:** 2026-07-03 · **Decisores:** security-specialist, chief-architect
 > **Módulos afetados:** 18, 25, 07
+> ⚠️ Usuários humanos passam a autenticar por **sessão nativa do Laravel** (Inertia); o modo "cookie SPA" do Sanctum deixa de ser necessário. Os **tokens de integração** via Sanctum, o 2FA e o RBAC permanecem exatamente como decidido aqui.
 
 ## Contexto
 
