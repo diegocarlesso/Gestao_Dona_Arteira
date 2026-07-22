@@ -1,6 +1,6 @@
 # 03 — Instalação Inicial (Gate 01, tarefa 1)
 
-> **Status:** ⏳ **Em execução** — aplicação no ar em `gestao.donaarteira.com.br` desde 2026-07-22, canários aprovados. Pendem banco, permissões e cron (§12) · **Última atualização:** 2026-07-22 · **Responsável:** devops-specialist
+> **Status:** ✅ **Ambiente operacional** — aplicação no ar em `gestao.donaarteira.com.br`, canários aprovados, banco migrado, agendador ativo (2026-07-22). Falta apenas instalar as dependências dos ADRs (§15), bloqueada pelo PHP local em 8.2 · **Última atualização:** 2026-07-22 · **Responsável:** devops-specialist
 > **ADRs:** [0016](../27-ADR/ADR-0016-hospedagem.md) (plano Business) · [0019](../27-ADR/ADR-0019-inertia-substitui-spa.md) (Inertia) · [0001](../27-ADR/ADR-0001-monolito-modular.md) · [0002](../27-ADR/ADR-0002-mariadb.md) · [0014](../27-ADR/ADR-0014-fila-database.md)
 > **Pré-requisito:** [validação de ambiente](01-validacao-ambiente-business.md) aprovada e [cron/docroot](02-verificar-cron-e-docroot.md) verificados
 
@@ -269,6 +269,9 @@ Comando a colar no cron do painel (curto, sem caminho longo que possa quebrar):
 ```
 
 O `schedule:run` dispara o processamento da fila, definido em `routes/console.php`. O cron de 1 minuto foi medido e confirmado (mediana de 60 s).
+
+> ### ✅ Ativo em 2026-07-22
+> Job registrado como `* * * * * /bin/bash /home/u917402451/scheduler.sh` e executando com sucesso — saída `INFO No scheduled commands are ready to run.` (esperada, pois `routes/console.php` ainda não tem tarefas). O agendador de produção está de pé.
 
 > **Verificar o funcionamento** (o painel gerencia o cron por fora — `crontab -l` fica **vazio** neste host, então não serve para conferir): após ~3 min, `tail -3 ~/schedule.log` deve mostrar a mensagem `No scheduled commands are ready to run.` repetida, uma por execução. Enquanto o log **não cresce** (mesmo tamanho, mesmo timestamp), o cron não está rodando — reveja o comando no painel.
 >
