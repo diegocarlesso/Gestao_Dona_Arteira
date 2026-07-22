@@ -35,11 +35,29 @@ Envie [`cron-test.php`](cron-test.php) para um lugar **não servido pela web** (
 
 ### Passo 3 — criar o cron job
 
-No hPanel, seção **Cron Jobs** (costuma ficar em *Avançado*). Escolha execução **a cada minuto**, ou use a expressão `* * * * *`:
+No hPanel: **Advanced → Cron Jobs**. Escolha execução a cada minuto (`* * * * *`).
+
+> ⚠️ **Use caminho absoluto — sempre.** O cron executa com o diretório de trabalho na **raiz da home** (`/home/u917402451`), não no docroot. Um caminho relativo como `public_html/cron-test.php` é resolvido como `/home/u917402451/public_html/...` — e naquele servidor **essa pasta está vazia** (o docroot real é `~/domains/donaarteira.com.br/public_html`). O resultado é um erro silencioso:
+>
+> ```
+> timeout: failed to run command 'public_html/cron-test.php': No such file or directory
+> ```
+>
+> Esta armadilha vale para **todo** cron do projeto, incluindo o `schedule:run` do Laravel em produção.
+
+Com a opção **PHP** marcada, o painel prefixa o binário e o campo recebe só o caminho:
 
 ```
-/usr/bin/php /home/u917402451/cron-test.php
+/home/u917402451/cron-test.php
 ```
+
+Para usar outra versão de PHP (ex.: 8.4), marcar **Custom** e informar o comando completo:
+
+```
+/opt/alt/php84/usr/bin/php /home/u917402451/cron-test.php
+```
+
+Diagnóstico: o botão **View Output** de cada job mostra a saída e os erros da última execução — é o primeiro lugar a olhar quando um cron parece não rodar.
 
 ### Passo 4 — esperar e medir
 
@@ -172,6 +190,19 @@ https://donaarteira.com.br/teste-link/ok.txt
 | `ln -s: BLOQUEADO` | → Arranjo B |
 
 Limpar depois: `rm $BASE/public_html/teste-link && rm -rf $BASE/teste-alvo`
+
+> ### ✅ Resultado (2026-07-22)
+>
+> ```
+> $ ln -s ../teste-alvo $BASE/public_html/teste-link && echo "ln -s: OK"
+> ln -s: OK
+> $ cat $BASE/public_html/teste-link/ok.txt
+> LINK SIMBOLICO FUNCIONA
+> ```
+>
+> E pela web, `https://donaarteira.com.br/teste-link/ok.txt` exibiu o conteúdo — **o servidor segue links simbólicos** (`FollowSymLinks` ativo).
+>
+> **Arranjo A adotado.** O Arranjo B fica registrado apenas como histórico da análise.
 
 ##### Se viável, o arranjo final
 
