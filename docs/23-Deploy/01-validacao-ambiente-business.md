@@ -98,10 +98,11 @@ flowchart TD
 |---|---|
 | Executado por | Diego |
 | Via navegador (SAPI `litespeed`) | ✅ 2026-07-22 17:16 — 37 OK · 5 avisos · 2 falhas (ambas artefatos, §7.1) |
-| Via SSH (SAPI `cli`) | ✅ 2026-07-22 17:30 — **39 OK · 9 avisos · 0 falhas** |
+| Via SSH (SAPI `cli`) | ✅ 2026-07-22 17:30 — **39 OK · 9 avisos · 0 falhas** (PHP 8.2.30) |
+| Revalidação no PHP 8.4.19 | ⚠️ 2026-07-22 20:15 — 39 OK · 8 avisos · **1 falha**: `proc_open` bloqueada (ver **P-15**). `soap` e demais extensões confirmadas |
 | Host | `br-asc-web1076`, Linux LVE (CloudLinux) |
 | Verificações manuais | ✅ 2026-07-22 — cron de 1 min confirmado (mediana 60 s) e document root resolvido por link simbólico |
-| **Veredito** | ✅ **AMBIENTE VALIDADO E FECHADO para os Gates 01–06.** Nenhum impedimento técnico. Pendem apenas o teste dos canários (após montar a estrutura) e configurações menores (§7.3) |
+| **Veredito** | ⚠️ **Ambiente viável para os Gates 01–06** — `soap`, conectividade SEFAZ, banco, cron e document root todos confirmados. **Um bloqueio aberto:** `proc_open` desabilitada no PHP 8.4 (**P-15**, §7.5), que afeta o `composer install` no servidor. Resolver antes da instalação inicial |
 
 ### 7.1 As duas "falhas" não eram falhas
 
@@ -151,6 +152,7 @@ E o CLI (a execução que de fato importa) foi ainda melhor que o web:
 | ~~M-3~~ | ~~Limite de processos desconhecido~~ | — | ✅ **Resolvido (§7.4):** 3 de 120 processos e 1 de 60 PHP workers em uso |
 | **P-11** | O ERP compartilha o plano com o WordPress em produção (usuário `u917402451`) | 🟢 **Baixa** *(rebaixado de Alta em §7.4)* | Os dados de consumo mostram o WordPress usando **12% de CPU e 3 de 120 processos**. A folga é grande; a concorrência que eu temia não se sustenta nos números. Segue sob monitoramento como gatilho do [ADR-0016](../27-ADR/ADR-0016-hospedagem.md), mas não é preocupação de curto prazo |
 | **P-12** | **Inodes**: 91.387 de 600.000 em uso | 🟡 Média | `vendor/` + `node_modules/` de um projeto Laravel somam facilmente 50–100 mil arquivos. Se o build rodasse no servidor, a cota apertaria rápido. Reforça a regra de **buildar assets no CI e subir só `public/build/`** ([06-Frontend §8](../06-Frontend/README.md)) |
+| **P-15** | **`proc_open` bloqueada no PHP 8.4** — estava disponível no 8.2 | 🔴 **Alta — bloqueante** | Regressão da troca de versão: no CloudLinux **cada alt-php tem seu próprio `disable_functions`**, e a lista padrão do 8.4 é mais restritiva (note a assimetria: `proc_close` liberada, `proc_open` não). Afeta o `composer install` no servidor e qualquer uso de Symfony Process. **Correção:** hPanel → configuração de PHP → editar `disable_functions` e remover `proc_open`. Revalidar depois. Alternativas se não for possível: §7.5 |
 | P-2 | CA bundle não configurado | 🟡 Média | Baixar `cacert.pem` (curl.se) para fora do webroot e apontar `curl.cainfo` via php.ini customizado no hPanel. Reexecutar o script para confirmar. Sem isso, cada chamada HTTPS precisa carregar o bundle explicitamente |
 | P-4 | `symlink` bloqueada **no PHP** | 🟢 Baixa | ✅ **Conclusão anterior corrigida e verificada.** O bloqueio é só da função `symlink()` do PHP; **`ln -s` no shell funciona e o servidor segue os links** (testado em 2026-07-22). Consequências: o document root se resolve sem expor a aplicação, e o **deploy atômico por troca de link volta a ser possível**. O único item que permanece indisponível é o `artisan storage:link` — o link de storage é criado uma vez, à mão, via SSH |
 | **P-13** | **Cron resolve caminhos relativos a partir da home**, e `~/public_html` é um stub vazio | 🟡 Média | Um comando como `public_html/cron-test.php` falha com *No such file or directory*. **Todo cron do projeto usa caminho absoluto**, incluindo o `schedule:run` do Laravel. Registrado em [23/02 §2](02-verificar-cron-e-docroot.md#passo-3--criar-o-cron-job) |
@@ -178,7 +180,30 @@ Consumo médio das últimas 24 h, com o **WordPress em produção** já rodando 
 
 **Conclusão — e correção da minha própria avaliação:** eu havia classificado o compartilhamento do plano com o WordPress como risco 🟠 **Alto** (P-11). Os números não sustentam isso: o site consome uma fração mínima da capacidade contratada. **Rebaixado para 🟢 Baixo.** O risco real de recursos não é a concorrência com o WordPress — é o **ETL da migração** (I/O e IOPS) e os **inodes** durante o deploy.
 
-### 7.5 Saída completa das execuções
+### 7.5 `proc_open` — o que depende dela e o que fazer (P-15)
+
+**O que realmente precisa de `proc_open`:**
+
+| Uso | Precisa? | Observação |
+|---|---|---|
+| `composer install` / `update` | **Sim** | Composer executa git, descompactação e scripts pós-instalação (`@php artisan package:discover`) em subprocessos |
+| `artisan queue:work` | Não | Processa os jobs no próprio processo |
+| `artisan schedule:run` com `->command()` | Não | Executa em processo, salvo se usar `runInBackground()` |
+| `artisan schedule:run` com `->exec()` ou `runInBackground()` | **Sim** | Evitável por decisão de projeto |
+| `artisan migrate`, `key:generate`, etc. | Não | Processo único |
+
+Ou seja: a operação normal do ERP não depende de `proc_open` — **o deploy sim**.
+
+**Ordem de tentativa:**
+
+1. **Reabilitar no painel** (preferível). hPanel → configuração de PHP → opções → `disable_functions`: remover `proc_open`. Revalidar com o script.
+2. **`composer install` local + envio do `vendor/`.** Funciona sem `proc_open` no servidor. Custo: ~20–30 mil inodes de uma cota com ~500 mil livres ([P-12](#73-pendências-e-ressalvas)) e um `rsync` mais pesado a cada release. Aceitável como contorno.
+3. **`composer install --no-scripts`** no servidor, executando manualmente o que os scripts fariam (`artisan package:discover`). Frágil — some com uma dependência nova e ninguém percebe.
+4. **Voltar ao PHP 8.3** (`/opt/alt/php83`), que também resolve o fim de vida do 8.2 (suporte até dez/2027) e pode ter a lista de `disable_functions` menos restritiva. Verificar antes de decidir.
+
+> **Lição para o projeto:** trocar a versão do PHP neste ambiente **não é uma mudança de número** — troca a configuração inteira do interpretador, incluindo `disable_functions`. Toda mudança de versão exige reexecutar a validação completa. Registrar no runbook de manutenção.
+
+### 7.6 Saída completa das execuções
 
 ```
 ========================================================================

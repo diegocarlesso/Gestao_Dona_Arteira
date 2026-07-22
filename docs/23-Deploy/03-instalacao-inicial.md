@@ -16,11 +16,17 @@ A versão do PHP foi trocada de 8.2.30 para 8.4.19. **O conjunto de extensões p
 php ~/validar-ambiente.php
 ```
 
-Conferir obrigatoriamente: `soap`, `openssl`, `dom`, `libxml`, `simplexml`, `xml`, `curl`, `zip`, `bcmath`, `pdo_mysql`, `mbstring`, `intl`.
-
-> Se o `soap` não existir no 8.4, **parar aqui**: o Gate 05 depende dele. As saídas são voltar ao 8.3 (que também tem suporte até dez/2027) ou acionar o plano B do [ADR-0009](../27-ADR/ADR-0009-emissao-nfe.md) (API fiscal gerenciada).
+> ### ✅ Executado em 2026-07-22 20:15 (PHP 8.4.19)
+>
+> **Extensões: todas presentes**, incluindo `soap`, `openssl`, a cadeia completa de XML, `zip`, `bcmath`, `intl` e `opcache`. Conectividade com a SEFAZ confirmada, MariaDB 11.8.8, `max_execution_time` ilimitado. **O Gate 05 é viável neste ambiente.**
+>
+> **⚠️ Uma regressão: `proc_open` está desabilitada no 8.4** (estava disponível no 8.2). No CloudLinux cada versão de PHP tem seu próprio `disable_functions`, e a lista padrão do alt-php84 é mais restritiva — note a assimetria de `proc_close` liberada e `proc_open` não.
+>
+> **Isto bloqueia o Passo 3 deste runbook** (`composer install` no servidor). Resolver antes de prosseguir: hPanel → configuração de PHP → `disable_functions` → remover `proc_open` → revalidar. Alternativas em [01 §7.5](01-validacao-ambiente-business.md#75-proc_open--o-que-depende-dela-e-o-que-fazer-p-15).
 
 Confirmar também que web e CLI estão na mesma versão — divergência entre elas é fonte de bug que só aparece em produção.
+
+> **Regra permanente:** neste ambiente, trocar a versão do PHP **troca a configuração inteira do interpretador**, incluindo `disable_functions`. Toda mudança de versão exige reexecutar a validação completa — não é uma mudança de número.
 
 ## 3. Passo 1 — criar o projeto (na máquina local)
 
