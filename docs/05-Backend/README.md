@@ -1,7 +1,7 @@
 # 05 — Backend (Laravel 12 · PHP 8.4)
 
-> **Status:** Aprovado · **Última atualização:** 2026-07-03 · **Responsável:** laravel-specialist
-> **ADRs:** 0001 (monolito modular) · 0005 (Sanctum) · 0014 (filas) · 0015 (camadas)
+> **Status:** Em revisão — atualizado para os ADRs 0019 e 0020 · **Última atualização:** 2026-07-22 · **Responsável:** laravel-specialist
+> **ADRs:** [0001](../27-ADR/ADR-0001-monolito-modular.md) (monolito modular) · [0005](../27-ADR/ADR-0005-autenticacao-sanctum.md) (Sanctum) · [0014](../27-ADR/ADR-0014-fila-database.md) (filas) · [0015](../27-ADR/ADR-0015-camadas-e-repositorios.md) (camadas) · [0019](../27-ADR/ADR-0019-inertia-substitui-spa.md) (Inertia) · [0020](../27-ADR/ADR-0020-fronteiras-entre-modulos.md) (fronteiras)
 
 ## 1. Objetivo
 
@@ -27,15 +27,49 @@ app/
 └── Http/ …             # bootstrap padrão Laravel (rotas montam módulos)
 ```
 
-Cada módulo contém internamente: `Models/`, `Services/`, `Http/{Controllers,Requests,Resources}`, `Events/`, `Listeners/`, `Jobs/`, `Policies/`, `Database/{migrations,factories,seeders}`, `Tests/`. Sem pacote externo de "modules": estrutura por PSR-4 + Service Providers próprios — menos magia, menos dependência.
+Cada módulo contém internamente: `Models/`, `Services/`, `Repositories/` (só onde agrega), `Http/{Controllers,Requests}`, `Events/`, `Listeners/`, `Jobs/`, `Policies/`, `Routes/` e o seu `<Módulo>ServiceProvider`. Sem pacote externo de "modules": estrutura por PSR-4 + Service Providers próprios — menos magia, menos dependência. O namespace sai de graça: `app/Modules/Catalog/Models/Product.php` já resolve para `App\Modules\Catalog\Models\Product`.
+
+**Fora do módulo, por decisão do [ADR-0020](../27-ADR/ADR-0020-fronteiras-entre-modulos.md):**
+
+| Artefato | Onde vive | Por quê |
+|---|---|---|
+| **Migrations** | `database/migrations/` (centralizadas) | A ordem de execução é global, por timestamp; espalhá-las esconde o que importa quando uma FK falha |
+| **Factories / Seeders** | `database/{factories,seeders}/<Módulo>/` | Convenção do Laravel |
+| **Testes** | `tests/{Feature,Unit}/<Módulo>/` | `php artisan test`, Pest, cobertura e IDE assumem `tests/` |
+| **Páginas Inertia** | `resources/js/Pages/<Módulo>/` | [06-Frontend §4](../06-Frontend/README.md) |
+| **`Http/Resources`** | só em módulos com API de integração | Com Inertia, tela interna recebe props do controller ([ADR-0019](../27-ADR/ADR-0019-inertia-substitui-spa.md)); Resource é para a API externa ([pasta 07](../07-API/README.md)) |
 
 \* Clientes vivem em Sales por pragmatismo (uso dominante); se Compras/CRM crescerem, extrair para módulo Partners (registrar ADR).
+
+## 2.1 Fronteiras entre módulos ([ADR-0020](../27-ADR/ADR-0020-fronteiras-entre-modulos.md))
+
+**A superfície pública de um módulo são seus `Services/` e seus `Events/`.** Mais nada.
+
+| Um módulo pode, de outro módulo… | |
+|---|---|
+| Chamar um `Service` | ✅ |
+| Ouvir/disparar um `Event` de domínio | ✅ **forma preferida** |
+| Depender de uma `Interface` publicada (ex.: `NfeGatewayInterface`) | ✅ |
+| Referenciar `Models`, `Repositories`, `Http`, `Jobs` ou `Policies` | ❌ |
+| Consultar as tabelas diretamente | ❌ |
+
+- Dependência circular entre módulos é **proibida** — vira evento, ou o conceito sobe para `Support/`.
+- `Support/` não depende de módulo algum.
+- `Integrations` depende dos Services dos módulos; **nenhum módulo depende de `Integrations`** — fala-se com a interface, o adapter é injetado.
+
+**Isto é verificado por teste, não por disciplina:** os `arch()` do Pest em `tests/Architecture/` rodam no CI e falham no momento em que a violação é escrita.
+
+```php
+arch('vendas não acessa models do catálogo')
+    ->expect('App\Modules\Sales')
+    ->not->toUse('App\Modules\Catalog\Models');
+```
 
 ## 3. Papel de cada camada (ADR-0015)
 
 | Camada | Faz | Nunca faz |
 |---|---|---|
-| **Controller** | autoriza (Policy), valida (FormRequest), delega, responde (Resource) | regra de negócio, query, transação |
+| **Controller** | autoriza (Policy), valida (FormRequest), delega, responde — `Inertia::render(...)` nas telas internas, `Resource` na API de integração ([ADR-0019](../27-ADR/ADR-0019-inertia-substitui-spa.md)) | regra de negócio, query, transação |
 | **FormRequest** | validação sintática + de formato | regra que depende de estado do domínio |
 | **Service/Action** | orquestra caso de uso; **dono da transação**; dispara eventos | conhecer HTTP (request/response) |
 | **Model** | invariantes locais, relações, casts, scopes nomeados | chamadas externas, side effects ocultos em boot() além de auditoria |
@@ -59,7 +93,9 @@ Cada módulo contém internamente: `Models/`, `Services/`, `Http/{Controllers,Re
 
 | Pacote | Uso | Justificativa |
 |---|---|---|
-| `laravel/sanctum` | auth SPA + tokens de API | ADR-0005 |
+| `laravel/sanctum` | tokens de integração (usuário humano usa sessão nativa) | [ADR-0005](../27-ADR/ADR-0005-autenticacao-sanctum.md) revisto pelo [0019](../27-ADR/ADR-0019-inertia-substitui-spa.md) |
+| `inertiajs/inertia-laravel` | ponte entre controllers e telas React | [ADR-0019](../27-ADR/ADR-0019-inertia-substitui-spa.md) |
+| `tightenco/ziggy` | rotas nomeadas do Laravel disponíveis no JS | evita URL literal espalhada |
 | `spatie/laravel-permission` | RBAC | ADR-0011, maduro e simples |
 | `owen-it/laravel-auditing` | trilha de auditoria | ADR-0012 |
 | `brick/money` | dinheiro | ADR-0013 |
@@ -68,7 +104,7 @@ Cada módulo contém internamente: `Models/`, `Services/`, `Http/{Controllers,Re
 | `larastan/larastan` + `laravel/pint` | qualidade | CI bloqueante |
 | `spatie/laravel-query-builder` | filtros/sort padronizados na API | evita filtro artesanal divergente |
 
-Evitar deliberadamente: pacotes de "module system", CQRS frameworks, admin panels prontos (Filament/Nova) — a UI é a SPA React; um admin paralelo criaria duas fontes de verdade de regras.
+Evitar deliberadamente: pacotes de "module system", CQRS frameworks, admin panels prontos (Filament/Nova) — as telas são as páginas Inertia ([ADR-0019](../27-ADR/ADR-0019-inertia-substitui-spa.md)); um admin paralelo criaria duas fontes de verdade de regras.
 
 ## 6. Fluxo de desenvolvimento de uma feature
 
@@ -78,7 +114,7 @@ Evitar deliberadamente: pacotes de "module system", CQRS frameworks, admin panel
 
 | Risco | Mitigação |
 |---|---|
-| Módulos importarem uns aos outros livremente | Revisão por gate; adotar `deptrac` na Fase 2 para verificar o mapa de dependências |
+| Módulos importarem uns aos outros livremente | **Testes `arch()` do Pest no CI** desde o primeiro módulo ([ADR-0020](../27-ADR/ADR-0020-fronteiras-entre-modulos.md)) — falham no momento da violação, não meses depois. `deptrac` fica como evolução, se a checagem precisar de mais granularidade |
 | God-services acumulando casos de uso | 1 Service = 1 caso de uso nomeado (`ConfirmOrderService` ou Action equivalente) |
 | Jobs não idempotentes duplicarem efeitos em retry | Checklist da skill `criar-service`/jobs: idempotência obrigatória documentada |
 

@@ -33,6 +33,7 @@
 | [0017](ADR-0017-midia-canonica.md) | Mídia (imagens): fase 1 no Woo, fase 2 storage próprio | ⚠️ Proposto |
 | [0018](ADR-0018-cobranca-boleto.md) | **Cobrança (boleto e PIX) via adapter, provedor plugável** | ⚠️ **Proposto — decisão do dono** |
 | [0019](ADR-0019-inertia-substitui-spa.md) | **Laravel + Inertia + React** (substitui o 0004) | ✅ Aceito 2026-07-22 |
+| [0020](ADR-0020-fronteiras-entre-modulos.md) | Fronteiras entre módulos (verificadas por `arch()`), migrations centralizadas, testes em `tests/` | ✅ Aceito 2026-07-22 |
 
 ## Backlog de ADRs futuros (escrever quando o tema chegar)
 
