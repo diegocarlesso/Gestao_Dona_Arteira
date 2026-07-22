@@ -130,40 +130,80 @@ Duas correções importantes ao que se supunha antes:
 - **`~/public_html` está vazio** — não é o document root. O site vive em `~/domains/donaarteira.com.br/public_html`.
 - Consequentemente, a pasta `gestao` do subdomínio está **dentro** do docroot do WordPress, confirmando o risco da §3.1.
 
-#### Arranjo A (recomendado) — aplicação irmã do `public_html`, não dentro dele
+#### Restrição do painel (constatada em 2026-07-22)
+
+O formulário de subdomínio do hPanel **força o prefixo `/public_html/`** no campo de pasta personalizada. Não é possível apontar o document root para fora de `public_html`. Isso elimina o arranjo ideal na sua forma direta — mas não obriga a aceitar a aplicação dentro do docroot do WordPress.
+
+#### Arranjo A (recomendado) — aplicação fora, alcançada por link simbólico
 
 ```text
 /home/u917402451/domains/donaarteira.com.br/
-├── public_html/            ← WordPress (docroot de donaarteira.com.br) — intocado
-└── gestao-app/             ← aplicação Laravel — NENHUM vhost alcança
-    ├── .env  app/  vendor/  storage/
-    └── public/             ← docroot de gestao.donaarteira.com.br
+├── public_html/                 ← docroot do WordPress
+│   └── gestao  ─────────────┐   ← LINK SIMBÓLICO (o painel aponta para cá)
+└── gestao-app/               │  ← aplicação Laravel, FORA do docroot
+    ├── .env app/ vendor/ storage/
+    └── public/ ◄─────────────┘   ← alvo do link
 ```
 
-Document root a informar no painel para o subdomínio:
+O painel aponta o subdomínio para `/public_html/gestao`; esse caminho é um link que resolve para `gestao-app/public`. **Só a pasta `public/` fica alcançável.** Todo o resto da aplicação — `.env`, `vendor/`, `storage/` com o certificado A1 — permanece fora da árvore servida por qualquer vhost. A proteção continua sendo estrutural.
+
+> **A distinção que viabiliza isto:** a validação de ambiente reportou `symlink` como BLOQUEADA, mas aquilo é a **função `symlink()` do PHP** (via `disable_functions`). O comando **`ln -s` do shell** é outra coisa e costuma funcionar normalmente. Precisa ser confirmado — ver teste abaixo.
+
+##### Teste de viabilidade (2 minutos, via SSH)
+
+```bash
+BASE=~/domains/donaarteira.com.br
+mkdir -p $BASE/teste-alvo
+echo "LINK SIMBOLICO FUNCIONA" > $BASE/teste-alvo/ok.txt
+ln -s ../teste-alvo $BASE/public_html/teste-link && echo "ln -s: OK" || echo "ln -s: BLOQUEADO"
+cat $BASE/public_html/teste-link/ok.txt
+```
+
+Depois, pela web — isto testa se o servidor **segue** o link (`FollowSymLinks`):
 
 ```
-/home/u917402451/domains/donaarteira.com.br/gestao-app/public
+https://donaarteira.com.br/teste-link/ok.txt
 ```
 
-Por que este arranjo é o certo: `gestao-app/` é **irmã** de `public_html/`, não filha. Nenhuma URL do domínio principal consegue alcançá-la, porque ela está fora da árvore que o vhost do WordPress serve. A proteção é estrutural, não depende de `.htaccess` nem de configuração que possa ser sobrescrita.
+| Resultado | Conclusão |
+|---|---|
+| `ln -s: OK` **e** a URL mostra o texto | ✅ Arranjo A viável — é o caminho a seguir |
+| `ln -s: OK` mas a URL dá 403/404 | `FollowSymLinks` desabilitado → ir para o Arranjo B |
+| `ln -s: BLOQUEADO` | → Arranjo B |
 
-**Verificar no hPanel:** o campo de pasta personalizada do subdomínio aceita esse caminho? É a única incógnita restante. Se aceitar, o arranjo B abaixo torna-se desnecessário.
+Limpar depois: `rm $BASE/public_html/teste-link && rm -rf $BASE/teste-alvo`
+
+##### Se viável, o arranjo final
+
+```bash
+BASE=~/domains/donaarteira.com.br
+# aplicação fica em $BASE/gestao-app (criada pelo composer create-project)
+rm -rf $BASE/public_html/gestao          # remove a pasta criada pelo painel
+ln -s ../gestao-app/public $BASE/public_html/gestao
+```
+
+Efeito colateral aceitável: `https://donaarteira.com.br/gestao/` também serve a aplicação, por seguir o mesmo link. Não é falha de segurança (é a pasta `public/`, feita para ser pública), mas convém redirecionar para o subdomínio por questão de higiene de URL.
+
+> **Consequência para o deploy:** se `ln -s` funciona no shell, o **deploy atômico por troca de link volta a ser possível**, ao contrário do que a validação sugeria. O que continua indisponível é o `artisan storage:link`, que usa a função do PHP — o link de storage terá de ser criado à mão uma vez, via SSH.
 
 #### Arranjo B — aplicação dentro de `public_html`, com bloqueio explícito
 
-Se o painel só aceitar caminhos sob `public_html`:
+Usar apenas se o link simbólico não for viável.
+
+**Antes de tudo, testar se o campo do painel aceita subpasta.** No formulário de subdomínio, digitar `gestao-app/public` no campo (após o prefixo fixo `/public_html/`). Se aceitar, o document root fica em `public_html/gestao-app/public` e a aplicação em `public_html/gestao-app/`:
 
 ```text
-public_html/
+domains/donaarteira.com.br/public_html/
 ├── (WordPress)
-└── gestao/
-    ├── .htaccess           ← BLOQUEIO — ver abaixo
+└── gestao-app/
+    ├── .htaccess           ← BLOQUEIO — obrigatório, ver abaixo
     ├── .env  app/  vendor/  storage/
     └── public/             ← docroot do subdomínio
 ```
 
-O `public_html/gestao/.htaccess` nega todo acesso àquele diretório:
+Se o campo **não** aceitar barra, o document root do subdomínio será a própria raiz da aplicação — situação **inaceitável**, porque expõe `.env` e código-fonte até pelo próprio subdomínio. Nesse caso, ir direto ao Arranjo C.
+
+O `gestao-app/.htaccess` nega todo acesso àquele diretório pelo domínio principal:
 
 ```apache
 # Bloqueia o acesso ao diretório da aplicação pelo domínio principal.
