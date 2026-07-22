@@ -60,14 +60,26 @@ git push -u origin gate-01/estrutura-inicial
 
 ## 5. Passo 3 — criar o banco de dados
 
-No hPanel, seção de bancos MySQL. Criar:
+No hPanel, seção de bancos MySQL.
 
-| Banco | Uso |
-|---|---|
-| `..._erp` | aplicação |
-| `..._erp_staging` | staging da migração ([pasta 17](../17-Migracao/README.md)) — se a cota do plano permitir |
+> ### ✅ Criados em 2026-07-22
+>
+> | Banco | Usuário | Uso |
+> |---|---|---|
+> | `u917402451_da_erp` | `u917402451_erp` | aplicação |
+> | `u917402451_erp_staging` | `u917402451_staging` | staging da migração ([pasta 17](../17-Migracao/README.md)) |
+>
+> Item **M-7** resolvido: o plano comporta ao menos dois bancos.
 
-Anotar host, nome, usuário e senha. Confirmar quantos bancos o plano permite (item M-7, ainda em aberto).
+**Regras sobre as credenciais** (pasta [25-Segurança](../25-Seguranca/README.md)):
+
+- Senhas vivem **apenas** no `.env` do servidor (`chmod 600`) — nunca em documento, mensagem, issue ou commit.
+- **Senhas distintas** para produção e staging. O staging recebe dados do legado e é manipulado com menos cerimônia; credencial compartilhada transforma um incidente lá em incidente aqui.
+- Senha exposta acidentalmente (mensagem, print, log) é **rotacionada**, não "vigiada".
+- No `.env`, envolver o valor em aspas evita que caracteres especiais quebrem o parser:
+  ```ini
+  DB_PASSWORD="sua-senha-aqui"
+  ```
 
 ## 6. Passo 4 — montar a estrutura no servidor
 
