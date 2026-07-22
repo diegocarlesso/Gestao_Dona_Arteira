@@ -1,6 +1,6 @@
 # 01 — Validação do Ambiente (plano Business)
 
-> **Status:** Em revisão — **aguardando execução** · **Última atualização:** 2026-07-22 · **Responsável:** devops-specialist
+> **Status:** ✅ **Executado em 2026-07-22 — aprovado com pendências** (ver [§7](#7-registro-do-resultado)) · **Última atualização:** 2026-07-22 · **Responsável:** devops-specialist
 > **ADRs relacionados:** [ADR-0016](../27-ADR/ADR-0016-hospedagem.md) (hospedagem — Plano B aceito), [ADR-0014](../27-ADR/ADR-0014-fila-database.md), [ADR-0009](../27-ADR/ADR-0009-emissao-nfe.md)
 > **Quando:** **semana 1 do Gate 01** — antes de qualquer código · **Script:** [`validar-ambiente.php`](validar-ambiente.php)
 
@@ -96,15 +96,78 @@ flowchart TD
 
 | Campo | Valor |
 |---|---|
-| Data da execução | *a preencher* |
-| Executado por | |
-| Via SSH | ⏳ |
-| Via navegador | ⏳ |
-| Resumo (OK / avisos / falhas) | |
-| Veredito | ⏳ aguardando |
+| Data da execução | **2026-07-22 17:16** |
+| Executado por | Diego |
+| Via navegador (SAPI `litespeed`) | ✅ executado |
+| Via SSH (CLI) | ⏳ **pendente — é a execução que mais importa** |
+| Resumo bruto | 37 OK · 5 avisos · 2 falhas |
+| **Veredito** | ✅ **APROVADO para os Gates 01–05**, com pendências de verificação (§7.3) |
+
+### 7.1 As duas "falhas" não eram falhas
+
+Ambas foram investigadas e descartadas:
+
+| Item reportado | Diagnóstico real |
+|---|---|
+| `nfe.fazenda.gov.br` — *Could not resolve host* | **Erro do script**, não do ambiente. O hostname não existe: o portal é `www.nfe.fazenda.gov.br` (verificado: resolve para 200.198.239.19). Script corrigido |
+| `hom.nfe.fazenda.gov.br` — *unable to get local issuer certificate* | **O host resolveu e a conexão foi estabelecida.** Falhou apenas a *verificação* do certificado, por ausência de CA bundle configurado no PHP. Não é bloqueio de rede — é configuração. O script agora distingue os dois casos |
+
+**Nenhum bloqueio de saída para a SEFAZ foi comprovado.** Falta apenas reexecutar com o script corrigido para confirmar positivamente.
+
+### 7.2 O que o resultado mostrou de bom
+
+O ambiente é **substancialmente melhor** do que o [ADR-0016](../27-ADR/ADR-0016-hospedagem.md) temia para hospedagem compartilhada:
+
+| Verificação | Resultado | Comentário |
+|---|---|---|
+| `soap` | ✅ presente | Era **a** dúvida crítica do Gate 05. Está resolvida |
+| `openssl`, `dom`, `libxml`, `simplexml`, `xml`, `curl`, `zip` | ✅ todas presentes | Cadeia completa de assinatura e XML da NF-e |
+| `max_execution_time` | ✅ **360 s** | Seis vezes o mínimo exigido; folga confortável para assinar + transmitir |
+| `memory_limit` | ✅ **2048 MB** | Excelente para o ETL da migração (Gate 01) |
+| `proc_open` / `proc_close` | ✅ disponíveis | É o que a fila e o `artisan` realmente usam — funcionam |
+| `bcmath` | ✅ presente | Dinheiro sem float ([ADR-0013](../27-ADR/ADR-0013-dinheiro-decimal.md)) |
+| PHP | ✅ 8.2.30, 64 bits | Acima do mínimo do Laravel 12 |
+
+### 7.3 Pendências e ressalvas
+
+| # | Item | Gravidade | Ação |
+|---|---|---|---|
+| P-1 | **Execução via CLI (SSH) não foi feita** — o resultado é do SAPI `litespeed` (web) | 🔴 Alta | Em hospedagem compartilhada o PHP de CLI costuma ter extensões e limites diferentes. **Fila e emissão de NF-e rodam no CLI** — é ele que precisa passar. Reexecutar via SSH |
+| P-2 | **CA bundle não configurado** | 🟡 Média | Definir `curl.cainfo` no PHP ou fornecer o bundle à aplicação. Guzzle/Laravel contornam, mas configurar é o certo |
+| P-3 | **Conectividade real com a SEFAZ ainda não comprovada** | 🟡 Média | Reexecutar o script corrigido. O teste definitivo é o webservice da **UF da empresa** — que depende do item A-02 da [pauta do contador](../13-Fiscal/01-pauta-validacao-contador.md) |
+| P-4 | `symlink` bloqueada | 🟡 Média | `artisan storage:link` não funciona. Alternativas: escrever uploads direto em `public/` ou servi-los por rota controlada. **Decisão a registrar no runbook de deploy** — também elimina o deploy atômico por symlink |
+| P-5 | `exec` / `shell_exec` bloqueadas | 🟢 Baixa | Sem impacto conhecido: `proc_open` está disponível, e é o que o Laravel usa. Atenção a pacotes de terceiros que façam shell |
+| P-6 | `opcache` ausente (no SAPI web) | 🟢 Baixa | Perda de desempenho, não de função. Verificar se está presente no CLI |
+| P-7 | **PHP 8.2.30**, enquanto a documentação mira 8.4 | 🟢 Baixa | Compatível com Laravel 12. Verificar no painel se dá para subir para 8.3/8.4 |
+| P-8 | **Espaço em disco (5.4 TB) é do volume do host**, não da cota do plano | 🟡 Média | Conferir a cota real no hPanel — XMLs de 5 anos + backups precisam de espaço garantido |
+| P-9 | **Conexão com o banco não testada** | 🟡 Média | Preencher `$db` no script e reexecutar; confirmar versão do MariaDB e InnoDB |
+| P-10 | **Verificações manuais M-1 a M-8 pendentes** | 🔴 Alta | Especialmente **M-2** (cron de 1 minuto) e **M-4** (document root → `public/`) |
+
+### 7.4 Saída completa da execução
 
 ```
-(colar aqui a saída completa do script)
+========================================================================
+ VALIDAÇÃO DE AMBIENTE — ERP Dona Arteira · 2026-07-22 17:16:00
+========================================================================
+PHP           8.2.30 · 64 bits · SAPI litespeed
+Extensões     openssl soap curl dom libxml simplexml xml mbstring
+              pdo_mysql bcmath ctype fileinfo json tokenizer zip
+              iconv intl gd zlib .......................... PRESENTES
+              opcache ...................................... AUSENTE
+Limites       max_execution_time 360s · memory_limit 2048M
+              upload_max_filesize 2048M · post_max_size 2048M
+              max_input_vars 5000
+Funções       proc_open, proc_close, putenv, set_time_limit . OK
+              symlink, exec, shell_exec ................ BLOQUEADAS
+Conectividade saída HTTPS genérica ................. OK (HTTP 405)
+              nfe.fazenda.gov.br ....... erro do script (host inexistente)
+              hom.nfe.fazenda.gov.br ... alcançável, faltou CA bundle
+Sistema       Linux 4.18.0-553.121.1.lve.el8 · UTC · dirs graváveis
+Banco         não testado
+========================================================================
+ RESUMO BRUTO: 37 OK · 5 avisos · 2 falhas
+ VEREDITO APÓS ANÁLISE: aprovado, com as pendências da §7.3
+========================================================================
 ```
 
 ## 8. Dependências

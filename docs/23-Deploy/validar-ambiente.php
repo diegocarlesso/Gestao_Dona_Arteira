@@ -39,7 +39,8 @@ function checar(string $grupo, string $item, bool|string $valor, string $nivel, 
 $phpOk = version_compare(PHP_VERSION, '8.2', '>=');
 checar('PHP', 'Versão', PHP_VERSION, $phpOk ? 'ok' : 'falha', $phpOk ? '' : 'Laravel 12 exige PHP >= 8.2');
 checar('PHP', 'Arquitetura', PHP_INT_SIZE === 8 ? '64 bits' : '32 bits', PHP_INT_SIZE === 8 ? 'ok' : 'falha', '32 bits quebra cálculos de data/dinheiro');
-checar('PHP', 'SAPI', PHP_SAPI, 'ok');
+checar('PHP', 'SAPI', PHP_SAPI, $viaCli ? 'ok' : 'aviso',
+    $viaCli ? 'esta é a execução que importa para fila e NF-e' : 'execução WEB: o PHP de CLI costuma ter extensões e limites DIFERENTES. Rode também via SSH — é o CLI que executa fila e emissão de NF-e');
 
 // ------------------------------------------------------- Extensões
 $extensoes = [
@@ -101,33 +102,77 @@ foreach ($necessarias as $fn => [$para, $nivel]) {
     checar('Funções', $fn, $bloqueada ? 'BLOQUEADA' : 'disponível', $bloqueada ? $nivel : 'ok', $bloqueada ? "necessária para: {$para}" : '');
 }
 
+// ------------------------------------------------------ CA bundle
+// Sem um bundle de CAs configurado, toda conexão HTTPS verificada falha
+// com "unable to get local issuer certificate" — o que parece bloqueio de
+// rede mas não é. Diagnosticar separadamente evita conclusão errada.
+$caIni = ini_get('curl.cainfo') ?: ini_get('openssl.cafile') ?: '';
+$caOk  = $caIni !== '' && is_readable($caIni);
+checar('TLS', 'curl.cainfo / openssl.cafile', $caOk ? $caIni : ($caIni ?: 'não configurado'),
+    $caOk ? 'ok' : 'aviso',
+    $caOk ? '' : 'sem CA bundle a verificação de certificado falha; Laravel/Guzzle podem contornar, mas configurar é melhor');
+
 // -------------------------------------------------- Conectividade
-// A SEFAZ e o WooCommerce exigem saída HTTPS. Muitos planos compartilhados
-// bloqueiam conexões de saída para portas/hosts arbitrários.
+// A SEFAZ e o WooCommerce exigem saída HTTPS. Alguns planos compartilhados
+// restringem saída para hosts arbitrários.
+//
+// IMPORTANTE: os endpoints que a emissão realmente usa são os webservices da
+// SEFAZ da UF da empresa (ou da SVRS/SVC, conforme o estado). Como a UF ainda
+// não foi confirmada pelo contador (item A-02 da pauta fiscal), testamos os
+// endpoints nacionais e a SVRS como aproximação. Reconfirmar com a UF real.
 $alvos = [
-    'https://www.google.com'                    => 'saída HTTPS genérica',
-    'https://nfe.fazenda.gov.br'                => 'portal da NF-e (Gate 05)',
-    'https://hom.nfe.fazenda.gov.br'            => 'homologação NF-e (Gate 05)',
+    'https://www.google.com'                                          => 'saída HTTPS genérica',
+    'https://www.nfe.fazenda.gov.br'                                  => 'portal nacional da NF-e',
+    'https://hom.nfe.fazenda.gov.br'                                  => 'ambiente de homologação NF-e',
+    'https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx' => 'webservice SEFAZ (SVRS) — o que importa',
 ];
 foreach ($alvos as $url => $desc) {
     if (!function_exists('curl_init')) {
         checar('Conectividade', $desc, 'não testado (sem curl)', 'falha');
         continue;
     }
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_NOBODY         => true,
-        CURLOPT_TIMEOUT        => 12,
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-    ]);
-    curl_exec($ch);
-    $erro   = curl_error($ch);
-    $codigo = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    $ok = $erro === '' && $codigo > 0;
-    checar('Conectividade', $desc, $ok ? "OK (HTTP {$codigo})" : 'FALHOU', $ok ? 'ok' : 'falha', $erro);
+
+    $tentar = static function (string $url, bool $verificar): array {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_NOBODY         => true,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => $verificar,
+            CURLOPT_SSL_VERIFYHOST => $verificar ? 2 : 0,
+            CURLOPT_FOLLOWLOCATION => true,
+        ]);
+        curl_exec($ch);
+        $r = ['errno' => curl_errno($ch), 'erro' => curl_error($ch), 'http' => curl_getinfo($ch, CURLINFO_HTTP_CODE)];
+        curl_close($ch);
+        return $r;
+    };
+
+    $r = $tentar($url, true);
+
+    if ($r['errno'] === 0) {
+        checar('Conectividade', $desc, "OK (HTTP {$r['http']})", 'ok');
+        continue;
+    }
+
+    // Erros de CA/certificado: 60 (verificação falhou), 77 (bundle ilegível), 35 (handshake)
+    if (in_array($r['errno'], [35, 60, 77], true)) {
+        $semVerificar = $tentar($url, false);
+        if ($semVerificar['errno'] === 0) {
+            checar('Conectividade', $desc, 'ALCANÇÁVEL (falta CA bundle)', 'aviso',
+                'a rede NÃO está bloqueada; só falta configurar o bundle de CAs — ver seção TLS');
+            continue;
+        }
+    }
+
+    $rotulo = match ($r['errno']) {
+        6       => 'DNS NÃO RESOLVEU',
+        7       => 'CONEXÃO RECUSADA',
+        28      => 'TIMEOUT',
+        default => 'FALHOU',
+    };
+    checar('Conectividade', $desc, $rotulo, 'falha', "curl({$r['errno']}): {$r['erro']}");
 }
 
 // -------------------------------------------------------- Sistema
@@ -137,8 +182,8 @@ checar('Sistema', 'Diretório temporário gravável', is_writable(sys_get_temp_d
 checar('Sistema', 'Diretório atual gravável', is_writable(__DIR__) ? 'sim' : 'NÃO', is_writable(__DIR__) ? 'ok' : 'aviso');
 
 $livre = @disk_free_space(__DIR__);
-checar('Sistema', 'Espaço livre em disco', $livre ? round($livre / 1073741824, 2) . ' GB' : 'indisponível',
-    ($livre && $livre > 2147483648) ? 'ok' : 'aviso', 'backups e XMLs de 5 anos consomem espaço');
+checar('Sistema', 'Espaço livre no volume', $livre ? round($livre / 1073741824, 2) . ' GB' : 'indisponível', 'aviso',
+    'em hospedagem compartilhada este número é do VOLUME DO HOST, não da sua cota. Conferir a cota real no painel');
 
 // ------------------------------------------------- Banco de dados
 // Preencher se quiser testar a conexão; deixar vazio para pular.

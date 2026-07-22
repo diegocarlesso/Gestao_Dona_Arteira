@@ -32,6 +32,14 @@ Motivo: se o plano não oferecer `soap`, `openssl`, tempo de execução suficien
 
 Se a validação reprovar, este ADR é reaberto imediatamente (é o primeiro gatilho da lista abaixo, antecipado).
 
+### Resultado da validação (2026-07-22) — ✅ ambiente aprovado
+
+A validação foi executada no mesmo dia. **O plano Business suporta a emissão de NF-e**: `soap`, `openssl` e toda a cadeia de XML estão presentes, `max_execution_time` é de 360 s e `memory_limit` de 2 GB — folga confortável. As duas falhas reportadas pelo script eram artefatos (um hostname errado no próprio script e ausência de CA bundle, não bloqueio de rede) — análise em [23-Deploy/01 §7.1](../23-Deploy/01-validacao-ambiente-business.md#71-as-duas-falhas-não-eram-falhas).
+
+**O risco de ambiente que motivava a recomendação de VPS caiu substancialmente.** A decisão pelo plano Business está, até aqui, validada pelos fatos.
+
+Permanecem em verificação, sem invalidar o veredito: execução via CLI (SSH), granularidade do cron, document root apontável para `public/` e cota real de disco — [§7.3](../23-Deploy/01-validacao-ambiente-business.md#73-pendências-e-ressalvas). Os gatilhos de reabertura abaixo seguem ativos.
+
 ## Decisão original (recomendação técnica — não seguida)
 
 **Recomendação técnica: VPS** (Hostinger KVM ou equivalente, Ubuntu LTS) dedicado ao ERP: Nginx + PHP-FPM 8.4 + MariaDB + Redis + supervisor, provisionado por script documentado (pasta 23), com hardening básico (pasta 25). O plano Business permanece para o site WordPress.
