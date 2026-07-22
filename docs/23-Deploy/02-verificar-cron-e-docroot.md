@@ -2,15 +2,16 @@
 
 > **Status:** Em revisão — **aguardando execução** · **Última atualização:** 2026-07-22 · **Responsável:** devops-specialist
 > **ADRs relacionados:** [ADR-0014](../27-ADR/ADR-0014-fila-database.md) (fila por cron), [ADR-0016](../27-ADR/ADR-0016-hospedagem.md) (hospedagem)
-> **Resolve:** itens **M-2** e **M-4** da [validação de ambiente](01-validacao-ambiente-business.md#5-verificações-manuais-o-script-não-alcança) · **Script:** [`cron-test.php`](cron-test.php)
+> **Resolve:** itens **M-2** e **M-4** da [validação de ambiente](01-validacao-ambiente-business.md#5-verificações-manuais-o-script-não-alcança)
+> **Scripts:** [`cron-test.php`](cron-test.php) · [`mapear-estrutura.sh`](mapear-estrutura.sh)
 
 ## 1. Objetivo
 
-Fechar as duas últimas verificações de ambiente antes do primeiro código. Ambas têm o mesmo princípio:
+Fechar as duas últimas verificações de ambiente antes do primeiro código. Ambas seguem o mesmo princípio:
 
 > **Não confie no que o painel informa. Meça o comportamento real.**
 
-O painel pode oferecer "a cada minuto" e o servidor executar de 5 em 5. O painel pode aceitar um caminho de document root e mesmo assim deixar o código-fonte acessível pela web. As duas verificações abaixo testam o **efeito**, não a configuração.
+O painel pode oferecer "a cada minuto" e o servidor executar de 5 em 5. O document root pode estar aparentemente correto e ainda assim expor o `.env` — por um caminho que ninguém pensou em testar.
 
 ## 2. Verificação A — o cron honra 1 minuto?
 
@@ -23,26 +24,18 @@ Sem worker persistente, a fila do ERP roda por cron ([ADR-0014](../27-ADR/ADR-00
 O servidor é CloudLinux, onde costuma haver mais de uma versão de PHP instalada. Via SSH:
 
 ```bash
-which php
-php -v
+which php && php -v
 ```
 
-Anote o caminho completo. Se `which php` devolver algo genérico, o próprio formulário de cron do painel normalmente sugere o caminho correto — use o do painel.
+O script [`mapear-estrutura.sh`](mapear-estrutura.sh) também reporta isso, incluindo as alternativas em `/opt/alt/php*`. Se houver divergência, use o caminho que o próprio formulário de cron do painel sugerir.
 
 ### Passo 2 — instalar o teste
 
-Envie [`cron-test.php`](cron-test.php) para a sua home (**fora** de `public_html`):
-
-```bash
-# a partir da sua máquina
-scp cron-test.php u917402451@SEU_HOST:~/cron-test.php
-```
+Envie [`cron-test.php`](cron-test.php) para um lugar **não servido pela web** (ver §3 — provavelmente a raiz da home).
 
 ### Passo 3 — criar o cron job
 
-No hPanel, procure a seção de **Cron Jobs** (costuma ficar em *Avançado* / *Advanced*). Escolha a opção de execução **a cada minuto** — ou, se houver campo de expressão personalizada, use `* * * * *`.
-
-Comando (ajuste o caminho do PHP conforme o passo 1):
+No hPanel, seção **Cron Jobs** (costuma ficar em *Avançado*). Escolha execução **a cada minuto**, ou use a expressão `* * * * *`:
 
 ```
 /usr/bin/php /home/u917402451/cron-test.php
@@ -50,7 +43,7 @@ Comando (ajuste o caminho do PHP conforme o passo 1):
 
 ### Passo 4 — esperar e medir
 
-Deixe rodar **pelo menos 15 minutos**. Depois, via SSH:
+Deixe rodar **pelo menos 15 minutos**. Depois:
 
 ```bash
 php ~/cron-test.php --relatorio
@@ -66,102 +59,184 @@ Remova o cron job, o `cron-test.php` e o `cron-test.log`.
 
 | Intervalo médio | Veredito | Ação |
 |---|---|---|
-| ~60 s | ✅ 1 minuto honrado | Nada a mudar. A fila roda como planejado |
-| ~300 s | ⚠️ O plano só executa de 5 em 5 min | Aplicar uma das mitigações abaixo |
+| ~60 s | ✅ 1 minuto honrado | Nada a mudar |
+| ~300 s | ⚠️ Só de 5 em 5 min | Aplicar uma das mitigações abaixo |
 | > 330 s ou execuções faltando | 🔴 Grave | Gatilho de reabertura do [ADR-0016](../27-ADR/ADR-0016-hospedagem.md) |
 
 ### Se o cron não honrar 1 minuto
 
-Três saídas, em ordem de preferência:
+Três saídas, em ordem de preferência — **nenhuma impeditiva**:
 
-1. **Worker de vida longa dentro da janela do cron.** Em vez de processar e sair, o comando roda por quase todo o intervalo:
+1. **Worker de vida longa dentro da janela do cron:**
    ```
    */5 * * * * /usr/bin/php /home/.../artisan queue:work --stop-when-empty --max-time=280
    ```
-   Dá cobertura quase contínua com um cron de 5 minutos. **Precisa ser testado**: o LVE do CloudLinux pode encerrar processos longos, e é justamente isso que o teste revelaria.
-2. **Laço interno com `sleep`.** Um wrapper que executa o processamento cinco vezes, com pausa de 60 s entre elas, dentro de uma única execução do cron. Mais frágil que a opção 1.
-3. **Aceitar a latência e registrar.** Ajustar o NFR de sincronização de 2 para 5 minutos, aumentar o buffer de estoque do site ([BR-204](../01-Regras-de-Negocio/01-registro-de-regras.md)) para compensar, e registrar a dívida no ADR-0016.
+   Cobertura quase contínua com cron de 5 minutos. **Precisa ser testado**: o LVE do CloudLinux pode encerrar processos longos.
+2. **Laço interno com `sleep`** — o comando processa cinco vezes com pausa de 60 s dentro de uma execução. Mais frágil.
+3. **Aceitar a latência**: ajustar o NFR de 2 para 5 minutos, aumentar o buffer de estoque do site ([BR-204](../01-Regras-de-Negocio/01-registro-de-regras.md)) e registrar a dívida no ADR-0016.
 
-Nenhuma das três é impeditiva. O objetivo do teste é escolher com dados, não descobrir depois.
+## 3. Verificação B — o código-fonte está inacessível pela web?
 
-## 3. Verificação B — o document root aponta para `public/`?
+> ⚠️ **Esta seção foi reescrita em 2026-07-22**, ao descobrir-se que o subdomínio `gestao.donaarteira.com.br` aponta para `public_html/gestao` — ou seja, **dentro** do document root do site principal. Isso cria um caminho de exposição que a versão anterior deste documento não testava.
 
-### Por que importa
+### 3.1 O problema real
 
-O Laravel espera que a web enxergue **apenas** a pasta `public/`. Se o document root apontar para a raiz da aplicação, ficam acessíveis pela internet: o `.env` (com senha do banco e credenciais de integração), o código-fonte e — no Gate 05 — o **certificado A1**. É a diferença entre um sistema e um vazamento.
-
-### Passo 1 — organizar as pastas
-
-O arranjo desejado mantém a aplicação **fora** da área pública:
-
-```text
-/home/u917402451/
-├── gestao/                 ← aplicação Laravel (NÃO acessível pela web)
-│   ├── app/  bootstrap/  config/  vendor/
-│   ├── .env                ← senhas
-│   ├── storage/            ← certificado A1 vai aqui (Gate 05)
-│   └── public/             ← ESTA é a única pasta que a web pode ver
-└── public_html/            ← site WordPress, permanece intocado
-```
-
-### Passo 2 — apontar o subdomínio
-
-No hPanel, na seção de **Subdomínios**, crie (ou edite) `gestao`. Procure o campo de **pasta personalizada / custom folder** e aponte para:
+Com a aplicação dentro de `public_html`, existem **dois** vhosts capazes de ler aqueles arquivos:
 
 ```
-/home/u917402451/gestao/public
+gestao.donaarteira.com.br  → docroot: public_html/gestao/public   (o que queremos)
+donaarteira.com.br         → docroot: public_html                  (o WordPress)
 ```
 
-Se o painel **não** aceitar um caminho fora de `public_html`, vá para a §3.5.
+Mesmo apontando o subdomínio corretamente para `gestao/public`, o **domínio principal** continua enxergando a árvore inteira:
 
-### Passo 3 — plantar os canários
+| URL | Resultado |
+|---|---|
+| `https://gestao.donaarteira.com.br/.env` | 404 ✅ — está acima do docroot do subdomínio |
+| `https://donaarteira.com.br/gestao/.env` | 🔴 **serve o arquivo** |
 
-Dois arquivos, via SSH:
+O `.htaccess` do WordPress **não protege**: sua regra padrão só encaminha ao `index.php` o que **não existe** em disco (`RewriteCond %{REQUEST_FILENAME} !-f`). Um arquivo que existe é entregue direto pelo servidor.
+
+O que estaria exposto: `.env` (senha do banco, credenciais do Woo, chaves de integração), todo o código-fonte, e — a partir do Gate 05 — o **certificado A1** em `storage/`.
+
+### 3.2 Passo 1 — mapear a estrutura real
+
+Antes de decidir onde a aplicação vai morar, rode via SSH:
 
 ```bash
-# Canário 1: na RAIZ da aplicação — jamais pode ser acessível
-echo "SE VOCE ESTA LENDO ISTO PELA WEB, O DOCUMENT ROOT ESTA ERRADO" \
-  > ~/gestao/CANARIO-RAIZ.txt
-
-# Canário 2: simula o .env — o alvo mais valioso para um atacante
-echo "APP_KEY=canario-nao-e-uma-chave-real" > ~/gestao/.env
-
-# Canário 3: dentro de public/ — este SIM deve ser acessível
-echo "DOCUMENT ROOT CORRETO" > ~/gestao/public/canario-ok.txt
+bash mapear-estrutura.sh
 ```
 
-### Passo 4 — testar pela web
+O script mostra: se `public_html` é link simbólico, se existe uma estrutura `~/domains/`, o que há na raiz da home, e se o Composer está disponível.
 
-Abra as três URLs no navegador (ou use `curl -i`):
-
-| URL | Resultado esperado | Se vier diferente |
-|---|---|---|
-| `https://gestao.donaarteira.com.br/canario-ok.txt` | ✅ mostra "DOCUMENT ROOT CORRETO" | O subdomínio não está apontando para `public/` |
-| `https://gestao.donaarteira.com.br/CANARIO-RAIZ.txt` | ✅ **404** | 🔴 **REPROVADO** — a raiz da aplicação está exposta |
-| `https://gestao.donaarteira.com.br/.env` | ✅ **404** | 🔴 **REPROVADO — crítico.** Pare tudo e corrija antes de qualquer deploy |
-
-**Só há aprovação se o primeiro abrir e os outros dois derem 404.** Um 403 em vez de 404 é aceitável, mas 404 é preferível (não revela a existência do arquivo).
-
-### Passo 5 — limpar
-
-Apague os três canários.
-
-### 3.5 Se o painel não permitir caminho fora de `public_html`
+### 3.3 Passo 2 — escolher o arranjo
 
 Em ordem de preferência:
 
-1. **Subdomínio com pasta própria dentro de `public_html`, apontando para o `public` do app.** Ex.: aplicação em `~/gestao`, document root em `~/public_html/gestao-public`, cujo conteúdo é o `public/` do Laravel. Como o `symlink` está bloqueado neste plano, os arquivos precisam ser **copiados de fato** para lá, e o `public/index.php` precisa ser editado para apontar para a aplicação um nível acima. É funcional, mas o deploy fica com um passo extra a documentar no runbook.
-2. **`.htaccess` reescrevendo tudo para `public/`.** Funciona, mas é a opção **mais arriscada**: se a regra falhar, quebrar numa migração de servidor ou for sobrescrita, o código-fonte inteiro fica exposto sem aviso. Se for o único caminho possível, **proteger em profundidade**: negar explicitamente `.env`, `storage/`, `vendor/` e `.git/` no próprio `.htaccess`, e repetir o teste dos canários após qualquer alteração.
-3. **Abrir chamado no suporte da Hostinger** pedindo o ajuste do document root. É pedido comum para aplicações PHP com front controller.
+#### Estrutura real do servidor (mapeada em 2026-07-22)
 
-> Independentemente do caminho escolhido, o **teste dos canários é o critério de aceite**. Sem os três resultados corretos, não há deploy.
+```text
+/home/u917402451/
+├── public_html/                              ← VAZIO (stub herdado, não é o docroot)
+├── domains/
+│   └── donaarteira.com.br/
+│       └── public_html/                      ← DOCUMENT ROOT REAL do WordPress
+│           └── gestao/                       ← pasta atual do subdomínio ⚠️
+└── DO_NOT_UPLOAD_HERE                        ← a home não é servida pela web
+```
+
+Duas correções importantes ao que se supunha antes:
+
+- **`~/public_html` está vazio** — não é o document root. O site vive em `~/domains/donaarteira.com.br/public_html`.
+- Consequentemente, a pasta `gestao` do subdomínio está **dentro** do docroot do WordPress, confirmando o risco da §3.1.
+
+#### Arranjo A (recomendado) — aplicação irmã do `public_html`, não dentro dele
+
+```text
+/home/u917402451/domains/donaarteira.com.br/
+├── public_html/            ← WordPress (docroot de donaarteira.com.br) — intocado
+└── gestao-app/             ← aplicação Laravel — NENHUM vhost alcança
+    ├── .env  app/  vendor/  storage/
+    └── public/             ← docroot de gestao.donaarteira.com.br
+```
+
+Document root a informar no painel para o subdomínio:
+
+```
+/home/u917402451/domains/donaarteira.com.br/gestao-app/public
+```
+
+Por que este arranjo é o certo: `gestao-app/` é **irmã** de `public_html/`, não filha. Nenhuma URL do domínio principal consegue alcançá-la, porque ela está fora da árvore que o vhost do WordPress serve. A proteção é estrutural, não depende de `.htaccess` nem de configuração que possa ser sobrescrita.
+
+**Verificar no hPanel:** o campo de pasta personalizada do subdomínio aceita esse caminho? É a única incógnita restante. Se aceitar, o arranjo B abaixo torna-se desnecessário.
+
+#### Arranjo B — aplicação dentro de `public_html`, com bloqueio explícito
+
+Se o painel só aceitar caminhos sob `public_html`:
+
+```text
+public_html/
+├── (WordPress)
+└── gestao/
+    ├── .htaccess           ← BLOQUEIO — ver abaixo
+    ├── .env  app/  vendor/  storage/
+    └── public/             ← docroot do subdomínio
+```
+
+O `public_html/gestao/.htaccess` nega todo acesso àquele diretório:
+
+```apache
+# Bloqueia o acesso ao diretório da aplicação pelo domínio principal.
+# O subdomínio não é afetado: seu document root é gestao/public, e o
+# servidor só lê .htaccess a partir do próprio document root para baixo.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
+```
+
+**Isto precisa ser comprovado com os canários da §3.4, não presumido.** O comportamento de `.htaccess` sob LiteSpeed é compatível com Apache, mas a única evidência aceitável é o teste.
+
+Defesa em profundidade recomendada mesmo no arranjo B: um segundo `.htaccess` negando explicitamente `.env`, `storage/`, `vendor/` e `.git/`.
+
+#### Arranjo C — último recurso
+
+Abrir chamado no suporte da Hostinger pedindo o ajuste do document root do subdomínio. É um pedido comum para aplicações PHP com front controller.
+
+### 3.4 Passo 3 — o teste dos canários
+
+Plante os arquivos via SSH (ajuste o caminho conforme o arranjo escolhido):
+
+```bash
+APP=~/gestao-app          # ou ~/public_html/gestao, no arranjo B
+
+echo "SE VOCE LE ISTO PELA WEB, A RAIZ DA APP ESTA EXPOSTA" > $APP/CANARIO-RAIZ.txt
+echo "APP_KEY=canario-nao-e-uma-chave-real"                 > $APP/.env
+mkdir -p $APP/storage && echo "canario-certificado"         > $APP/storage/CANARIO-STORAGE.txt
+echo "DOCUMENT ROOT CORRETO"                                > $APP/public/canario-ok.txt
+```
+
+Agora teste **as duas origens**. Esta é a parte que não pode ser pulada:
+
+| # | URL | Esperado |
+|---|---|---|
+| 1 | `https://gestao.donaarteira.com.br/canario-ok.txt` | ✅ abre |
+| 2 | `https://gestao.donaarteira.com.br/CANARIO-RAIZ.txt` | ✅ 404 |
+| 3 | `https://gestao.donaarteira.com.br/.env` | ✅ 404 |
+| 4 | **`https://donaarteira.com.br/gestao/CANARIO-RAIZ.txt`** | ✅ 404 |
+| 5 | **`https://donaarteira.com.br/gestao/.env`** | ✅ **404 — o teste mais importante** |
+| 6 | **`https://donaarteira.com.br/gestao/storage/CANARIO-STORAGE.txt`** | ✅ 404 |
+
+Por linha de comando, de uma vez:
+
+```bash
+for u in \
+  "https://gestao.donaarteira.com.br/canario-ok.txt" \
+  "https://gestao.donaarteira.com.br/CANARIO-RAIZ.txt" \
+  "https://gestao.donaarteira.com.br/.env" \
+  "https://donaarteira.com.br/gestao/CANARIO-RAIZ.txt" \
+  "https://donaarteira.com.br/gestao/.env" \
+  "https://donaarteira.com.br/gestao/storage/CANARIO-STORAGE.txt" ; do
+  printf "%-70s %s\n" "$u" "$(curl -s -o /dev/null -w '%{http_code}' "$u")"
+done
+```
+
+**Aprovação exige: a linha 1 com 200 e as linhas 2 a 6 com 404 (ou 403).** Qualquer 200 nas linhas 2–6 reprova — não há deploy até corrigir.
+
+### 3.5 Passo 4 — limpar
+
+Apague os quatro canários após o teste.
 
 ## 4. Registro do resultado
 
 | Verificação | Data | Resultado | Veredito |
 |---|---|---|---|
 | **M-2** — cron de 1 minuto | | intervalo médio: ___ s | ⏳ |
-| **M-4** — document root | | canário-ok: ___ · canário-raiz: ___ · `.env`: ___ | ⏳ |
+| **M-4** — estrutura escolhida | | arranjo: ___ (A / B / C) | ⏳ |
+| **M-4** — canários (1 a 6) | | ___ / ___ / ___ / ___ / ___ / ___ | ⏳ |
 
 Ao concluir, atualizar a tabela de verificações manuais em [01-validacao-ambiente-business.md §5](01-validacao-ambiente-business.md#5-verificações-manuais-o-script-não-alcança).
 
@@ -169,7 +244,9 @@ Ao concluir, atualizar a tabela de verificações manuais em [01-validacao-ambie
 
 | Risco | Prob. | Impacto | Mitigação |
 |---|---|---|---|
-| Concluir pelo painel, sem medir | **Alta** | Alto | Este documento existe para isso: o critério é o comportamento observado |
-| Canários esquecidos no servidor | Média | Baixo | Passo 5 de cada verificação; o `.env` canário tem valor falso de propósito |
-| Document root correto hoje, quebrado após migração de servidor | Baixa | **Crítico** | Repetir o teste dos canários após qualquer mudança de infraestrutura — item de runbook |
+| **Testar só pelo subdomínio e dar por seguro** | **Alta** | **Crítico** | Foi exatamente a falha da primeira versão deste documento. As linhas 4–6 dos canários existem por isso |
+| Concluir pelo painel, sem medir | Alta | Alto | O critério é sempre o comportamento observado |
+| Document root correto hoje, quebrado após migração de servidor ou mudança de plano | Baixa | **Crítico** | Repetir o teste dos canários após qualquer mudança de infraestrutura — item obrigatório de runbook |
+| `.htaccess` do arranjo B ser sobrescrito por deploy ou por plugin do WordPress | Média | **Crítico** | Arranjo A é preferível justamente por não depender disso; no B, o `.htaccess` entra no versionamento e é reconferido a cada release |
+| Canários esquecidos no servidor | Média | Baixo | §3.5; o `.env` canário tem valor falso de propósito |
 | Mitigação de cron longo ser morta pelo LVE | Média | Médio | Testar a opção 1 da §2 antes de adotá-la |

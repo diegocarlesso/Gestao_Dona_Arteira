@@ -35,9 +35,37 @@ if (in_array('--relatorio', $argv ?? [], true)) {
         $intervalos[] = strtotime($marcas[$i]) - strtotime($marcas[$i - 1]);
     }
 
-    $menor = min($intervalos);
-    $maior = max($intervalos);
-    $media = array_sum($intervalos) / count($intervalos);
+    $menor   = min($intervalos);
+    $maior   = max($intervalos);
+    $media   = array_sum($intervalos) / count($intervalos);
+    $duracao = strtotime($marcas[$total - 1]) - strtotime($marcas[0]);
+
+    // ---- Sanidade: os dados vieram mesmo de um cron? ----------------
+    // Um cron de 1 minuto não produz intervalos de poucos segundos.
+    // Sem esta checagem, execuções manuais passam por "aprovado".
+    if ($media < 30) {
+        echo str_repeat('=', 60), "\n";
+        echo " TESTE INVALIDO — ISTO NAO E UM CRON\n";
+        echo str_repeat('=', 60), "\n";
+        echo " {$total} execucoes em {$duracao} s (intervalo medio de ",
+             round($media), " s).\n\n";
+        echo " Nenhum cron executa com essa frequencia. O log contem\n";
+        echo " execucoes MANUAIS do script, nao agendadas.\n\n";
+        echo " Como refazer:\n";
+        echo "   1. rm ", $log, "\n";
+        echo "   2. Criar o cron job no painel (* * * * *)\n";
+        echo "   3. NAO rodar o script na mao — so o --relatorio\n";
+        echo "   4. Esperar 15 minutos e rodar: php cron-test.php --relatorio\n";
+        echo str_repeat('=', 60), "\n";
+        exit(1);
+    }
+
+    if ($duracao < 600) {
+        echo "Observacao curta demais: apenas ", round($duracao / 60), " minuto(s)",
+             " entre a primeira e a ultima execucao.\n",
+             "Esperar ao menos 15 minutos antes de concluir.\n";
+        exit(1);
+    }
 
     echo str_repeat('=', 60), "\n";
     echo " TESTE DE GRANULARIDADE DO CRON\n";
@@ -45,6 +73,7 @@ if (in_array('--relatorio', $argv ?? [], true)) {
     echo " Execuções registradas : {$total}\n";
     echo " Primeira              : {$marcas[0]}\n";
     echo " Última                : {$marcas[$total - 1]}\n";
+    echo ' Janela observada      : ', round($duracao / 60, 1), " min\n";
     echo ' Intervalo mínimo      : ', $menor, " s\n";
     echo ' Intervalo máximo      : ', $maior, " s\n";
     echo ' Intervalo médio       : ', round($media), " s\n";

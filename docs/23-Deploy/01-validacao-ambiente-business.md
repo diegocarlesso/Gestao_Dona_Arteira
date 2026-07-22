@@ -66,7 +66,7 @@ Ausência de `symlink` significa **deploy sem troca atômica** — aceitável, m
 
 | # | Verificar | Por quê | Resultado |
 |---|---|---|---|
-| M-1 | **Acesso SSH** e **Composer** disponíveis | sem eles, deploy e `artisan` viram upload manual de FTP | ✅ SSH confirmado (`br-asc-web1076`) · ⏳ **Composer a confirmar** |
+| M-1 | **Acesso SSH** e **Composer** disponíveis | sem eles, deploy e `artisan` viram upload manual de FTP | ✅ **Resolvido.** SSH em `br-asc-web1076`; Composer **2.9.8** em `/usr/local/bin/composer` |
 | M-2 | **Cron aceita execução a cada 1 minuto** | é como a fila roda sem worker persistente ([ADR-0014](../27-ADR/ADR-0014-fila-database.md)); cron de 5 em 5 min degrada a sync do Woo | ⏳ **pendente** — procedimento em [23/02 §2](02-verificar-cron-e-docroot.md#2-verificação-a--o-cron-honra-1-minuto) |
 | M-3 | **Limite de processos simultâneos** do plano | jobs concorrendo com o WordPress no mesmo plano | ✅ **120 processos / 60 PHP workers**; uso atual: 3 e 1 (§7.4) |
 | M-4 | **Subdomínio `gestao.donaarteira.com.br` apontável para pasta própria**, com document root em `public/` | Laravel exige document root específico; sem isso, expõe-se o código-fonte | ⏳ **pendente — impeditiva se falhar.** Procedimento em [23/02 §3](02-verificar-cron-e-docroot.md#3-verificação-b--o-document-root-aponta-para-public) |
@@ -154,7 +154,7 @@ E o CLI (a execução que de fato importa) foi ainda melhor que o web:
 | P-4 | `symlink` bloqueada | 🟡 Média | `artisan storage:link` não funciona **e não há deploy atômico por symlink**. Duas decisões a registrar na reescrita da pasta 23: (a) uploads gravados direto em `public/` ou servidos por rota controlada; (b) estratégia de release e rollback sem troca de symlink |
 | P-5 | `exec` / `shell_exec` bloqueadas | 🟢 Baixa | Sem impacto: `proc_open` está disponível e é o que o Laravel usa. Atenção a pacotes de terceiros que façam shell |
 | P-6 | `opcache` ausente | 🟢 Baixa | Perda de desempenho, não de função. Verificar se o hPanel permite habilitar |
-| P-7 | PHP 8.2.30 (a documentação mirava 8.4) | 🟢 Baixa | Compatível com Laravel 12. Verificar no painel se dá para subir para 8.3/8.4 |
+| P-7 | PHP 8.2.30 é o padrão (a documentação mirava 8.4) | 🟢 Baixa | ✅ **PHP 8.4 está instalado**: `/opt/alt/php84/usr/bin/php` (também há 8.1, 8.3 e 8.5). Trocar a versão no hPanel ou apontar o cron para o binário 8.4. Decidir antes do `composer create-project` — mudar depois exige revalidar dependências |
 | P-8 | Espaço em disco reportado é do volume do host | 🟡 Média | Conferir a **cota real** no hPanel — XMLs de 5 anos + backups precisam de espaço garantido |
 | P-10 | Verificações manuais **M-2, M-3, M-4, M-5, M-7** pendentes | 🟠 Alta | M-1 (SSH) ✅ confirmado pela própria execução. Falta confirmar Composer. **M-2 (cron de 1 min) e M-4 (document root → `public/`) são as duas que ainda podem doer** |
 
