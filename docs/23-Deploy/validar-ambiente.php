@@ -66,8 +66,21 @@ $extensoes = [
     ['zlib',     'compactação',                                 'aviso'],
     ['opcache',  'desempenho',                                  'aviso'],
 ];
+// Algumas extensões registram-se com nome diferente do usual. O OPcache
+// aparece como "Zend OPcache" — extension_loaded('opcache') dá FALSO
+// NEGATIVO mesmo com a extensão ativa.
+$apelidos = [
+    'opcache' => ['Zend OPcache'],
+];
+
 foreach ($extensoes as [$ext, $para, $nivelSeAusente]) {
     $tem = extension_loaded($ext);
+    foreach ($apelidos[$ext] ?? [] as $alt) {
+        $tem = $tem || extension_loaded($alt);
+    }
+    if ($ext === 'opcache') {
+        $tem = $tem || function_exists('opcache_get_status');
+    }
     checar('Extensões', $ext, $tem ? 'presente' : 'AUSENTE', $tem ? 'ok' : $nivelSeAusente, $tem ? '' : "necessária para: {$para}");
 }
 
