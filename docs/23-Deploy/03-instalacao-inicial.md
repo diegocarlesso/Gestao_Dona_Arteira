@@ -243,15 +243,36 @@ O versionamento por hash do Vite resolve o cache-busting — não é preciso lim
 
 ## 10. Passo 8 — agendador e fila
 
-Um único cron, com **interpretador explícito e caminho absoluto** ([P-13](01-validacao-ambiente-business.md#73-pendências-e-ressalvas)/[P-14](01-validacao-ambiente-business.md#73-pendências-e-ressalvas)):
+O agendador roda por um **script wrapper**, não por um comando longo no campo do painel.
+
+> ⚠️ **Por que wrapper.** Colar o comando completo (`/usr/bin/php /home/.../erp/gestao-app/artisan schedule:run`) no formulário de cron do hPanel quebrou na prática: uma quebra de linha no meio do caminho fez o cron tentar executar `app` como comando, gerando `bash: app: command not found` a cada minuto — falha silenciosa, o job "existe" mas nunca funciona. O wrapper mantém o comando do painel curto e imune a isso.
+
+O script, na home (`chmod 644`, é lido pelo bash, não executado — [P-14](01-validacao-ambiente-business.md#73-pendências-e-ressalvas)):
+
+```bash
+printf '%s\n' \
+  '#!/bin/bash' \
+  'cd /home/u917402451/domains/donaarteira.com.br/erp/gestao-app || exit 1' \
+  '/usr/bin/php artisan schedule:run' > ~/scheduler.sh
+```
+
+Testar à mão antes de agendar:
+
+```bash
+bash ~/scheduler.sh    # esperado: "INFO  No scheduled commands are ready to run."
+```
+
+Comando a colar no cron do painel (curto, sem caminho longo que possa quebrar):
 
 ```
-* * * * * /usr/bin/php /home/u917402451/domains/donaarteira.com.br/erp/gestao-app/artisan schedule:run >> /dev/null 2>&1
+/bin/bash /home/u917402451/scheduler.sh >> /home/u917402451/schedule.log 2>&1
 ```
 
 O `schedule:run` dispara o processamento da fila, definido em `routes/console.php`. O cron de 1 minuto foi medido e confirmado (mediana de 60 s).
 
-> Conferir com `crontab -l` que existe **apenas um** job. Um `schedule:run` duplicado processaria cada job duas vezes — inaceitável num ledger de estoque ([ADR-0008](../27-ADR/ADR-0008-ledger-estoque.md)).
+> **Verificar o funcionamento** (o painel gerencia o cron por fora — `crontab -l` fica **vazio** neste host, então não serve para conferir): após ~3 min, `tail -3 ~/schedule.log` deve mostrar a mensagem `No scheduled commands are ready to run.` repetida, uma por execução. Enquanto o log **não cresce** (mesmo tamanho, mesmo timestamp), o cron não está rodando — reveja o comando no painel.
+>
+> Garantir que existe **apenas um** job de `schedule:run`. Dois processariam cada job da fila duas vezes — inaceitável num ledger de estoque ([ADR-0008](../27-ADR/ADR-0008-ledger-estoque.md)).
 
 ## 11. Passo 9 — teste dos canários (aceite de segurança) 🔴
 
