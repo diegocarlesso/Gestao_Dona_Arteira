@@ -13,12 +13,14 @@ interface ResetPasswordProps {
     email: string;
 }
 
-interface ResetPasswordForm {
+// `type`, não `interface`: o useForm do Inertia exige índice de string
+// (FormDataType), que interfaces não fornecem implicitamente.
+type ResetPasswordForm = {
     token: string;
     email: string;
     password: string;
     password_confirmation: string;
-}
+};
 
 export default function ResetPassword({ token, email }: ResetPasswordProps) {
     const { data, setData, post, processing, errors, reset } = useForm<ResetPasswordForm>({

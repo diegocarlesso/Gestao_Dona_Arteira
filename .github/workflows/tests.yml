@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
 
+# A aplicação vive em gestao-app/; a raiz do repositório guarda a
+# documentação e o sistema desktop legado (somente leitura).
+defaults:
+  run:
+    working-directory: gestao-app
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -56,6 +62,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+          cache-dependency-path: gestao-app/package-lock.json
 
       - name: Dependências PHP
         run: composer install --no-interaction --prefer-dist --optimize-autoloader

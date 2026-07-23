@@ -8,6 +8,13 @@ on:
 # O CI é BLOQUEANTE: aqui nada é corrigido automaticamente, tudo é
 # verificado. Um passo que conserta o código em vez de reprovar dá a
 # impressão de qualidade sem entregá-la.
+
+# A aplicação vive em gestao-app/; a raiz do repositório guarda a
+# documentação e o sistema desktop legado (somente leitura).
+defaults:
+  run:
+    working-directory: gestao-app
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -29,6 +36,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+          cache-dependency-path: gestao-app/package-lock.json
 
       - name: Dependências
         run: |
@@ -39,8 +47,10 @@ jobs:
       - name: Estilo do PHP (Pint)
         run: vendor/bin/pint --test
 
+      # Via composer: o script fixa --memory-limit=1G. O padrão de 128M
+      # do PHP CLI derruba o worker paralelo do PHPStan.
       - name: Análise estática (Larastan)
-        run: vendor/bin/phpstan analyse --no-progress
+        run: composer analyse
 
       - name: Formatação do frontend (Prettier)
         run: npm run format:check
