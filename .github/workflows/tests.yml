@@ -78,8 +78,14 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
-      - name: Migrar
-        run: php artisan migrate --force
+      # Convenção da pasta 04, regra 2: `down()` funcional e testado.
+      # Sem isto, um rollback só é descoberto quebrado no dia em que
+      # precisa funcionar — durante um incidente em produção.
+      - name: Migrar (ida, volta e ida)
+        run: |
+          php artisan migrate --force
+          php artisan migrate:rollback --force
+          php artisan migrate --force
 
       # Cobre unit, feature (incluindo assertInertia) e os testes de
       # arquitetura que verificam as fronteiras entre módulos (ADR-0020).
