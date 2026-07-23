@@ -121,8 +121,8 @@ php artisan up
 | 2 | Assets na versão certa | Devtools → Network: os arquivos de `build/` têm o hash novo |
 | 3 | Sem stack trace | Rota inexistente mostra erro genérico (`APP_DEBUG=false`) |
 | 4 | Migrations aplicadas | `php artisan migrate:status` |
-| 5 | Agendador vivo | `tail -3 ~/schedule.log` cresce |
-| 6 | Logs graváveis | `storage/logs/laravel.log` |
+| 5 | Agendador vivo | `cat ~/scheduler-ultima-execucao.txt` — o `scheduler.sh` grava ali a cada execução. **Não use `~/schedule.log`:** o hPanel não honra o redirecionamento escrito no campo de comando do cron, então esse arquivo nunca existe, mesmo com o cron rodando |
+| 6 | Logs graváveis | `php artisan tinker --execute='Log::error("canario");'` e conferir `storage/logs/laravel.log`. **Hoje isto falha** — ver §7 (P-16) |
 | 7 | WordPress intacto | `https://donaarteira.com.br` |
 
 ## 4. Rollback
@@ -174,7 +174,76 @@ php artisan tinker --execute='echo config("database.default");'
 `migrate:status` respondendo "Ran" não diz contra qual banco; a única
 pergunta que revela isso é `config("database.default")`.
 
-## 7. Riscos
+## 7. 🔴 P-16 — a extensão `psr` quebra todo o log da aplicação
+
+**Descoberto em 2026-07-23, durante o primeiro deploy real. Não
+corrigido: depende do painel.**
+
+O servidor carrega a extensão PHP **`psr`** (`extension=psr.so`, linha
+193 de `/opt/alt/php84/link/conf/alt_php.ini`), em **ambos os SAPIs** —
+CLI e LiteSpeed. Ela declara `Psr\Log\LoggerInterface` nativamente, com a
+assinatura **antiga** do PSR-3 (`$message` sem tipo). O Monolog 3, que o
+Laravel 12 usa, declara `emergency(Stringable|string $message)`.
+
+O resultado é erro **fatal** na declaração da classe:
+
+```
+Fatal error: Declaration of Monolog\Logger::emergency(Stringable|string $message,
+array $context = []): void must be compatible with
+PsrExt\Log\LoggerInterface::emergency($message, array $context = [])
+```
+
+### Por que isto é grave e ao mesmo tempo invisível
+
+A aplicação funciona normalmente — **até o primeiro erro**. O Laravel
+monta o logger sob demanda, então enquanto nada é registrado, nada
+quebra. Quando uma exceção acontece, o *handler* tenta logá-la, o
+Monolog é carregado, e o processo morre. O visitante recebe **500 em
+branco** e **nada é gravado em lugar nenhum** — nem em `laravel.log`, nem
+no log do servidor.
+
+Ou seja: o mecanismo que existe para explicar falhas é o próprio que
+falha. Um ERP com estoque, dinheiro e NF-e não pode operar assim.
+
+### Como foi comprovado (não deduzido)
+
+Dois arquivos idênticos em `public/`, diferindo apenas por uma linha:
+
+| Arquivo | Conteúdo | Resposta |
+|---|---|---|
+| A | `extension_loaded('psr')` | **200** — imprime `sapi=litespeed psr=SIM` |
+| B | o mesmo + `new Monolog\Logger('x')` | **500** |
+
+### Correção
+
+**hPanel → PHP Configuration → Extensions → desmarcar `psr`.** Não há
+alternativa por código:
+
+- `.user.ini` não desliga extensão (`extension` é `PHP_INI_SYSTEM`).
+- `php -d` só afeta o CLI.
+- **Todos** os canais de log do Laravel passam por Monolog — inclusive
+  `null`, `errorlog` e `stderr`. Não existe canal que escape.
+- Fixar `psr/log` em 1.x quebraria Laravel 12 e Monolog 3.
+
+### Depois de desmarcar, verificar
+
+```bash
+php -r 'var_dump(extension_loaded("psr"));'   # deve dar false
+cd ~/domains/donaarteira.com.br/erp/gestao-app
+php artisan tinker --execute='Log::error("canario"); echo "ok";'
+tail -1 storage/logs/laravel.log              # deve mostrar o canário
+```
+
+E pelo web, porque o SAPI é outro: subir um arquivo temporário em
+`public/` que instancie `Monolog\Logger` e conferir que devolve 200.
+**Apagar em seguida.**
+
+> Esta armadilha entra na lista permanente do ambiente como **P-16**, ao
+> lado de P-13/P-14/P-15. Como [P-15](01-validacao-ambiente-business.md#73-pendências-e-ressalvas)
+> avisa, trocar a versão do PHP reconfigura o interpretador inteiro —
+> então **reconferir `psr` depois de qualquer mudança de versão**.
+
+## 8. Riscos
 
 | Risco | Prob. | Impacto | Mitigação |
 |---|---|---|---|
@@ -184,3 +253,5 @@ pergunta que revela isso é `config("database.default")`.
 | Deploy manual divergir do que o CI testou | Média | Alto | Automatizar o deploy (dívida do README §3); até lá, publicar só o que está em `main` com CI verde |
 | `composer install` falhar em `package:discover` por `proc_open` desabilitada ([P-15](01-validacao-ambiente-business.md#73-pendências-e-ressalvas)) | **Alta** | Médio | Os pacotes instalam mesmo assim; só o discover falha, porque o composer o invoca via `Process`. Rodar `php artisan package:discover` **direto** resolve sem depender de `proc_open`. A causa raiz (o painel reverter `disable_functions`) é do ambiente |
 | `.env` de produção divergir do que a documentação afirma | **Alta** | **Crítico** | §6 — conferir comportamento, não o arquivo |
+| **Extensão `psr` derrubar toda requisição que precise logar** | **Certa, enquanto não corrigida** | **Crítico** | §7 (P-16) — desmarcar no painel; sem log, nenhuma falha de produção é diagnosticável |
+| Agendador parecer parado porque `schedule.log` não existe | Média | Baixo | Falso alarme: o hPanel não honra o redirecionamento do comando. O batimento vive em `~/scheduler-ultima-execucao.txt`, escrito pelo próprio `scheduler.sh` |

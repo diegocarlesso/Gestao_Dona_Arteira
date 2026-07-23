@@ -78,9 +78,27 @@ pergunta que revela isso é `config("database.default")`.
 3. **`proc_open` volta a ser desabilitada** pelo painel. Reabilitar em
    hPanel → PHP → `disable_functions`, ou aceitar o contorno documentado
    no runbook 04 §7.
-4. **Agendador:** `~/schedule.log` não existe, apesar de o job constar no
-   hPanel e o `scheduler.sh` funcionar quando chamado à mão. Confirmar se
-   o cron está de fato executando — a fila depende dele (ADR-0014).
+4. 🔴 **P-16 — a extensão `psr` quebra todo o log da aplicação.** É o
+   achado mais grave da sessão. O servidor carrega `extension=psr.so` em
+   ambos os SAPIs; ela declara `Psr\Log\LoggerInterface` com a assinatura
+   antiga do PSR-3, incompatível com o Monolog 3 do Laravel 12. Qualquer
+   requisição que precise logar morre com **500 em branco, sem registrar
+   nada** — o mecanismo que existe para explicar falhas é o próprio que
+   falha. Comprovado por dois arquivos idênticos em `public/` diferindo
+   só pela instanciação do `Monolog\Logger`: 200 contra 500.
+   **Correção: hPanel → PHP Configuration → Extensions → desmarcar
+   `psr`.** Não há alternativa por código — todos os canais de log do
+   Laravel passam por Monolog. Detalhe em
+   [04 §7](04-atualizar-producao.md).
+
+5. ✅ **Agendador: resolvido, era falso alarme.** O cron **executa** — dois
+   batimentos consecutivos, um por minuto. O `~/schedule.log` nunca
+   existiu porque **o hPanel não honra o redirecionamento escrito no
+   campo de comando do cron**; a saída só vai para o "View Output" do
+   painel. Isso responde em definitivo a dúvida que o checkpoint de 22/07
+   deixara em aberto. O `scheduler.sh` passou a gravar
+   `~/scheduler-ultima-execucao.txt` por conta própria — sobrescrevendo,
+   não acumulando.
 
 ### Dívida registrada: `npm audit`
 
@@ -128,4 +146,4 @@ trabalho dedicado.
 
 ## Armadilhas deste ambiente (já documentadas, para não repetir)
 
-P-13 cron usa caminho absoluto · P-14 interpretador explícito + arquivo 644, nunca 777 · P-15 trocar versão de PHP troca `disable_functions` (revalidar sempre) · symlink: `ln -s` do shell funciona, `symlink()` do PHP não · hPanel gerencia cron por fora (`crontab -l` vazio) · comando longo no painel quebra (usar wrapper) · PHPStan estoura os 128 M do PHP CLI — usar `composer analyse`.
+P-13 cron usa caminho absoluto · P-14 interpretador explícito + arquivo 644, nunca 777 · P-15 trocar versão de PHP troca `disable_functions` (revalidar sempre) · **P-16 extensão `psr` quebra o Monolog — todo log fatal** · symlink: `ln -s` do shell funciona, `symlink()` do PHP não · hPanel gerencia cron por fora (`crontab` nem existe no host) · **hPanel não honra o redirecionamento escrito no comando do cron** · comando longo no painel quebra (usar wrapper) · PHPStan estoura os 128 M do PHP CLI — usar `composer analyse`.
