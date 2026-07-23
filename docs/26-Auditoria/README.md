@@ -1,7 +1,8 @@
 # 26 — Auditoria
 
-> **Status:** Aprovado · **Última atualização:** 2026-07-03 · **Responsável:** security-specialist
+> **Status:** 🟡 **Ligada** — trilha de mutações ativa desde a primeira entidade; `security_events` e a tela de consulta pendentes · **Última atualização:** 2026-07-23 · **Responsável:** security-specialist
 > **Regras:** BR-802 · **ADR:** [0012 (laravel-auditing)](../27-ADR/ADR-0012-auditoria.md) · **Fase:** Gate 01 (transversal desde o início)
+> **Código:** `config/audit.php` · `database/migrations/*_create_audits_table.php` · `tests/Feature/Identity/AuditoriaDeUsuarioTest.php`
 
 ## 1. Objetivo
 
@@ -22,6 +23,19 @@ Responder com evidência a qualquer "quem mudou isso, quando e de que valor para
 - **Atribuível**: toda entrada tem autor (usuário nominal — por isso contas compartilhadas são proibidas, pasta 18) ou `system`/nome do job.
 - **Consultável**: tela "Trilha de auditoria" (permissão `audit.view`, só admin): filtro por entidade, autor, período, tipo; linha do tempo por registro ("ver histórico" em toda ficha).
 - **Íntegra**: auditoria roda na mesma transação da mutação — mutação sem trilha não é commitada.
+
+### 3.1 Dois desvios do padrão do pacote (2026-07-23)
+
+| Desvio | Motivo |
+|---|---|
+| `audits.old_values`/`new_values` são **JSON**, não TEXT | O stub usa TEXT, que trunca em 64 KB. Um pedido com muitos itens ou uma ficha técnica grande cabe nesse limite, e a trilha registraria uma versão mutilada do que aconteceu. Auditoria truncada é auditoria perdida |
+| `audit.console` é **`true`** por padrão, não `false` | §2 exige autor em toda mutação — nominal ou `system`. Uma correção feita por `artisan tinker` em produção é exatamente o tipo de mudança que precisa de rastro, e a que mais facilmente ficaria sem. Exceção legítima: o ETL da migração ([pasta 17](../17-Migracao/README.md)) roda com `AUDIT_CONSOLE=false`, porque auditar centenas de milhares de linhas de carga inicial infla a tabela sem informar nada |
+
+Campos sensíveis já estão fora do diff via `$auditExclude` no model
+(`password`, `remember_token`, `two_factor_secret`,
+`two_factor_recovery_codes`) — e há teste verificando isso, porque um
+`audits` com hash de senha transforma a trilha, que muita gente lê com
+`audit.view`, em superfície de ataque.
 
 ## 4. Dependências
 

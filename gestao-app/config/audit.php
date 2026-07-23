@@ -198,7 +198,17 @@ return [
     |
     | Whether console events should be audited (eg. php artisan db:seed).
     |
+    | Ligado por padrão, ao contrário do stub. A pasta 26 §2 exige que
+    | toda mutação de dado de negócio tenha autor — nominal ou `system`.
+    | Uma correção feita por `artisan tinker` em produção é exatamente o
+    | tipo de mudança que precisa de rastro, e é a que mais facilmente
+    | ficaria sem.
+    |
+    | O ETL da migração (pasta 17) é a exceção legítima: auditar centenas
+    | de milhares de linhas de carga inicial inflaria `audits` sem
+    | informar nada. Aquele processo desliga com AUDIT_CONSOLE=false.
+    |
     */
 
-    'console' => false,
+    'console' => (bool) env('AUDIT_CONSOLE', true),
 ];
