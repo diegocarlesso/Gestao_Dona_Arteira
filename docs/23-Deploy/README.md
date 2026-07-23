@@ -2,7 +2,7 @@
 
 > **Status:** ⚠️ **Requer reescrita** — foi escrito assumindo SPA separada e ADR-0016 pendente · **Última atualização:** 2026-07-03 · **Responsável:** devops-specialist
 > **ADRs:** [0014](../27-ADR/ADR-0014-fila-database.md) (filas) · [**0016**](../27-ADR/ADR-0016-hospedagem.md) (hospedagem — **plano Business, aceito em 2026-07-22**) · [**0019**](../27-ADR/ADR-0019-inertia-substitui-spa.md) (Inertia — deploy passa a ser único)
-> **Documentos:** [Validação do ambiente Business](01-validacao-ambiente-business.md) ✅ · [Verificar cron e document root](02-verificar-cron-e-docroot.md) ✅ · [Instalação inicial](03-instalacao-inicial.md) ⏳ **próxima tarefa do Gate 01**
+> **Documentos:** [Validação do ambiente Business](01-validacao-ambiente-business.md) ✅ · [Verificar cron e document root](02-verificar-cron-e-docroot.md) ✅ · [Instalação inicial](03-instalacao-inicial.md) ✅ **executada em 2026-07-22** · [Atualizar a produção](04-atualizar-producao.md) ✅ **runbook do dia a dia**
 
 ## 1. Objetivo
 
@@ -32,6 +32,13 @@ flowchart LR
     H --> I[Smoke E2E no staging]
     I --> J[Deploy produção<br/>MANUAL por tag vX.Y.Z]
 ```
+
+> ⚠️ **O que está acima é o alvo, não o presente.** Em 2026-07-23 o CI já
+> roda de fato (Pest em MariaDB, PHPStan, Pint, ESLint, tsc, Vitest,
+> build e migrate/rollback/migrate), mas **não há deploy automatizado**:
+> nem staging automático, nem health check, nem Deployer. A publicação é
+> manual por SSH — ver [04 — Atualizar a produção](04-atualizar-producao.md).
+> A distância entre os dois é dívida registrada.
 
 ## 4. Processo de release (produção)
 
