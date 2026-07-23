@@ -1,6 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Modules\Identity\Http\Middleware\EnsureAccountIsActive;
+use App\Modules\Identity\Http\Middleware\EnsurePasswordIsChanged;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,6 +20,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+        ]);
+
+        $middleware->alias([
+            'conta.ativa' => EnsureAccountIsActive::class,
+            'senha.trocada' => EnsurePasswordIsChanged::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

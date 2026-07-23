@@ -1,34 +1,38 @@
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { usePermissions } from '@/lib/permissions';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
+import { LayoutGrid, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 
-const mainNavItems: NavItem[] = [
+/**
+ * Itens do menu, cada um com a permissão que o revela.
+ *
+ * Esconder ≠ proteger: quem digitar a URL continua sendo barrado pela
+ * Policy no backend (pasta 19 §1). O menu só evita oferecer o que a
+ * pessoa receberia um 403 ao tentar.
+ */
+const ITENS: (NavItem & { permissao?: string })[] = [
     {
         title: 'Dashboard',
         url: '/dashboard',
         icon: LayoutGrid,
     },
-];
-
-const footerNavItems: NavItem[] = [
     {
-        title: 'Repository',
-        url: 'https://github.com/laravel/react-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        url: 'https://laravel.com/docs/starter-kits',
-        icon: BookOpen,
+        title: 'Usuários',
+        url: '/usuarios',
+        icon: Users,
+        permissao: 'users.manage',
     },
 ];
 
 export function AppSidebar() {
+    const { can } = usePermissions();
+
+    const visiveis = ITENS.filter((item) => item.permissao === undefined || can(item.permissao));
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -44,11 +48,10 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain items={visiveis} />
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

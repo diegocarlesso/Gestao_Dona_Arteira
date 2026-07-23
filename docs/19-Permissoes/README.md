@@ -99,6 +99,14 @@ Rota → middleware de permissão → Policy (contexto) → Service. Testes de a
 | Papéis + matriz | `app/Modules/Identity/Enums/Role.php` | `permissions()` transcreve a coluna do papel na §3 |
 | Materialização | `database/seeders/Identity/RolePermissionSeeder.php` | Idempotente **e convergente** — `syncPermissions` revoga o que saiu do enum, e permissão órfã é apagada |
 | Admin implícito | `app/Modules/Identity/Providers/IdentityServiceProvider.php` | `Gate::before` devolve `true` para `admin` e `null` (não `false`) para os demais, para não atropelar as Policies |
+| Policy de contas | `app/Modules/Identity/Policies/UserPolicy.php` | `users.manage` + as nuances que a permissão sozinha não expressa |
+| Gating de UI | `resources/js/lib/permissions.ts` | `usePermissions().can('users.manage')` — as permissões chegam nas props compartilhadas |
+
+**Duas habilidades ficam fora do atalho do admin**, por
+`SEMPRE_PELA_POLICY` no provider: `changeStatus` e `assignRoles`. O
+`Gate::before` roda antes das Policies e curto-circuita a decisão — sem
+essa exclusão, um admin conseguiria se promover ou suspender a própria
+conta, porque a Policy nem seria consultada. Há teste para os dois lados.
 | Verificação | `tests/Feature/Identity/MatrizPapelPermissaoTest.php` | Compara célula a célula contra uma cópia independente da matriz |
 
 **Por que o teste repete a matriz em vez de ler o enum:** um teste que

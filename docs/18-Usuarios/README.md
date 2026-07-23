@@ -1,8 +1,8 @@
 # 18 — Usuários
 
-> **Status:** 🟡 **Parcialmente implementado** — model, ciclo de vida e admin inicial prontos; convite, 2FA e telas pendentes · **Última atualização:** 2026-07-23 · **Responsável:** security-specialist
+> **Status:** 🟡 **Parcialmente implementado** — model, ciclo de vida, telas de gestão e os dois middlewares prontos; **2FA e o e-mail de convite pendentes** · **Última atualização:** 2026-07-23 · **Responsável:** security-specialist
 > **Fase:** Gate 01 · **ADR:** 0005 (Sanctum) · Permissões: [pasta 19](../19-Permissoes/README.md)
-> **Código:** `app/Modules/Identity/Models/User.php` · `app/Modules/Identity/Enums/UserStatus.php` · `database/seeders/Identity/AdminInicialSeeder.php`
+> **Código:** `app/Modules/Identity/` · telas em `resources/js/pages/identity/` · testes em `tests/Feature/Identity/`
 
 ## 1. Objetivo
 
@@ -54,6 +54,31 @@ o route key — o `id` sequencial não sai daqui), `two_factor_secret` e
 para que nenhum campo escondido de formulário os alcance),
 `two_factor_confirmed_at`, `password_changed_at`, `must_change_password`
 e `last_login_at`.
+
+### 3.2 Os dois middlewares que fazem as regras valerem
+
+Sem eles, `status` e `must_change_password` seriam colunas escritas por
+quem cria a conta e lidas por ninguém.
+
+| Alias | Classe | O que garante |
+|---|---|---|
+| `conta.ativa` | `EnsureAccountIsActive` | Só `active` opera. **Derruba a sessão já aberta** de quem foi suspenso — uma checagem apenas no login deixaria a pessoa desligada trabalhando até o cookie expirar, que é exatamente o cenário que a suspensão existe para impedir |
+| `senha.trocada` | `EnsurePasswordIsChanged` | Prende na tela de troca quem ainda usa a senha provisória. Só `logout` e a própria tela de troca escapam, senão o redirecionamento seria circular |
+
+Aplicados a **todas** as rotas autenticadas — dashboard, configurações e
+as do próprio módulo.
+
+### 3.3 Proteção do próprio autor
+
+Ninguém altera os próprios papéis nem a própria situação. Sem isso,
+qualquer pessoa com `users.manage` poderia se promover a admin — e a
+permissão deixaria de ser fronteira — ou se suspender, trancando-se do
+lado de fora num sistema onde `users.manage` pode estar com uma só
+pessoa.
+
+Isso exigiu excluir `changeStatus` e `assignRoles` do atalho
+`Gate::before` do admin (ver [pasta 19 §5.1](../19-Permissoes/README.md)):
+o atalho roda **antes** das Policies e curto-circuitaria a decisão.
 
 - Contas são **nominais e individuais** — proibido usuário compartilhado "producao" (auditoria sem valor caso contrário). Tablet do ateliê: cada artesã tem PIN/troca rápida de usuário (fase 3 avalia UX específica).
 - Desligamento: suspensão imediata via painel (runbook de offboarding: suspender conta + revogar tokens + trocar segredos compartilhados se houver).
