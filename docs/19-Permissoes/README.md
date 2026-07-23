@@ -72,7 +72,7 @@ então merecem confirmação do dono antes do Gate 02:
 | `production.view` → sales | Encomenda tem prazo; vendas precisa responder "quando fica pronto" sem pedir para outra pessoa | Baixo — leitura de OP não expõe custo nem dado pessoal |
 | `production.view` → fulfillment | Expedição planeja a separação pelo que vai ficar pronto | Baixo — idem |
 | `sales.view` → fulfillment | Não dá para separar e embalar um pedido sem ler o pedido | Baixo — é pré-requisito de `fulfillment.execute`, que o papel já tem |
-| `sales.view` → finance | Título a receber nasce de um pedido; conferir a origem é rotina do financeiro | Médio — expõe dados de cliente ao financeiro (avaliar sob LGPD, [pasta 25](../25-Seguranca/README.md)) |
+| `sales.view` → finance | Título a receber nasce de um pedido; conferir a origem é rotina do financeiro | ✅ **Confirmado pelo dono em 2026-07-23.** Expõe dados de cliente ao financeiro; a exposição é aceita porque conferir a origem do título é rotina do papel. Revisitar se a pasta 25 endurecer a minimização de dados |
 | `fiscal.view` → sales | A matriz dava `fiscal.emit` a `sales` sem `fiscal.view`. Emitir sem poder ler a nota emitida é incoerente | Baixo — quem emite já vê o documento no ato |
 | `fiscal.view` → fulfillment | Idem: o papel tem `fiscal.emit` | Baixo — idem |
 
