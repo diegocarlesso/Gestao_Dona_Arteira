@@ -82,6 +82,26 @@ pergunta que revela isso é `config("database.default")`.
    hPanel e o `scheduler.sh` funcionar quando chamado à mão. Confirmar se
    o cron está de fato executando — a fila depende dele (ADR-0014).
 
+### Dívida registrada: `npm audit`
+
+`npm audit` acusa 13 vulnerabilidades (2 críticas) — **nenhuma das
+críticas chega ao navegador**, verificado e não presumido:
+
+| Pacote | Severidade | Chega ao bundle? |
+|---|---|---|
+| `form-data`, `follow-redirects` | crítica / moderada | ❌ Adaptador Node do axios, removido pelo tree-shaking. Os internos do pacote (`CombinedStream`, `_boundary`, `getLengthSync`) têm **zero ocorrências** no bundle |
+| `shell-quote`, `lodash` | crítica / alta | ❌ Vêm de `concurrently`, usado só pelo script `composer dev` |
+| `axios` 1.7.9 | **alta** | ✅ **sim** — SSRF por URL absoluta e DoS por falta de checagem de tamanho |
+
+O `axios` é o único que embarca. O caminho explorável é estreito porque o
+Inertia só chama rotas da própria aplicação e nunca recebe URL vinda do
+usuário — mas é dívida real.
+
+Corrigir exige escolha: `npm audit fix` mexe em **59 pacotes** (ciclo
+próprio de verificação, não carona num release), ou subir
+`@inertiajs/react` de 2.0.3 para 3.6.1, que é *major* e precisa de
+trabalho dedicado.
+
 ## PRÓXIMO PASSO (retomar exatamente aqui)
 
 **1. Fechar as 4 pendências acima**, na ordem em que estão.
