@@ -44,17 +44,55 @@ Primeira ocupação de `app/Modules/` conforme ADR-0020; o teste `arch()` já ge
 - MariaDB do XAMPP passa a ser o banco de **desenvolvimento** também (`erp_dev`), não só de teste (`erp_test`). O `.env` apontava para SQLite enquanto testes e produção rodam em MariaDB — a divergência que o ADR-0002 existe para impedir.
 - ⚠️ O `mysqld` do XAMPP não está registrado como serviço e **caiu uma vez** durante a sessão. Ao retomar, conferir com `Get-Process mysqld` e, se preciso, subir com `Start-Process C:\xampp\mysql\bin\mysqld.exe -ArgumentList "--defaults-file=C:\xampp\mysql\bin\my.ini","--standalone"`.
 
+## Publicado em produção (2026-07-23)
+
+O módulo Identity está no ar. Login verificado de ponta a ponta:
+`POST /login` → 302 → `/dashboard` 200 com sessão do admin.
+
+**O deploy revelou que a produção não estava como a documentação
+afirmava.** Dois estados errados, ambos invisíveis porque a aplicação
+respondia normalmente:
+
+| Achado | Realidade | Corrigido |
+|---|---|---|
+| `DB_CONNECTION=sqlite` | A aplicação nunca esteve em MariaDB. Com `DB_DATABASE=u917402451_da_erp` e driver sqlite, o Laravel tratou o nome do banco como **caminho de arquivo** e criou um SQLite chamado `u917402451_da_erp` na raiz da app. O banco `u917402451_da_erp` do MariaDB estava **vazio** | ✅ `DB_CONNECTION=mysql`; as 6 migrations rodaram no MariaDB |
+| `APP_DEBUG=true` | Qualquer erro renderizaria stack trace com o conteúdo do `.env` | ✅ `false`, verificado por requisição a rota inexistente |
+| 3 chaves duplicadas no `.env` | `SESSION_DRIVER`, `QUEUE_CONNECTION`, `CACHE_STORE` apareciam duas vezes | ✅ deduplicadas mantendo a última |
+| `proc_open` desabilitada de novo | Armadilha **P-15**. Quebrou o `package:discover` do composer | ✅ contornado rodando `php artisan package:discover` direto (não usa Process) |
+
+O checkpoint anterior afirmava "banco produção ✅ migração base rodada" —
+estava errado. `migrate:status` dizia "Ran" sem dizer *em qual banco*; a
+pergunta que revela isso é `config("database.default")`.
+
+**Estado do banco de produção:** 6 migrations, 6 papéis, 24 permissões,
+1 usuário admin. Backups em `~/backups/` (`.env`, SQLite antigo, dump).
+
+### 🔴 Pendências abertas pelo deploy
+
+1. **Rotacionar a senha do banco de produção.** Ela apareceu na saída de
+   um `grep` durante a inspeção e está no transcrito da sessão. Pela
+   [pasta 25](../25-Seguranca/README.md), senha exposta se rotaciona.
+2. **Trocar a senha do admin.** A conta nasceu com `must_change_password`,
+   mas **o middleware que obriga a troca ainda não existe** — a flag está
+   no banco e ninguém a consulta. Trocar manualmente pelo perfil.
+3. **`proc_open` volta a ser desabilitada** pelo painel. Reabilitar em
+   hPanel → PHP → `disable_functions`, ou aceitar o contorno documentado
+   no runbook 04 §7.
+4. **Agendador:** `~/schedule.log` não existe, apesar de o job constar no
+   hPanel e o `scheduler.sh` funcionar quando chamado à mão. Confirmar se
+   o cron está de fato executando — a fila depende dele (ADR-0014).
+
 ## PRÓXIMO PASSO (retomar exatamente aqui)
 
-**1. Empurrar os commits e ver o CI rodar pela primeira vez.** São 5 commits locais não empurrados. É a primeira validação real de que o pipeline funciona no ambiente do GitHub — o ambiente local não prova isso.
+**1. Fechar as 4 pendências acima**, na ordem em que estão.
 
-**2. Decidir as 7 células 🆕 da matriz de permissões** ([pasta 19 §3.1](../19-Permissoes/README.md)). Todas ampliam acesso. A de maior risco é `sales.view` para `finance` — expõe dado de cliente ao financeiro, avaliar sob LGPD.
+**2. Decidir as 6 células 🆕 restantes da matriz de permissões** ([pasta 19 §3.1](../19-Permissoes/README.md)). Todas ampliam acesso. A de `sales.view` → `finance` já foi confirmada pelo dono em 2026-07-23.
 
 **3. Telas do Identity (Inertia)**: gestão de usuários, atribuição de papéis, tela de troca obrigatória de senha no primeiro acesso. Hoje o módulo tem domínio e dados, mas nenhuma tela — o admin inicial entra pela tela de login do starter kit.
 
-**4. Fechar o que o Identity ainda deve à documentação:**
-   - Middleware que barra login de conta não-`Active` (o model já sabe responder; ninguém pergunta ainda).
-   - Middleware de `must_change_password`.
+**4. Fechar o que o Identity ainda deve à documentação** — os dois primeiros são pendência aberta em produção agora:
+   - 🔴 Middleware que barra login de conta não-`Active` (o model já sabe responder; ninguém pergunta ainda).
+   - 🔴 Middleware de `must_change_password` — a flag do admin de produção está ligada e não surte efeito.
    - Canal `security_events` (pasta 26 §2) — login ok/falha, `PermissionDenied`, mudança de papel.
    - Fluxo de 2FA TOTP (BR-804): as colunas existem, o fluxo não.
    - Convite por e-mail (pasta 18 §3): o estado `invited` existe, o convite não.

@@ -145,7 +145,36 @@ O `AdminInicialSeeder` cria a conta admin na primeira execução e **imprime a s
 
 Reexecutar o seeder num banco que já tem admin **não** redefine senha alguma.
 
-## 6. Riscos
+## 6. Conferir antes de confiar no `.env` do servidor
+
+O primeiro deploy real (2026-07-23) encontrou a produção em dois estados
+que a documentação afirmava resolvidos. Ambos passariam despercebidos
+porque a aplicação **respondia normalmente**:
+
+```bash
+cd ~/domains/donaarteira.com.br/erp/gestao-app
+
+# Nunca use `grep '^DB_'` — isso imprime a senha na tela e no histórico.
+grep -E '^(APP_ENV|APP_DEBUG|APP_URL|DB_CONNECTION|DB_HOST|DB_DATABASE)=' .env
+
+# Chaves duplicadas: dotenv aceita, a última vence, e alguém no futuro
+# edita a errada.
+grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' .env | sort | uniq -d
+
+# A conexão que o Laravel realmente usa, não a que o .env parece dizer.
+php artisan tinker --execute='echo config("database.default");'
+```
+
+| O que estava errado | Como se manifestava | Por que passou |
+|---|---|---|
+| `DB_CONNECTION=sqlite` com `DB_DATABASE=u917402451_da_erp` | O Laravel tratou o nome do banco MySQL como **caminho de arquivo** e criou um SQLite chamado `u917402451_da_erp` na raiz da aplicação. O MariaDB de produção estava **vazio** | A tela abria; `migrate:status` dizia "Ran". Ninguém perguntou *em qual banco* |
+| `APP_DEBUG=true` | Nenhuma, até o primeiro erro — e aí a stack trace renderiza o conteúdo do `.env` | Só aparece quando algo quebra |
+
+**A lição não é "conferir o `.env`", é conferir o comportamento.**
+`migrate:status` respondendo "Ran" não diz contra qual banco; a única
+pergunta que revela isso é `config("database.default")`.
+
+## 7. Riscos
 
 | Risco | Prob. | Impacto | Mitigação |
 |---|---|---|---|
@@ -153,3 +182,5 @@ Reexecutar o seeder num banco que já tem admin **não** redefine senha alguma.
 | Deploy sem `db:seed` deixar permissão nova sem existir | Média | Alto | §3.5 e a explicação do porquê |
 | `git pull` sobrescrever hotfix manual do servidor | Baixa | Alto | Nota da §3.3; hotfix manual deve virar commit no mesmo dia |
 | Deploy manual divergir do que o CI testou | Média | Alto | Automatizar o deploy (dívida do README §3); até lá, publicar só o que está em `main` com CI verde |
+| `composer install` falhar em `package:discover` por `proc_open` desabilitada ([P-15](01-validacao-ambiente-business.md#73-pendências-e-ressalvas)) | **Alta** | Médio | Os pacotes instalam mesmo assim; só o discover falha, porque o composer o invoca via `Process`. Rodar `php artisan package:discover` **direto** resolve sem depender de `proc_open`. A causa raiz (o painel reverter `disable_functions`) é do ambiente |
+| `.env` de produção divergir do que a documentação afirma | **Alta** | **Crítico** | §6 — conferir comportamento, não o arquivo |
