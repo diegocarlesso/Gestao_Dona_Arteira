@@ -201,6 +201,8 @@ php artisan migrate --force
 BASE=~/domains/donaarteira.com.br
 
 # 1) Document root do subdomínio → public/ da aplicação
+#    (o subdomínio `gestao` foi criado no hPanel apontando para
+#     /public_html/gestao — ver imagens/hpanel-subdominio-gestao.png)
 rm -rf $BASE/public_html/gestao
 ln -s ../erp/gestao-app/public $BASE/public_html/gestao
 
@@ -272,6 +274,8 @@ O `schedule:run` dispara o processamento da fila, definido em `routes/console.ph
 
 > ### ✅ Ativo em 2026-07-22
 > Job registrado como `* * * * * /bin/bash /home/u917402451/scheduler.sh` e executando com sucesso — saída `INFO No scheduled commands are ready to run.` (esperada, pois `routes/console.php` ainda não tem tarefas). O agendador de produção está de pé.
+>
+> ![hPanel com o job "/bin/bash /home/u917402451/scheduler.sh" na lista de cron jobs e o View Output exibindo "No scheduled commands are ready to run"](imagens/hpanel-cron-wrapper-ativo.png)
 
 > **Verificar o funcionamento** (o painel gerencia o cron por fora — `crontab -l` fica **vazio** neste host, então não serve para conferir): após ~3 min, `tail -3 ~/schedule.log` deve mostrar a mensagem `No scheduled commands are ready to run.` repetida, uma por execução. Enquanto o log **não cresce** (mesmo tamanho, mesmo timestamp), o cron não está rodando — reveja o comando no painel.
 >
@@ -325,7 +329,7 @@ O que cada linha prova:
 
 | # | Verificar | Como |
 |---|---|---|
-| 1 | A aplicação abre | `https://gestao.donaarteira.com.br` |
+| 1 | A aplicação abre | `https://gestao.donaarteira.com.br` — ver [evidência](imagens/app-no-ar-welcome.png) |
 | 2 | `APP_DEBUG=false` | uma rota inexistente mostra erro genérico, sem stack trace |
 | 3 | HTTPS com certificado válido | cadeado no navegador |
 | 4 | Banco conectado | `php artisan migrate:status` |

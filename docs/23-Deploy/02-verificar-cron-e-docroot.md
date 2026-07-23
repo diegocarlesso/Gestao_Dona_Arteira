@@ -43,6 +43,8 @@ No hPanel: **Advanced → Cron Jobs**. Escolha execução a cada minuto (`* * * 
 > timeout: failed to run command 'public_html/cron-test.php': No such file or directory
 > ```
 >
+> ![View Output do hPanel mostrando o erro "No such file or directory" para o comando relativo public_html/cron-test.php](imagens/hpanel-cron-caminho-relativo-falha.png)
+>
 > Esta armadilha vale para **todo** cron do projeto, incluindo o `schedule:run` do Laravel em produção.
 
 > ⚠️ **Sempre invoque o interpretador explicitamente.** Se o comando contiver apenas o caminho do `.php`, o cron tenta **executar o arquivo como programa** — e um arquivo iniciado por `<?php`, sem shebang, não é executável. O erro é enganoso:
@@ -219,6 +221,8 @@ Limpar depois: `rm $BASE/public_html/teste-link && rm -rf $BASE/teste-alvo`
 > ```
 >
 > E pela web, `https://donaarteira.com.br/teste-link/ok.txt` exibiu o conteúdo — **o servidor segue links simbólicos** (`FollowSymLinks` ativo).
+>
+> ![O navegador em donaarteira.com.br/teste-link/ok.txt exibindo "LINK SIMBOLICO FUNCIONA"](imagens/canario-symlink-funciona.png)
 >
 > **Arranjo A adotado.** O Arranjo B fica registrado apenas como histórico da análise.
 
