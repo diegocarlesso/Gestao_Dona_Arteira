@@ -12,9 +12,12 @@ O pipeline automatizado descrito no [README da pasta](README.md#3-pipeline-githu
 
 ## 2. O que é fácil esquecer
 
+**Acesso ao servidor:** `ssh -p 65002 u917402451@147.93.39.76`. A porta
+65002 é a padrão da Hostinger — sem o `-p` a conexão simplesmente expira.
+
 | Passo | Consequência de pular |
 |---|---|
-| `npm run build` **local** + rsync | O servidor serve os assets da versão anterior. A tela quebra de formas confusas, porque o HTML é novo e o JS é velho |
+| `npm run build` **local** + envio dos assets | O servidor serve os assets da versão anterior. A tela quebra de formas confusas, porque o HTML é novo e o JS é velho |
 | `php artisan db:seed --force` | Papéis e permissões novos não existem no banco. Todo mundo passa a receber 403 no que foi adicionado — inclusive o admin, porque a permissão não existe para ser concedida |
 | `config:cache` **depois** de editar o `.env` | O `.env` novo é ignorado; a aplicação continua com a configuração antiga em cache |
 | Backup antes de migration | Migration com `down()` quebrado vira restauração de dump — se houver dump |
@@ -62,10 +65,34 @@ composer install --no-dev --optimize-autoloader
 
 ### 3.4 Da máquina local — enviar os assets
 
+**Não use `rsync`:** ele não existe no Git Bash do Windows, que é o
+shell da máquina de desenvolvimento. Use `scp`, que vem junto com o SSH.
+
+Envio em duas etapas para não haver instante em que `build/` esteja
+incompleto — durante um `scp` direto sobre a pasta em uso, um acesso à
+aplicação pegaria metade dos assets novos e metade dos velhos:
+
 ```bash
-rsync -avz public/build/ \
-  usuario@host:~/domains/donaarteira.com.br/erp/gestao-app/public/build/
+SRV=u917402451@147.93.39.76
+APP=domains/donaarteira.com.br/erp/gestao-app
+
+# 1) sobe para uma pasta ao lado
+ssh -p 65002 $SRV "rm -rf ~/$APP/public/build.new"
+scp -P 65002 -r public/build "$SRV:~/$APP/public/build.new"
+
+# 2) troca de lugar (rápido) e guarda a anterior para rollback
+ssh -p 65002 $SRV "cd ~/$APP/public \
+  && rm -rf build.old \
+  && mv build build.old \
+  && mv build.new build"
 ```
+
+Rollback dos assets: `mv build build.new && mv build.old build`.
+
+> **Por que não `scp` direto por cima:** os nomes dos arquivos têm hash,
+> então os antigos não seriam sobrescritos — ficariam acumulando na pasta
+> release após release. O `manifest.json` aponta só para os novos, mas o
+> lixo cresce sem que ninguém perceba.
 
 ### 3.5 No servidor — banco e caches
 
@@ -108,7 +135,7 @@ cd $APP && composer install --no-dev --optimize-autoloader
 php artisan config:cache && php artisan route:cache
 ```
 
-E reenviar os assets daquela versão pelo rsync (reconstruí-los localmente a partir do mesmo commit).
+E restaurar os assets: `cd ~/$APP/public && mv build build.new && mv build.old build`. Se a versão anterior já tiver sido sobrescrita duas vezes, reconstruir localmente a partir do mesmo commit e reenviar pela §3.4.
 
 **Migration não volta sozinha.** `migrate:rollback` desfaz o último *batch* — o CI verifica que os `down()` funcionam ([regra 2 da pasta 04](../04-Banco-de-Dados/02-convencoes-de-banco.md#migrations-regras-para-o-gate-01)), mas migration destrutiva exige restaurar o dump da §3.2. A regra de expand/contract existe justamente para tornar isso raro.
 
@@ -122,7 +149,7 @@ Reexecutar o seeder num banco que já tem admin **não** redefine senha alguma.
 
 | Risco | Prob. | Impacto | Mitigação |
 |---|---|---|---|
-| Esquecer o rsync dos assets | **Alta** | Alto | §2 abre com isso; o item 2 da §3.6 verifica pelo hash |
+| Esquecer o envio dos assets | **Alta** | Alto | §2 abre com isso; o item 2 da §3.6 verifica pelo hash |
 | Deploy sem `db:seed` deixar permissão nova sem existir | Média | Alto | §3.5 e a explicação do porquê |
 | `git pull` sobrescrever hotfix manual do servidor | Baixa | Alto | Nota da §3.3; hotfix manual deve virar commit no mesmo dia |
 | Deploy manual divergir do que o CI testou | Média | Alto | Automatizar o deploy (dívida do README §3); até lá, publicar só o que está em `main` com CI verde |
