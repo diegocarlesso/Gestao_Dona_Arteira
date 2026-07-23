@@ -16,7 +16,7 @@ Com ele efetivamente rodando, todos os gates reprovaram — sempre em código do
 
 | Gate | Estado |
 |---|---|
-| Pest | ✅ 62 testes, 255 asserções |
+| Pest | ✅ 98 testes, 403 asserções |
 | Vitest | ✅ 4 testes |
 | PHPStan (Larastan nível 6) | ✅ sem erros |
 | Pint · ESLint · Prettier · tsc | ✅ |
@@ -37,7 +37,11 @@ Primeira ocupação de `app/Modules/` conforme ADR-0020; o teste `arch()` já ge
 | `Gate::before` do admin | `app/Modules/Identity/Providers/IdentityServiceProvider.php` |
 | Seeder de papéis (idempotente e convergente) | `database/seeders/Identity/RolePermissionSeeder.php` |
 | Admin inicial | `database/seeders/Identity/AdminInicialSeeder.php` |
-| Testes | `tests/Feature/Identity/` (5 arquivos, 30 testes) |
+| Middlewares de conta | `app/Modules/Identity/Http/Middleware/` — `conta.ativa`, `senha.trocada` |
+| Policy, Services, Eventos | `app/Modules/Identity/{Policies,Services,Events}/` |
+| Telas | `resources/js/pages/identity/` — listagem, criação, edição, troca obrigatória |
+| Gating de UI | `resources/js/lib/permissions.ts` (`usePermissions().can(...)`) |
+| Testes | `tests/Feature/Identity/` (7 arquivos, 66 testes) |
 
 ### Ambiente local
 
@@ -69,16 +73,23 @@ pergunta que revela isso é `config("database.default")`.
 
 ### 🔴 Pendências abertas pelo deploy
 
-1. **Rotacionar a senha do banco de produção.** Ela apareceu na saída de
-   um `grep` durante a inspeção e está no transcrito da sessão. Pela
+1. ✅ **Senha do banco rotacionada** pelo dono em 2026-07-23. Ela havia
+   aparecido na saída de um `grep` durante a inspeção — pela
    [pasta 25](../25-Seguranca/README.md), senha exposta se rotaciona.
-2. **Trocar a senha do admin.** A conta nasceu com `must_change_password`,
-   mas **o middleware que obriga a troca ainda não existe** — a flag está
-   no banco e ninguém a consulta. Trocar manualmente pelo perfil.
+   Conexão conferida depois da troca.
+2. ✅ **Senha do admin trocada** pelo dono. O middleware que *obriga* a
+   troca passou a existir na mesma sessão (§ abaixo), mas **ainda não
+   está publicado** — vale a partir do próximo deploy.
 3. **`proc_open` volta a ser desabilitada** pelo painel. Reabilitar em
    hPanel → PHP → `disable_functions`, ou aceitar o contorno documentado
    no runbook 04 §7.
-4. 🔴 **P-16 — a extensão `psr` quebra todo o log da aplicação.** É o
+4. 🔴 **P-16 — a extensão `psr` quebra todo o log da aplicação.**
+   ⚠️ **A tentativa de correção foi na direção contrária:** a caixa foi
+   **marcada** no painel às 13:45, e `extension=psr.so` continua no
+   `alt_php.ini` — `extension_loaded('psr')` segue `true`. O lado útil é
+   que ficou provado que o painel controla esse arquivo (ele foi
+   reescrito no horário da ação); basta **desmarcar**.
+   É o
    achado mais grave da sessão. O servidor carrega `extension=psr.so` em
    ambos os SAPIs; ela declara `Psr\Log\LoggerInterface` com a assinatura
    antiga do PSR-3, incompatível com o Monolog 3 do Laravel 12. Qualquer
@@ -120,29 +131,66 @@ próprio de verificação, não carona num release), ou subir
 `@inertiajs/react` de 2.0.3 para 3.6.1, que é *major* e precisa de
 trabalho dedicado.
 
+## Telas de gestão de contas — construídas, **ainda não publicadas**
+
+Segunda entrega do Identity, depois do deploy. Tudo em `main`, verde no
+CI, mas **a produção ainda roda a versão anterior**.
+
+| O quê | Onde |
+|---|---|
+| Listagem com busca (filtro na URL) | `resources/js/pages/identity/users/index.tsx` |
+| Criação de conta | `.../users/create.tsx` |
+| Edição: papéis + ciclo de vida | `.../users/edit.tsx` |
+| Troca obrigatória de senha | `resources/js/pages/identity/forced-password.tsx` |
+| Middlewares `conta.ativa` e `senha.trocada` | `app/Modules/Identity/Http/Middleware/` |
+| Policy, Services, Eventos | `app/Modules/Identity/{Policies,Services,Events}/` |
+
+**Três decisões que a implementação forçou:**
+
+1. **`AuthorizesRequests` no `Controller` base.** O Laravel 12 entrega a
+   classe vazia; sem o trait, `$this->authorize()` é método inexistente.
+   A falta só apareceu quando o primeiro controller de verdade foi
+   escrito.
+2. **`changeStatus` e `assignRoles` fora do atalho do admin.** O
+   `Gate::before` roda antes das Policies e curto-circuita a decisão —
+   atropelaria a proteção que impede alguém de se promover ou de suspender
+   a própria conta.
+3. **Props compartilhadas passam campos escolhidos um a um**, não o model
+   inteiro: o que sai dali viaja em toda visita e aparece no HTML de cada
+   página.
+
 ## PRÓXIMO PASSO (retomar exatamente aqui)
 
-**1. Fechar as 4 pendências acima**, na ordem em que estão.
+**1. 🔴 Desmarcar `psr` no hPanel** (pendência 4 acima) — a tentativa
+anterior marcou em vez de desmarcar. Conferir com
+`ssh gestao-prod "php -r 'var_dump(extension_loaded(\"psr\"));'"`, que
+precisa dar `bool(false)`, e validar também pelo SAPI web.
 
-**2. Decidir as 6 células 🆕 restantes da matriz de permissões** ([pasta 19 §3.1](../19-Permissoes/README.md)). Todas ampliam acesso. A de `sales.view` → `finance` já foi confirmada pelo dono em 2026-07-23.
+**2. Publicar em produção** pelo [runbook 04](04-atualizar-producao.md).
+É o que leva as telas de gestão e os dois middlewares para o ar. Sem
+isso, o `must_change_password` continua sendo coluna sem efeito lá.
 
-**3. Telas do Identity (Inertia)**: gestão de usuários, atribuição de papéis, tela de troca obrigatória de senha no primeiro acesso. Hoje o módulo tem domínio e dados, mas nenhuma tela — o admin inicial entra pela tela de login do starter kit.
+**3. Decidir as 6 células 🆕 restantes da matriz de permissões**
+([pasta 19 §3.1](../19-Permissoes/README.md)). Todas ampliam acesso. A de
+`sales.view` → `finance` já foi confirmada pelo dono em 2026-07-23.
 
-**4. Fechar o que o Identity ainda deve à documentação** — os dois primeiros são pendência aberta em produção agora:
-   - 🔴 Middleware que barra login de conta não-`Active` (o model já sabe responder; ninguém pergunta ainda).
-   - 🔴 Middleware de `must_change_password` — a flag do admin de produção está ligada e não surte efeito.
-   - Canal `security_events` (pasta 26 §2) — login ok/falha, `PermissionDenied`, mudança de papel.
-   - Fluxo de 2FA TOTP (BR-804): as colunas existem, o fluxo não.
-   - Convite por e-mail (pasta 18 §3): o estado `invited` existe, o convite não.
+**4. Fechar o que o Identity ainda deve à documentação:**
+   - Canal `security_events` (pasta 26 §2) — login ok/falha, `PermissionDenied`, mudança de papel. Os eventos já existem; falta quem os ouça e a tabela.
+   - Fluxo de 2FA TOTP (BR-804): as colunas existem, o fluxo não. A listagem já exibe a pendência por conta.
+   - Convite por e-mail (pasta 18 §3): o estado `invited` e o evento `UserInvited` existem; falta o listener que envia.
+   - `last_login_at` nunca é preenchido — falta o listener do evento `Login`.
 
-**5. Depois do Identity: módulo Catalog** — produtos, SKU (BR-002), preços varejo/atacado (BR-003), embalagens (BR-004). É o que o Estoque e as Vendas precisam existir antes.
+**5. Depois do Identity: módulo Catalog** — produtos, SKU (BR-002),
+preços varejo/atacado (BR-003), embalagens (BR-004). É o que o Estoque e
+as Vendas precisam existir antes.
 
 ## Decisões pendentes que não bloqueiam o código
 
 - **ADR-0018** (cobrança boleto/PIX) — ainda `Proposto`, aguarda o dono e a resposta do cliente sobre o banco.
-- **`Dona_Arteira_Gestao_desktop/`** — 34 arquivos ainda rastreados apesar de constarem no `.gitignore`. Decidir se saem do repositório (`git rm -r --cached`, o histórico preserva) ou se o `.gitignore` é que está errado.
+- ✅ **`Dona_Arteira_Gestao_desktop/`** — desrastreado em 2026-07-23 por decisão do dono; segue no disco e no histórico do git.
 - **Externas de lead longo:** pauta fiscal ao contador (`docs/13-Fiscal/01`), convênio bancário, chaves REST do Woo, dump do banco `dona_arteira` do desktop.
 - **M-5** (backup automatizado), **M-8** (certificado A1 fora do webroot), **CA bundle** (`curl.cainfo`, antes do Gate 05).
+- **Dívida do `npm audit`** (acima) — merece ciclo próprio, não carona num release.
 
 ## Armadilhas deste ambiente (já documentadas, para não repetir)
 
