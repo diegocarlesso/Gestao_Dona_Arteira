@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh gestao-prod:*)",
+      "Bash(scp:*)"
+    ]
+  }
+}
