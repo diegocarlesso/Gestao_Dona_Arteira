@@ -24,6 +24,10 @@ Thumbs.db
 *.pem
 *.key
 
+# Rascunho local de credenciais de banco — chegou a ser versionado uma vez
+# (commit e13ae02). Segredo mora no .env do ambiente e no cofre, nunca aqui.
+/.db
+
 # Dumps e dados reais — NUNCA versionar (peso + LGPD)
 # Contêm dados pessoais de clientes (CPF, e-mail, telefone, endereço).
 # Guardar fora do repositório; ver docs/17-Migracao/ para a origem das fontes.
