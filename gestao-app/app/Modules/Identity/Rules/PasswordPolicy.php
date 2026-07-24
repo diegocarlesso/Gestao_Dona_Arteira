@@ -23,6 +23,22 @@ class PasswordPolicy
 {
     public const MINIMO_DE_CARACTERES = 12;
 
+    /*
+     * Não há regra de composição (maiúscula + minúscula + número +
+     * especial), e a ausência é deliberada — ver pasta 18 §3.5.
+     *
+     * O NIST SP 800-63B desaconselha composição obrigatória: ela produz
+     * o mesmo punhado de padrões previsíveis (`Nome123!`) sem entropia
+     * real, enquanto o comprimento entrega o ganho de verdade. Baixar
+     * para 8 com composição foi considerado e recusado pelo dono em
+     * 2026-07-24: seria uma senha mais fraca com aparência de mais
+     * rigorosa.
+     *
+     * Se alguém for adicionar `->mixedCase()->numbers()->symbols()`
+     * aqui, o pedido precisa vir com um requisito externo que o exija
+     * (cliente, contador, compliance) — e aí some, não substitua os 12.
+     */
+
     /**
      * @return list<Password>
      */
