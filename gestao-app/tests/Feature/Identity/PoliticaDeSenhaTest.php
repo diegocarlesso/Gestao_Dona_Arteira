@@ -6,7 +6,6 @@ use App\Modules\Identity\Enums\SecurityEventType;
 use App\Modules\Identity\Models\SecurityEvent;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Rules\PasswordPolicy;
-use Illuminate\Support\Facades\Http;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,38 +18,12 @@ use Illuminate\Support\Facades\Http;
 | — 8 caracteres, sem checagem. Estes testes existem para que os dois
 | caminhos não voltem a divergir.
 |
-| O `uncompromised` consulta o HaveIBeenPwned. A consulta é falsificada
-| aqui — sem isso, o primeiro teste levava 25 segundos e a suíte passava a
-| depender de a internet estar de pé no CI. O helper `respostaDoHibp()`
-| monta a resposta no formato real da API, então o que se testa continua
-| sendo o comportamento da regra, não o do `Http::fake`.
+| O `uncompromised` consulta o HaveIBeenPwned. A chamada é falsificada no
+| `Tests\TestCase` para a suíte inteira — inclusive para os testes do
+| starter kit, que também trocam senha. Aqui basta declarar quais senhas
+| a API deve reportar como vazadas, em `$this->senhasVazadas`.
 |
 */
-
-beforeEach(function () {
-    // Nenhuma requisição real sai daqui. `preventStrayRequests` faz um
-    // endpoint esquecido estourar em vez de vazar para a rede em silêncio.
-    Http::preventStrayRequests();
-
-    // Um único stub, consultando a lista que cada teste preenche. Dois
-    // `Http::fake` para a mesma URL não se sobrepõem: o Laravel usa o
-    // **primeiro** que casa, então um fake declarado dentro do teste
-    // seria ignorado em favor deste.
-    $this->senhasVazadas = [];
-
-    Http::fake(['api.pwnedpasswords.com/*' => function () {
-        // A API recebe os 5 primeiros caracteres do SHA-1 e devolve as
-        // linhas `SUFIXO:CONTAGEM` que começam com eles. O verificador do
-        // Laravel compara prefixo+sufixo com o hash inteiro, então incluir
-        // sufixos de outros prefixos aqui é inofensivo.
-        $linhas = array_map(
-            static fn (string $senha): string => substr(strtoupper(sha1($senha)), 5).':42',
-            $this->senhasVazadas,
-        );
-
-        return Http::response(implode("\r\n", $linhas), 200);
-    }]);
-});
 
 it('recusa senha curta nas duas telas de troca', function (string $rota, bool $trocaObrigatoria) {
     $usuario = User::factory()->create([
