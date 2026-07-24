@@ -108,11 +108,13 @@ rotacionada** — está pendente.
 
 ## PRÓXIMO PASSO (retomar exatamente aqui)
 
-**1. Fechar o que o Identity ainda deve à documentação:**
-   - Canal `security_events` (pasta 26 §2) — login ok/falha, `PermissionDenied`, mudança de papel. Os eventos já existem; falta quem os ouça e a tabela. **Agora faz sentido construir**: até hoje não havia log funcionando em produção para receber nada.
-   - Fluxo de 2FA TOTP (BR-804): as colunas existem, o fluxo não. A listagem já exibe a pendência por conta.
-   - Convite por e-mail (pasta 18 §3): o estado `invited` e o evento `UserInvited` existem; falta o listener que envia.
-   - `last_login_at` nunca é preenchido — falta o listener do evento `Login`.
+**1. Publicar em produção** pelo [runbook 04](04-atualizar-producao.md).
+Há **migration nova** (`security_events`) — o primeiro deploy desta
+sessão não tinha. O backup da §3.2 deixa de ser formalidade.
+
+**2. Fechar as duas dívidas do Identity que sobraram:**
+   - **Fluxo de 2FA TOTP** (BR-804): as colunas existem, o fluxo não. A listagem já exibe a pendência por conta. Exige escolher pacote — logo, **ADR** antes do código. O enum `SecurityEventType` já reserva `two_factor.enabled` e `two_factor.disabled`, que nada emite ainda.
+   - **Convite por e-mail** (pasta 18 §3): o estado `invited` e o evento `UserInvited` existem, e a trilha já registra o convite. Falta o listener que envia — e falta SMTP configurado em produção, que é o pré-requisito real.
 
 **2. Depois do Identity: módulo Catalog** — produtos, SKU (BR-002),
 preços varejo/atacado (BR-003), embalagens (BR-004). É o que o Estoque e
@@ -131,6 +133,55 @@ as Vendas precisam existir antes.
 - ✅ `.claude/settings.json` versionado: `ssh gestao-prod` e `scp` são
   ferramentas do projeto enquanto o deploy for manual, não preferência de
   máquina.
+- ✅ **Trilha de segurança `security_events`** (pasta 26 §2.1) e
+  **`last_login_at`** — duas das quatro dívidas do Identity. Detalhe
+  abaixo.
+
+## A trilha de segurança, e o que ela revelou
+
+Tabela própria, não a `audits`: o laravel-auditing registra o diff de um
+*model*, e os fatos que mais importam não têm model — um login que falhou
+com e-mail inexistente não altera linha alguma, e é exatamente o que se
+quer ver quando alguém tenta entrar à força. Papel vive em tabela pivô,
+então ganhar `finance.manage` também não aparecia.
+
+**Um desvio deliberado da pasta 26 §3:** registrar não pode negar
+serviço. A gravação é síncrona mas dentro de `try/catch`, com o erro indo
+para `Log::critical`. Se a trilha falhasse dentro do login, uma tabela
+cheia trancaria todo mundo para fora — o mesmo formato do P-16, o
+mecanismo de vigilância derrubando a operação que existe para proteger. E
+isso só é honesto porque o log da produção passou a funcionar hoje.
+
+### Três coisas que apareceram no caminho
+
+1. **A política de senha valia pela metade.** A troca obrigatória exigia
+   12 caracteres com verificação contra vazamentos; a tela de
+   configurações do starter kit aceitava `Password::defaults()` — 8, sem
+   checagem. Quem trocasse a senha por lá escapava da regra que a pasta 18
+   afirma, e nada reprovava. A regra passou a viver em `PasswordPolicy`,
+   com teste nos dois caminhos.
+2. **Autoexclusão de conta removida.** Não por revisão: a FK `RESTRICT`
+   da trilha reprovou o teste do starter kit ao tentar apagar um usuário
+   com eventos. O ciclo de vida da pasta 18 não tem estado "excluído".
+   Confirmado pelo dono.
+3. **Um teste verde localmente e vermelho no CI, de novo** — e desta vez
+   não por caixa de caminho. O verificador do Laravel trata falha de
+   requisição ao HaveIBeenPwned como "senha não vazada": aqui a chamada
+   morria em silêncio e o teste passava, no CI ela funcionava e reprovava.
+   O `Tests\TestCase` passou a falsificar a API para a suíte inteira, com
+   `preventStrayRequests` para que nenhuma chamada externa escape.
+
+### Duas armadilhas do framework, para não custarem tempo de novo
+
+- **`AuthorizationException` nunca chega aos callbacks de render.** O
+  `prepareException` do handler roda **antes** e a converte em
+  `AccessDeniedHttpException`. Um callback tipado com a original nunca
+  casa — e falha em silêncio, sem erro algum. A original fica em
+  `getPrevious()`.
+- **Tipo de união no primeiro parâmetro do callback não funciona.** O
+  Laravel descobre a qual exceção o callback pertence com
+  `Reflector::getParameterClassName`, que devolve `null` para `A|B`. O
+  callback fica registrado para classe nenhuma. Mesmo silêncio.
 
 ## Pendências abertas
 
@@ -169,7 +220,7 @@ existe no host) · hPanel não honra o redirecionamento escrito no comando
 do cron · comando longo no painel quebra (usar wrapper) · PHPStan estoura
 os 128 M do PHP CLI — usar `composer analyse`.
 
-**Três novas, aprendidas hoje:**
+**Quatro novas, aprendidas hoje:**
 
 - **O hPanel aceita configuração de PHP e não aplica.** Desmarcar `psr`
   não mexeu no `alt_php.ini`. Conferir sempre o **efeito no servidor**,
@@ -181,3 +232,9 @@ os 128 M do PHP CLI — usar `composer analyse`.
 - **Windows esconde erro de caixa em caminho.** Vale para qualquer
   caminho escrito em string, não só o do Inertia — o teste de arquitetura
   criado hoje cobre só as páginas.
+- **Teste que faz chamada externa mente sobre o próprio resultado.** O
+  `uncompromised()` da validação de senha consulta o HaveIBeenPwned, e o
+  Laravel trata falha de requisição como "não vazada" — então a suíte
+  ficava verde justamente quando a verificação não acontecia. Falsificar
+  a chamada é o mínimo; `Http::preventStrayRequests()` no `TestCase` é o
+  que impede a próxima.
