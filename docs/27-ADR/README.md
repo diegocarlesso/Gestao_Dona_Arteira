@@ -34,6 +34,7 @@
 | [0018](ADR-0018-cobranca-boleto.md) | **Cobrança (boleto e PIX) via adapter, provedor plugável** | ⚠️ **Proposto — decisão do dono** |
 | [0019](ADR-0019-inertia-substitui-spa.md) | **Laravel + Inertia + React** (substitui o 0004) | ✅ Aceito 2026-07-22 |
 | [0020](ADR-0020-fronteiras-entre-modulos.md) | Fronteiras entre módulos (verificadas por `arch()`), migrations centralizadas, testes em `tests/` | ✅ Aceito 2026-07-22 |
+| [0021](ADR-0021-2fa-totp.md) | **2FA TOTP (BR-804): `laravel/fortify` só pelas Actions, sem suas rotas/views** | ⚠️ **Proposto — decisão do dono** |
 
 ## Backlog de ADRs futuros (escrever quando o tema chegar)
 
