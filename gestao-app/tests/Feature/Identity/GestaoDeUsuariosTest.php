@@ -13,7 +13,12 @@ use Illuminate\Support\Facades\Event;
 
 beforeEach(function () {
     $this->seed(RolePermissionSeeder::class);
-    $this->admin = User::factory()->create()->assignRoleEnum(Role::Admin);
+
+    // `comDoisFatores()` não é conveniência de teste: desde o ADR-0021 uma
+    // conta `admin` sem 2FA configurado não alcança rota alguma além da
+    // configuração (BR-804). Um admin de teste sem isso não representa
+    // nenhum admin que exista em produção.
+    $this->admin = User::factory()->comDoisFatores()->create()->assignRoleEnum(Role::Admin);
 });
 
 /*
@@ -26,7 +31,12 @@ beforeEach(function () {
 */
 
 it('nega a gestão de usuários a todo papel sem users.manage', function (Role $papel) {
-    $this->actingAs(User::factory()->create()->assignRoleEnum($papel))
+    // Com 2FA configurado mesmo para os papéis que não o exigem: o
+    // middleware `2fa.confirmado` roda ANTES da Policy, e sem isso o
+    // `finance` do conjunto responderia 302 (indo configurar o 2FA) em vez
+    // do 403 que este teste existe para provar. O teste é sobre permissão;
+    // deixar o segundo fator resolvido é o que mantém o foco nela.
+    $this->actingAs(User::factory()->comDoisFatores()->create()->assignRoleEnum($papel))
         ->get('/usuarios')
         ->assertForbidden();
 })->with([

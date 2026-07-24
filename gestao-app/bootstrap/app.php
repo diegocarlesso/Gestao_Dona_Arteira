@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Modules\Identity\Http\Middleware\EnsureAccountIsActive;
 use App\Modules\Identity\Http\Middleware\EnsurePasswordIsChanged;
+use App\Modules\Identity\Http\Middleware\EnsureTwoFactorIsConfirmed;
 use App\Modules\Identity\Listeners\RecordPermissionDenied;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -29,6 +30,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'conta.ativa' => EnsureAccountIsActive::class,
             'senha.trocada' => EnsurePasswordIsChanged::class,
+            // A ordem de aplicação está nas rotas do Identity, não aqui:
+            // conta.ativa → senha.trocada → 2fa.confirmado (ADR-0021).
+            '2fa.confirmado' => EnsureTwoFactorIsConfirmed::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -21,6 +21,9 @@ enum SecurityEventType: string
     case PasswordReset = 'password.reset';
     case TwoFactorEnabled = 'two_factor.enabled';
     case TwoFactorDisabled = 'two_factor.disabled';
+    case TwoFactorRecoveryCodesRegenerated = 'two_factor.recovery_regenerated';
+    case TwoFactorRecoveryCodeUsed = 'two_factor.recovery_used';
+    case TwoFactorDeviceRemembered = 'two_factor.device_remembered';
     case PermissionDenied = 'permission.denied';
     case UserInvited = 'user.invited';
     case UserStatusChanged = 'user.status_changed';
@@ -36,6 +39,9 @@ enum SecurityEventType: string
             self::PasswordReset => 'Senha redefinida por recuperação',
             self::TwoFactorEnabled => 'Segundo fator ativado',
             self::TwoFactorDisabled => 'Segundo fator desativado',
+            self::TwoFactorRecoveryCodesRegenerated => 'Códigos de recuperação renovados',
+            self::TwoFactorRecoveryCodeUsed => 'Entrada por código de recuperação',
+            self::TwoFactorDeviceRemembered => 'Dispositivo passou a ser confiado',
             self::PermissionDenied => 'Acesso negado por permissão',
             self::UserInvited => 'Conta criada e convidada',
             self::UserStatusChanged => 'Situação da conta alterada',

@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Modules\Identity\Enums\UserStatus;
 use App\Modules\Identity\Models\User;
 use Illuminate\Support\Str;
+use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
+use Laravel\Fortify\Fortify;
 
 /*
 |--------------------------------------------------------------------------
@@ -84,14 +86,32 @@ it('não aceita segredo de 2FA por mass assignment', function () {
 });
 
 it('cifra o segredo de 2FA no banco', function () {
+    // Pelo caminho real (a Action do Fortify), não escrevendo a coluna à
+    // mão: desde o ADR-0021 quem cifra é o Fortify, não um cast do model,
+    // e um teste que atribuísse a propriedade direto provaria o contrário
+    // do que a aplicação faz.
     $usuario = User::factory()->create();
-    $usuario->two_factor_secret = 'SEGREDO-TOTP';
-    $usuario->save();
+
+    app(EnableTwoFactorAuthentication::class)($usuario);
+    $usuario->refresh();
 
     $noBanco = DB::table('users')->where('id', $usuario->id)->value('two_factor_secret');
+    $emClaro = Fortify::currentEncrypter()->decrypt($usuario->two_factor_secret);
 
-    expect($noBanco)->not->toBe('SEGREDO-TOTP');
-    expect($usuario->fresh()->two_factor_secret)->toBe('SEGREDO-TOTP');
+    expect($noBanco)->not->toBe($emClaro)
+        ->and($emClaro)->not->toBeEmpty()
+        // O QR precisa do segredo legível — se a cifragem tivesse dois
+        // donos (cast + Fortify), decifrar uma vez devolveria lixo e este
+        // `otpauth://` não se formaria.
+        ->and($usuario->twoFactorQrCodeUrl())->toContain('otpauth://');
+});
+
+it('gera oito códigos de recuperação ao ativar o 2FA', function () {
+    $usuario = User::factory()->create();
+
+    app(EnableTwoFactorAuthentication::class)($usuario);
+
+    expect($usuario->refresh()->recoveryCodes())->toHaveCount(8);
 });
 
 it('só considera 2FA ativo depois de confirmado', function () {

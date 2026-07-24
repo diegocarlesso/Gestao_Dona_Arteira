@@ -72,6 +72,34 @@ A diferença em relação à `audits` é de consequência, não de rigor: perder
 o diff de uma mutação é perder informação; perder o login é parar a
 empresa.
 
+#### Os fatos registrados hoje
+
+| Evento | Sensível? | Quando |
+|---|---|---|
+| `login.ok` | não | Sessão **efetivamente** aberta. Com 2FA, é depois do segundo fator — acertar a senha e abandonar o desafio não gera este evento, e `last_login_at` também não se mexe |
+| `login.failed` | sim | Senha errada, e-mail inexistente, ou **segundo fator errado** (`context.etapa = dois_fatores`, que é o caso mais grave: alguém já tem a senha certa) |
+| `logout` | não | — |
+| `password.changed` / `password.reset` | sim | Troca autenticada e redefinição por e-mail, respectivamente |
+| `permission.denied` | sim | 403 de Policy ou de middleware de permissão |
+| `user.invited` / `user.status_changed` / `user.roles_changed` | sim | Ciclo de vida da conta (pasta 18 §3) |
+| `two_factor.enabled` | sim | Na **confirmação** do segredo, não na geração — abrir a tela e desistir não muda proteção nenhuma |
+| `two_factor.disabled` | sim | Segundo fator desligado |
+| `two_factor.recovery_regenerated` | sim | Os oito códigos renovados de uma vez |
+| `two_factor.recovery_used` | sim | Entrada por código de recuperação — o sinal de "perdi o celular", e também o caminho de quem tem a lista. `context.restantes` conta quantos sobraram |
+| `two_factor.device_remembered` | sim | Um dispositivo passou a dispensar o desafio por 30 dias ([ADR-0021](../27-ADR/ADR-0021-2fa-totp.md)) |
+
+Um TOTP válido **não** gera evento próprio: é o ruído de fundo de um
+sistema saudável, mesmo motivo pelo qual `login.ok` não é sensível. O que
+interessa é a exceção — o código de recuperação e o dispositivo confiado.
+
+**O que nunca entra no `context`:** códigos de recuperação, o segredo
+TOTP, o token do dispositivo lembrado (nem o hash dele). A trilha é lida
+por quem tem `audit.view`; guardar ali qualquer uma dessas coisas seria
+transformar o registro da fechadura na cópia da chave. O
+`two_factor.device_remembered` grava só o `device_id` público, que liga a
+entrada da trilha à linha de `two_factor_remembered_devices` sem ajudar a
+forjar o cookie.
+
 #### Ressalva de LGPD sobre `identifier`
 
 A coluna guarda o e-mail digitado numa tentativa que falhou — dado

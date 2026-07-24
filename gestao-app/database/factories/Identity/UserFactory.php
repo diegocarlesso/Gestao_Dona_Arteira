@@ -10,6 +10,7 @@ use App\Modules\Identity\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
 
 /**
  * @extends Factory<User>
@@ -82,5 +83,23 @@ class UserFactory extends Factory
         return $this->afterCreating(
             static fn (User $user) => $user->assignRoleEnum(...$roles)
         );
+    }
+
+    /**
+     * Com o segundo fator já configurado e confirmado (BR-804).
+     *
+     * Necessário para qualquer teste que use `admin` ou `finance` e queira
+     * chegar a outra tela: sem 2FA, o middleware `2fa.confirmado`
+     * (ADR-0021) redireciona essas contas para a configuração e nenhuma
+     * outra rota responde — que é exatamente o comportamento desejado em
+     * produção, e por isso o factory se ajusta a ele em vez de contorná-lo.
+     */
+    public function comDoisFatores(): static
+    {
+        return $this->afterCreating(static function (User $user): void {
+            app(EnableTwoFactorAuthentication::class)($user);
+
+            $user->refresh()->forceFill(['two_factor_confirmed_at' => now()])->save();
+        });
     }
 }

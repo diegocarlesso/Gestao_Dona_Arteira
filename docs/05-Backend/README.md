@@ -103,6 +103,7 @@ arch('vendas não acessa models do catálogo')
 | `pestphp/pest` | testes | pasta 22 |
 | `larastan/larastan` + `laravel/pint` | qualidade | CI bloqueante |
 | `spatie/laravel-query-builder` | filtros/sort padronizados na API | evita filtro artesanal divergente |
+| `laravel/fortify` | **só as 4 Actions de 2FA** — nunca suas rotas/controllers/views | [ADR-0021](../27-ADR/ADR-0021-2fa-totp.md). Provider barrado em `extra.laravel.dont-discover` (ele se auto-registra); traz `pragmarx/google2fa`, `bacon/bacon-qr-code` e `laravel/passkeys` junto, este último também barrado |
 
 Evitar deliberadamente: pacotes de "module system", CQRS frameworks, admin panels prontos (Filament/Nova) — as telas são as páginas Inertia ([ADR-0019](../27-ADR/ADR-0019-inertia-substitui-spa.md)); um admin paralelo criaria duas fontes de verdade de regras.
 

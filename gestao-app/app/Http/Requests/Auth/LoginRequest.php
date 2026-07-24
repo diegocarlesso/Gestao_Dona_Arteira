@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Auth;
 
+use App\Modules\Identity\Models\User;
+use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -36,16 +38,37 @@ class LoginRequest extends FormRequest
     }
 
     /**
-     * Attempt to authenticate the request's credentials.
+     * Confere e-mail e senha **sem abrir a sessão**, devolvendo quem é.
+     *
+     * Era um `Auth::attempt()`, que autenticava na hora. Deixou de ser
+     * quando o 2FA entrou (ADR-0021): com segundo fator, a senha certa
+     * ainda não é uma entrada — é metade dela. Quem promove a sessão é o
+     * controller, depois do desafio, ou logo em seguida se a conta não
+     * usa 2FA.
+     *
+     * Isso mantém a trilha da pasta 26 honesta: `login.ok` passa a
+     * significar "entrou", não "acertou a senha". Se o `Login` fosse
+     * disparado aqui, um desafio TOTP abandonado no meio ficaria
+     * registrado como entrada bem-sucedida — e `last_login_at` também
+     * mentiria.
      *
      * @throws ValidationException
      */
-    public function authenticate(): void
+    public function validarCredenciais(): User
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $credenciais = $this->only('email', 'password');
+        $usuario = User::firstWhere('email', $this->string('email')->toString());
+
+        if ($usuario === null || ! Auth::validate($credenciais)) {
             RateLimiter::hit($this->throttleKey());
+
+            // `Auth::validate()` não dispara `Failed` — só o `attempt()`
+            // disparava. Sem esta linha o canal `login.failed` da pasta 26
+            // secaria em silêncio, que é o pior jeito de perder justamente
+            // o evento que mostra ataque de força bruta.
+            event(new Failed('web', $usuario, $credenciais));
 
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
@@ -53,6 +76,8 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+
+        return $usuario;
     }
 
     /**

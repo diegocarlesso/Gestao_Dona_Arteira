@@ -1,7 +1,7 @@
 # 18 — Usuários
 
-> **Status:** 🟡 **Parcialmente implementado** — model, ciclo de vida, telas de gestão, middlewares, política de senha e trilha de segurança prontos; **2FA e o e-mail de convite pendentes** · **Última atualização:** 2026-07-24 · **Responsável:** security-specialist
-> **Fase:** Gate 01 · **ADR:** 0005 (Sanctum) · Permissões: [pasta 19](../19-Permissoes/README.md)
+> **Status:** 🟡 **Parcialmente implementado** — model, ciclo de vida, telas de gestão, middlewares, política de senha, trilha de segurança e **2FA TOTP** prontos; **só o e-mail de convite pendente** · **Última atualização:** 2026-07-24 · **Responsável:** security-specialist
+> **Fase:** Gate 01 · **ADR:** 0005 (Sanctum), [0021](../27-ADR/ADR-0021-2fa-totp.md) (2FA TOTP) · Permissões: [pasta 19](../19-Permissoes/README.md)
 > **Código:** `app/Modules/Identity/` · telas em `resources/js/pages/identity/` · testes em `tests/Feature/Identity/`
 
 ## 1. Objetivo
@@ -121,8 +121,58 @@ o atalho roda **antes** das Policies e curto-circuitaria a decisão.
 - Contas são **nominais e individuais** — proibido usuário compartilhado "producao" (auditoria sem valor caso contrário). Tablet do ateliê: cada artesã tem PIN/troca rápida de usuário (fase 3 avalia UX específica).
 - Desligamento: suspensão imediata via painel (runbook de offboarding: suspender conta + revogar tokens + trocar segredos compartilhados se houver).
 - Senhas: mínimo 12 caracteres, verificação contra vazadas (validação `uncompromised`), armazenadas com Argon2id. Reset por e-mail com token de uso único. **Sem regra de composição obrigatória** (maiúscula + minúscula + número + especial) — e isso é deliberado, não esquecimento: o NIST SP 800-63B desaconselha composição justamente porque ela empurra todo mundo para o mesmo padrão previsível (`Nome123!`), sem ganho real de entropia, enquanto o comprimento entrega o ganho de verdade. Reduzir para 8 **com** composição seria uma senha mais fraca com aparência de mais rigorosa. Confirmado pelo dono em 2026-07-24, depois de considerar a troca. O controle que nenhuma regra de composição substitui é o `uncompromised`: senha já vazada é senha pública, por mais bem-formada que seja.
-- 2FA: TOTP (app autenticador) para `admin`/`finance` (BR-804); recomendado aos demais. **Nunca por e-mail**, nem como alternativa ao TOTP: o e-mail já é o canal de recuperação de senha, então um OTP por e-mail colocaria os dois fatores no mesmo inbox — quem comprometesse a caixa postal teria a senha (via reset) e o "segundo fator" pelo mesmo caminho, e o segundo fator deixaria de ser um segundo fator. Vale mesmo com SMTP disponível: ter o canal funcionando (a partir de 2026-07-24) não muda o raciocínio, só torna a tentação maior. Decidido no [ADR-0021](../27-ADR/ADR-0021-2fa-totp.md) e reconfirmado pelo dono na mesma data.
+- 2FA: TOTP (app autenticador) para `admin`/`finance` (BR-804); recomendado aos demais — implementado, ver §3.6. **Nunca por e-mail**, nem como alternativa ao TOTP: o e-mail já é o canal de recuperação de senha, então um OTP por e-mail colocaria os dois fatores no mesmo inbox — quem comprometesse a caixa postal teria a senha (via reset) e o "segundo fator" pelo mesmo caminho, e o segundo fator deixaria de ser um segundo fator. Vale mesmo com SMTP disponível: ter o canal funcionando (a partir de 2026-07-24) não muda o raciocínio, só torna a tentação maior. Decidido no [ADR-0021](../27-ADR/ADR-0021-2fa-totp.md) e reconfirmado pelo dono na mesma data.
 - Sessões: cookie Sanctum SameSite=Lax, expiração 12 h (renovável), logout em todos os dispositivos disponível ao usuário e ao admin.
+
+### 3.6 Segundo fator TOTP (implementado em 2026-07-24)
+
+Decisão e alternativas no [ADR-0021](../27-ADR/ADR-0021-2fa-totp.md).
+Código em `app/Modules/Identity/`, telas em
+`resources/js/pages/identity/two-factor*.tsx`, testes em
+`tests/Feature/Identity/DoisFatoresTest.php`.
+
+**Configurar** (`/dois-fatores`): gerar o segredo abre o QR mas **não
+ativa nada** — só a confirmação com um código do aplicativo ativa. A
+separação existe para que abrir a tela e desistir seja inofensivo; se
+gerar já ativasse, fechar o navegador no meio trancaria a pessoa do lado
+de fora, sem aplicativo configurado e com o 2FA já exigido. Os oito
+códigos de recuperação (formato do Fortify: dois blocos de 10 caracteres
+separados por hífen) aparecem **uma única vez**, logo após a confirmação.
+
+**Obrigatoriedade** (BR-804): o middleware `2fa.confirmado` redireciona
+para a configuração quem tem papel `admin`/`finance` e ainda não
+confirmou. **Sem prazo de carência** — um prazo é o mecanismo clássico
+pelo qual "2FA obrigatório" nunca chega a ser ativado. Não é lockout: a
+tela de configuração fica sempre alcançável. A cadeia de middlewares é
+`conta.ativa` → `senha.trocada` → `2fa.confirmado`; não se configura 2FA
+ainda com a senha provisória.
+
+**Entrar:** acertar a senha não abre sessão para quem usa 2FA — o id fica
+num limbo de sessão por 5 minutos e a pessoa vai para `/entrar/dois-fatores`.
+Só o segundo fator correto chama `Auth::login()`. É por isso que
+`login.ok` na trilha (pasta 26) significa "entrou", e não "acertou a
+senha". Cinco tentativas por minuto; estourar derruba o desafio pendente
+e devolve ao login completo.
+
+**Códigos de recuperação:** oito, uso único, repostos um a um (sempre
+oito válidos). Renovar todos exige a senha atual, mesmo padrão da troca
+de senha.
+
+**Lembrar deste dispositivo por 30 dias:** oferecido **só** depois de um
+TOTP válido — nunca depois de um código de recuperação, que é justamente
+o caminho de "perdi o celular". Cookie `HttpOnly`/`Secure`/`SameSite=Lax`
+com par `device_id|token`, e o banco guarda só o **hash** do token, em
+`two_factor_remembered_devices`. Os 30 dias contam da confirmação, não do
+último uso: renovar a cada acesso daria vida perpétua a um cookie
+roubado.
+
+> ⚠️ **O que isso custa, dito sem eufemismo** ([ADR-0021](../27-ADR/ADR-0021-2fa-totp.md),
+> consequências negativas): um cookie destes, roubado, equivale a entrar
+> sem segundo fator até vencer. A mitigação é **revogar**, não prevenir —
+> por isso a confiança é apagada ao trocar a senha (por qualquer
+> caminho, inclusive o reset por e-mail), ao desativar ou reconfigurar o
+> 2FA, e pelo botão "esquecer todos os dispositivos". O prazo de 30 dias
+> foi decidido pelo dono; mudá-lo é decisão dele.
 
 ## 4. Dependências
 

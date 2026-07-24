@@ -8,10 +8,12 @@ use App\Modules\Identity\Enums\Role;
 use App\Modules\Identity\Enums\UserStatus;
 use Database\Factories\Identity\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Laravel\Fortify\TwoFactorAuthenticatable;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable;
 use Spatie\Permission\Traits\HasRoles;
@@ -29,8 +31,8 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $email_verified_at
  * @property UserStatus $status
  * @property string $password
- * @property string|null $two_factor_secret
- * @property array<int, string>|null $two_factor_recovery_codes
+ * @property string|null $two_factor_secret encriptado pelo Fortify (ADR-0021), não por cast
+ * @property string|null $two_factor_recovery_codes idem — JSON encriptado; leia por recoveryCodes()
  * @property Carbon|null $two_factor_confirmed_at
  * @property Carbon|null $password_changed_at
  * @property bool $must_change_password
@@ -45,6 +47,11 @@ class User extends Authenticatable implements Auditable
 
     use HasRoles;
     use Notifiable;
+
+    // Só métodos de instância (QR, ler/trocar código de recuperação) —
+    // não registra rota, middleware nem binding. É exatamente a parte do
+    // Fortify que o ADR-0021 autoriza a usar.
+    use TwoFactorAuthenticatable;
 
     /**
      * @var list<string>
@@ -92,8 +99,10 @@ class User extends Authenticatable implements Auditable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'status' => UserStatus::class,
-            'two_factor_secret' => 'encrypted',
-            'two_factor_recovery_codes' => 'encrypted:array',
+            // Sem cast `encrypted` nas colunas de 2FA, de propósito
+            // (ADR-0021): as Actions e o trait do Fortify já encriptam
+            // por conta própria, e somar o cast encriptaria duas vezes.
+            // Continuam encriptadas em repouso — com um dono só.
             'two_factor_confirmed_at' => 'datetime',
             'password_changed_at' => 'datetime',
             'must_change_password' => 'boolean',
@@ -163,9 +172,26 @@ class User extends Authenticatable implements Auditable
         return false;
     }
 
+    /**
+     * Não usa o `hasEnabledTwoFactorAuthentication()` do trait do Fortify
+     * de propósito: aquele consulta `Fortify::confirmsTwoFactorAuthentication()`,
+     * que lê a config do pacote — config que não existe aqui, porque o
+     * provider dele nunca é registrado (ADR-0021). Esta versão depende só
+     * da nossa coluna.
+     */
     public function hasTwoFactorEnabled(): bool
     {
         return $this->two_factor_confirmed_at !== null;
+    }
+
+    /**
+     * Dispositivos que dispensam o desafio TOTP (ADR-0021).
+     *
+     * @return HasMany<RememberedDevice, $this>
+     */
+    public function rememberedDevices(): HasMany
+    {
+        return $this->hasMany(RememberedDevice::class);
     }
 
     /**
