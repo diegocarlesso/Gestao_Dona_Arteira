@@ -108,23 +108,29 @@ rotacionada** — está pendente.
 
 ## PRÓXIMO PASSO (retomar exatamente aqui)
 
-**1. Rotacionar a senha do banco de staging** (`u917402451_staging`) —
-ela está no histórico do git em `e13ae02`. Pela
-[pasta 25](../25-Seguranca/README.md), senha exposta se rotaciona.
-
-**2. Decidir as 6 células 🆕 restantes da matriz de permissões**
-([pasta 19 §3.1](../19-Permissoes/README.md)). Todas ampliam acesso. A de
-`sales.view` → `finance` já foi confirmada pelo dono em 2026-07-23.
-
-**3. Fechar o que o Identity ainda deve à documentação:**
+**1. Fechar o que o Identity ainda deve à documentação:**
    - Canal `security_events` (pasta 26 §2) — login ok/falha, `PermissionDenied`, mudança de papel. Os eventos já existem; falta quem os ouça e a tabela. **Agora faz sentido construir**: até hoje não havia log funcionando em produção para receber nada.
    - Fluxo de 2FA TOTP (BR-804): as colunas existem, o fluxo não. A listagem já exibe a pendência por conta.
    - Convite por e-mail (pasta 18 §3): o estado `invited` e o evento `UserInvited` existem; falta o listener que envia.
    - `last_login_at` nunca é preenchido — falta o listener do evento `Login`.
 
-**4. Depois do Identity: módulo Catalog** — produtos, SKU (BR-002),
+**2. Depois do Identity: módulo Catalog** — produtos, SKU (BR-002),
 preços varejo/atacado (BR-003), embalagens (BR-004). É o que o Estoque e
 as Vendas precisam existir antes.
+
+## Fechado nesta sessão, depois do deploy
+
+- ✅ **Senha do staging rotacionada** pelo dono. Era a pendência aberta
+  pelo `.db` versionado.
+- ✅ **Matriz de permissões sem célula pendente.** As seis marcadas 🆕
+  foram confirmadas pelo dono — nenhuma recusada. O enum `Role` já as
+  concedia, então não houve mudança de código; o que mudou foi a
+  [pasta 19 §3.1](../19-Permissoes/README.md), que deixou de chamá-las de
+  inferência e passou a registrar **por que** cada acesso foi ampliado —
+  a pergunta que reaparece na revisão trimestral da pasta 25.
+- ✅ `.claude/settings.json` versionado: `ssh gestao-prod` e `scp` são
+  ferramentas do projeto enquanto o deploy for manual, não preferência de
+  máquina.
 
 ## Pendências abertas
 

@@ -1,6 +1,6 @@
 # 19 — Permissões (RBAC)
 
-> **Status:** ✅ **Implementado** (matriz e seeder; telas pendentes) · **Última atualização:** 2026-07-23 · **Responsável:** security-specialist
+> **Status:** ✅ **Implementado e em produção** — matriz, seeder e telas · **Última atualização:** 2026-07-24 · **Responsável:** security-specialist
 > **Regras:** BR-801…BR-804 · **Fase:** Gate 01 · **ADR:** [0011 (spatie/laravel-permission)](../27-ADR/ADR-0011-rbac.md)
 > **Código:** `app/Modules/Identity/Enums/{Role,Permission}.php` · `database/seeders/Identity/RolePermissionSeeder.php` · `tests/Feature/Identity/`
 
@@ -26,6 +26,10 @@ Controle de acesso **negado por padrão** (BR-801): papéis agrupam permissões 
 > permissões (`inventory.move / adjust`) e omitia `production.view`,
 > `sales.view` e as células de `fiscal.view`, o que deixava o
 > comportamento em aberto justamente onde BR-801 exige que não esteja.
+>
+> **Não há mais célula pendente.** As seis que foram preenchidas por
+> inferência ao destravar a matriz abreviada foram confirmadas pelo dono
+> em 2026-07-23 e 2026-07-24 — o registro de cada uma está na §3.1.
 
 | Permissão | admin | production | sales | fulfillment | finance | accountant |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
@@ -34,10 +38,10 @@ Controle de acesso **negado por padrão** (BR-801): papéis agrupam permissões 
 | `inventory.view` | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | `inventory.move` | ✅ | ✅ | — | ✅ | — | — |
 | `inventory.adjust` | ✅ | — | — | — | — | — |
-| `production.view` | ✅ | ✅ | 🆕 ✅ | 🆕 ✅ | — | — |
+| `production.view` | ✅ | ✅ | ✅ | ✅ | — | — |
 | `production.execute` | ✅ | ✅ | — | — | — | — |
 | `production.manage` | ✅ | — | — | — | — | — |
-| `sales.view` | ✅ | — | ✅ | 🆕 ✅ | 🆕 ✅ | — |
+| `sales.view` | ✅ | — | ✅ | ✅ | ✅ | — |
 | `sales.create` | ✅ | — | ✅ | — | — | — |
 | `sales.cancel` | ✅ | — | ✅ \* | — | — | — |
 | `sales.discount.approve` | ✅ | — | — | — | — | — |
@@ -46,7 +50,7 @@ Controle de acesso **negado por padrão** (BR-801): papéis agrupam permissões 
 | `finance.view` | ✅ | — | — | — | ✅ | — |
 | `finance.settle` | ✅ | — | — | — | ✅ | — |
 | `finance.manage` | ✅ | — | — | — | ✅ | — |
-| `fiscal.view` | ✅ | — | 🆕 ✅ | 🆕 ✅ | ✅ | ✅ |
+| `fiscal.view` | ✅ | — | ✅ | ✅ | ✅ | ✅ |
 | `fiscal.emit` | ✅ | — | ✅ | ✅ | — | — |
 | `fiscal.cancel` | ✅ | — | — | — | — | — |
 | `reports.view` | ✅ | — | — | — | ✅ | ✅ \*\* |
@@ -61,23 +65,35 @@ um. A permissão abre a porta; a Policy decide o caso.
 \*\* **Restrição de Policy:** `accountant` vê apenas relatórios fiscais
 (BR-803). A permissão `reports.view` é a mesma; o filtro é contextual.
 
-### 3.1 Células marcadas com 🆕 — inferidas, aguardando confirmação
+### 3.1 As seis células que ampliaram acesso — registro da decisão
 
-Sete células não existiam na matriz abreviada e foram preenchidas com a
-leitura mínima que mantém a operação coerente. Todas **ampliam** acesso,
-então merecem confirmação do dono antes do Gate 02:
+A matriz abreviada anterior omitia seis células. Elas foram preenchidas
+por inferência, marcadas com 🆕 e submetidas ao dono, porque **todas
+ampliam acesso** e BR-801 manda negar por padrão. Todas foram
+**confirmadas**; nenhuma foi recusada.
 
-| Célula | Raciocínio | Risco se estiver errado |
-|---|---|---|
-| `production.view` → sales | Encomenda tem prazo; vendas precisa responder "quando fica pronto" sem pedir para outra pessoa | Baixo — leitura de OP não expõe custo nem dado pessoal |
-| `production.view` → fulfillment | Expedição planeja a separação pelo que vai ficar pronto | Baixo — idem |
-| `sales.view` → fulfillment | Não dá para separar e embalar um pedido sem ler o pedido | Baixo — é pré-requisito de `fulfillment.execute`, que o papel já tem |
-| `sales.view` → finance | Título a receber nasce de um pedido; conferir a origem é rotina do financeiro | ✅ **Confirmado pelo dono em 2026-07-23.** Expõe dados de cliente ao financeiro; a exposição é aceita porque conferir a origem do título é rotina do papel. Revisitar se a pasta 25 endurecer a minimização de dados |
-| `fiscal.view` → sales | A matriz dava `fiscal.emit` a `sales` sem `fiscal.view`. Emitir sem poder ler a nota emitida é incoerente | Baixo — quem emite já vê o documento no ato |
-| `fiscal.view` → fulfillment | Idem: o papel tem `fiscal.emit` | Baixo — idem |
+Este registro fica porque a pergunta "por que este papel vê isto?"
+reaparece na revisão trimestral de acessos (pasta 25) — e a resposta
+"sempre foi assim" é a que faz a permissão inflar.
 
-Se alguma for recusada, remover a célula aqui **e** no enum `Role` — o
-teste da matriz aponta a divergência imediatamente.
+| Célula | Confirmada em | Por quê | O que aceitamos junto |
+|---|---|---|---|
+| `sales.view` → finance | 2026-07-23 | Título a receber nasce de um pedido; conferir a origem é rotina do financeiro | **Expõe dados de cliente ao financeiro.** Aceito por ser rotina do papel. Revisitar se a pasta 25 endurecer a minimização de dados |
+| `production.view` → sales | 2026-07-24 | Encomenda tem prazo, e a secagem impõe dias de espera; vendas responde "quando fica pronto" sem interromper a produção | Baixo — a OP não expõe custo de MP nem dado pessoal. Custo e ficha técnica são `production.manage` |
+| `production.view` → fulfillment | 2026-07-24 | Expedição planeja a fila de separação pelo que vai ficar pronto, em vez de reagir ao que apareceu no estoque | Baixo — idem. Foi decisão consciente: para o trabalho do dia o `inventory.view` que o papel já tem bastaria, e a célula existe para o **planejamento** |
+| `sales.view` → fulfillment | 2026-07-24 | Não dá para separar e embalar um pedido sem ler o pedido | É pré-requisito prático do `fulfillment.execute`, que o papel já tem — sem ele a permissão existente não seria utilizável |
+| `fiscal.view` → sales | 2026-07-24 | A matriz dava `fiscal.emit` sem `fiscal.view`. Emitir sem poder reconsultar a nota emitida é incoerente | Baixo — quem emite já vê o documento no ato da emissão |
+| `fiscal.view` → fulfillment | 2026-07-24 | Idem: o papel tem `fiscal.emit` | Baixo — idem |
+
+**Papéis se acumulam** (pasta 18 §2), e isso reduz o custo de errar para o
+lado restritivo: a mesma pessoa como `sales` e `fulfillment` recebe a
+união das permissões. Negar uma célula não deixa ninguém sem informação
+se o outro papel a concede — o argumento vale ao revisitar qualquer linha
+desta tabela.
+
+Para mudar qualquer célula é preciso editar **três** lugares coerentes —
+esta tabela, o enum `Role` e o teste da matriz. Ver §5.1 para o porquê da
+chatice.
 
 ## 4. Alçadas (regras quantitativas)
 
@@ -101,13 +117,14 @@ Rota → middleware de permissão → Policy (contexto) → Service. Testes de a
 | Admin implícito | `app/Modules/Identity/Providers/IdentityServiceProvider.php` | `Gate::before` devolve `true` para `admin` e `null` (não `false`) para os demais, para não atropelar as Policies |
 | Policy de contas | `app/Modules/Identity/Policies/UserPolicy.php` | `users.manage` + as nuances que a permissão sozinha não expressa |
 | Gating de UI | `resources/js/lib/permissions.ts` | `usePermissions().can('users.manage')` — as permissões chegam nas props compartilhadas |
+| Telas | `resources/js/pages/identity/` | Listagem com busca, criação, edição (papéis + ciclo de vida), troca obrigatória de senha |
+| Verificação | `tests/Feature/Identity/MatrizPapelPermissaoTest.php` | Compara célula a célula contra uma cópia independente da matriz |
 
 **Duas habilidades ficam fora do atalho do admin**, por
 `SEMPRE_PELA_POLICY` no provider: `changeStatus` e `assignRoles`. O
 `Gate::before` roda antes das Policies e curto-circuita a decisão — sem
 essa exclusão, um admin conseguiria se promover ou suspender a própria
 conta, porque a Policy nem seria consultada. Há teste para os dois lados.
-| Verificação | `tests/Feature/Identity/MatrizPapelPermissaoTest.php` | Compara célula a célula contra uma cópia independente da matriz |
 
 **Por que o teste repete a matriz em vez de ler o enum:** um teste que
 lesse `Role::permissions()` provaria apenas que o enum é igual a si
