@@ -19,6 +19,14 @@ pest()->extend(TestCase::class)
     ->in('Feature');
 
 /*
+| Os testes de arquitetura precisam do container — `config()` e
+| `resource_path()` só existem com a aplicação de pé — mas nenhum deles
+| toca o banco. Daí o TestCase sem o RefreshDatabase.
+*/
+pest()->extend(TestCase::class)
+    ->in('Architecture');
+
+/*
 |--------------------------------------------------------------------------
 | Expectations
 |--------------------------------------------------------------------------
