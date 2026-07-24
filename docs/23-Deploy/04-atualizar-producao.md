@@ -43,18 +43,25 @@ php artisan test && composer analyse && vendor/bin/pint --test && npm run test:c
 ### 3.2 No servidor — backup
 
 ```bash
-BASE=~/domains/donaarteira.com.br
-APP=$BASE/erp/gestao-app
-
-mysqldump -u u917402451_erp -p u917402451_da_erp \
+mysqldump u917402451_da_erp \
   | gzip > ~/backups/erp-$(date +%Y%m%d-%H%M%S).sql.gz \
   && ls -la ~/backups/ | grep erp-
 ```
 
-O `-p` **sem valor colado** é proposital: o mysqldump pergunta a senha no
-terminal, que é o único jeito de ela não passar pelo histórico do shell.
-Rodar **dentro** da sessão SSH, não como argumento de um `ssh "..."` de
-fora — o `$(date ...)` precisaria de escape e é onde a linha quebra.
+**Sem `-u` e sem `-p`** desde 2026-07-24: as credenciais vivem em
+`~/.my.cnf` (permissão `600`), que o cliente MariaDB lê sozinho. Antes
+disso o comando pedia a senha no terminal, o que impedia rodá-lo de
+fora da sessão SSH — e, na prática, tornava o backup um passo manual que
+alguém precisava lembrar de fazer. A senha em texto no arquivo não piora
+a exposição: ela já está assim no `.env`, no mesmo servidor e com o mesmo
+dono.
+
+Se o `.my.cnf` sumir (servidor novo, home recriada), recriá-lo assim —
+o `read -rsp` não ecoa a senha nem a deixa no histórico:
+
+```bash
+umask 077 && read -rsp 'Senha do banco: ' DBPASS && echo && printf '[client]\nuser=u917402451_erp\npassword=%s\n' "$DBPASS" > ~/.my.cnf && chmod 600 ~/.my.cnf && unset DBPASS
+```
 
 > **Confira o tamanho, sempre.** `mysqldump | gzip` num pipe **não
 > falha**: se o dump não sai, o gzip grava mesmo assim e o arquivo fica
@@ -136,6 +143,7 @@ php artisan up
 | 5 | Agendador vivo | `cat ~/scheduler-ultima-execucao.txt` — o `scheduler.sh` grava ali a cada execução. **Não use `~/schedule.log`:** o hPanel não honra o redirecionamento escrito no campo de comando do cron, então esse arquivo nunca existe, mesmo com o cron rodando |
 | 6 | Logs graváveis | `php artisan tinker --execute='Log::error("canario");'` e conferir `storage/logs/laravel.log`. Passou a funcionar em 2026-07-24 — mas a correção do P-16 pode ser desfeita pelo painel, então **verificar em todo deploy**, não presumir. Ver §7 |
 | 7 | WordPress intacto | `https://donaarteira.com.br` |
+| 8 | Nenhuma rota do Fortify vazou | `php artisan route:list \| grep -i 'fortify\|passkey'` — tem de vir **vazio**. O [ADR-0021](../27-ADR/ADR-0021-2fa-totp.md) usa só as Actions do pacote; o provider dele é barrado por `dont-discover`, e um `composer update` desatento o traria de volta com rotas de login/registro duplicando as nossas. `php artisan package:discover` também não deve listar `laravel/fortify` nem `laravel/passkeys` |
 
 ## 4. Rollback
 
