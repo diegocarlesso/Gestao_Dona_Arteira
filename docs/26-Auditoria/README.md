@@ -1,8 +1,8 @@
 # 26 — Auditoria
 
-> **Status:** 🟡 **Ligada** — trilha de mutações ativa desde a primeira entidade; `security_events` e a tela de consulta pendentes · **Última atualização:** 2026-07-23 · **Responsável:** security-specialist
+> **Status:** 🟡 **Ligada** — trilha de mutações e `security_events` ativos; a tela de consulta segue pendente · **Última atualização:** 2026-07-24 · **Responsável:** security-specialist
 > **Regras:** BR-802 · **ADR:** [0012 (laravel-auditing)](../27-ADR/ADR-0012-auditoria.md) · **Fase:** Gate 01 (transversal desde o início)
-> **Código:** `config/audit.php` · `database/migrations/*_create_audits_table.php` · `tests/Feature/Identity/AuditoriaDeUsuarioTest.php`
+> **Código:** `config/audit.php` · `database/migrations/*_create_audits_table.php` · `*_create_security_events_table.php` · `app/Modules/Identity/{Enums/SecurityEventType,Models/SecurityEvent,Services/RecordSecurityEvent,Listeners}` · `tests/Feature/Identity/`
 
 ## 1. Objetivo
 
@@ -16,6 +16,73 @@ Responder com evidência a qualquer "quem mudou isso, quando e de que valor para
 | Fatos de domínio | eventos do catálogo da [pasta 02](../02-Dominio/01-eventos-de-dominio.md) (transições de pedido, movimentos, emissões) | tabelas próprias dos módulos (`order_status_history`, `inventory_movements`, `fiscal_document_events`) — o fato JÁ É a auditoria |
 | Segurança | login ok/falha, logout, troca de senha, 2FA, `PermissionDenied`, criação/suspensão de usuário, mudança de papel | canal dedicado `security_events` |
 | Ações sensíveis (BR-802) | ajuste de estoque, cancelamento de NF-e, estorno financeiro, mudança de preço em massa, reprocesso de integração | auditoria + **motivo obrigatório** digitado pelo autor |
+
+### 2.1 O canal `security_events` (implementado em 2026-07-24)
+
+**Por que não usar a tabela `audits`.** O `laravel-auditing` registra o
+diff de um *model*: precisa de um registro que mudou. Os fatos de
+segurança mais importantes não têm model nenhum — um login que falhou
+com e-mail inexistente não muda linha alguma, e é exatamente o que se
+quer ver quando alguém tenta entrar à força. Forçar esses fatos na
+`audits` significaria inventar um auditável fictício.
+
+Tabela `security_events`, seguindo as convenções da
+[pasta 04](../04-Banco-de-Dados/02-convencoes-de-banco.md):
+
+| Coluna | Tipo | Por quê |
+|---|---|---|
+| `id` | BIGINT UNSIGNED | PK |
+| `event` | VARCHAR(64) | Enum PHP `SecurityEventType`, formato `assunto.fato` (`login.ok`, `login.failed`, `user.roles_changed`…). VARCHAR + enum PHP, não ENUM MySQL |
+| `user_id` | BIGINT UNSIGNED NULL | **Sobre quem** é o fato. Nulo quando não há conta — login com e-mail inexistente |
+| `actor_id` | BIGINT UNSIGNED NULL | **Quem causou** o fato. Difere de `user_id` quando um admin suspende outra pessoa. Nulo em ação de sistema ou de anônimo |
+| `identifier` | VARCHAR(255) NULL | O que foi digitado no login que falhou. Único jeito de detectar tentativa contra conta inexistente — ver a ressalva de LGPD abaixo |
+| `ip_address` | VARCHAR(45) NULL | IPv6 cabe em 45 |
+| `user_agent` | VARCHAR(1023) NULL | Mesma dimensão da `audits` |
+| `context` | JSON NULL | Detalhe específico do evento: de/para do status, papéis somados e removidos, habilidade negada |
+| `created_at` / `updated_at` | TIMESTAMP | Convenção da pasta 04. **`created_at` é a hora do fato** — não há `occurred_at` separado, que seria uma segunda coluna dizendo o mesmo |
+
+Índices por `(user_id, created_at)`, `(event, created_at)` e
+`(ip_address, created_at)` — o terceiro existe para a pergunta "quantas
+falhas vieram deste IP na última hora", que é a de detecção de força
+bruta.
+
+FKs com `ON DELETE RESTRICT`, como manda a pasta 04: **a trilha segura a
+conta**. Apagar um usuário e perder o registro de que ele existiu é
+justamente o que uma trilha de segurança não pode permitir. Conta se
+encerra com `disabled` (pasta 18 §3), não com `DELETE`.
+
+#### Um desvio da §3, deliberado: registrar não pode negar serviço
+
+A §3 diz que a auditoria roda na mesma transação da mutação e que
+mutação sem trilha não é commitada. **Para `security_events` isso não
+vale**, e a exceção é consciente: se a gravação da trilha falhasse dentro
+do login, uma tabela cheia ou um índice corrompido **trancaria todo mundo
+para fora do ERP**. O mecanismo de vigilância derrubaria a operação que
+ele existe para proteger — o mesmo formato da armadilha
+[P-16](../23-Deploy/04-atualizar-producao.md#7--p-16--a-extensão-psr-quebrava-todo-o-log-da-aplicação),
+em que o log quebrava a aplicação.
+
+Então: a gravação é **síncrona** (não vai para fila — evento perdido em
+fila que falha é evento perdido em silêncio), mas envolvida em
+`try/catch`. Se falhar, o erro vai para `Log::critical()` e a requisição
+segue. Isso só é aceitável porque **o log da produção passou a funcionar
+em 2026-07-24**; antes disso o `catch` seria um buraco sem fundo.
+
+A diferença em relação à `audits` é de consequência, não de rigor: perder
+o diff de uma mutação é perder informação; perder o login é parar a
+empresa.
+
+#### Ressalva de LGPD sobre `identifier`
+
+A coluna guarda o e-mail digitado numa tentativa que falhou — dado
+pessoal de alguém que **pode nem ser usuário do sistema** (erro de
+digitação de terceiro, ataque com lista de e-mails). É a tensão entre
+minimização de dados (pasta 25) e a capacidade de investigar acesso
+indevido, e resolvemos a favor de investigar: sem o identificador, uma
+sequência de falhas vira ruído sem nome.
+
+Só é gravado em `login.failed`; a rotina de retenção da §3 (2 anos)
+alcança essa coluna como qualquer outra.
 
 ## 3. Propriedades
 

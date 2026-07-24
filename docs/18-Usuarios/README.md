@@ -1,6 +1,6 @@
 # 18 — Usuários
 
-> **Status:** 🟡 **Parcialmente implementado** — model, ciclo de vida, telas de gestão e os dois middlewares prontos; **2FA e o e-mail de convite pendentes** · **Última atualização:** 2026-07-23 · **Responsável:** security-specialist
+> **Status:** 🟡 **Parcialmente implementado** — model, ciclo de vida, telas de gestão, middlewares, política de senha e trilha de segurança prontos; **2FA e o e-mail de convite pendentes** · **Última atualização:** 2026-07-24 · **Responsável:** security-specialist
 > **Fase:** Gate 01 · **ADR:** 0005 (Sanctum) · Permissões: [pasta 19](../19-Permissoes/README.md)
 > **Código:** `app/Modules/Identity/` · telas em `resources/js/pages/identity/` · testes em `tests/Feature/Identity/`
 
@@ -68,7 +68,45 @@ quem cria a conta e lidas por ninguém.
 Aplicados a **todas** as rotas autenticadas — dashboard, configurações e
 as do próprio módulo.
 
-### 3.3 Proteção do próprio autor
+### 3.3 A política de senha, em um lugar só (2026-07-24)
+
+Mínimo de **12 caracteres** e recusa de senha que já apareceu em
+vazamento — `Password::min(12)->uncompromised()`, que consulta o
+HaveIBeenPwned por k-anonymity (só os cinco primeiros caracteres do hash
+SHA-1 saem daqui, nunca a senha).
+
+A regra vive em `App\Modules\Identity\Rules\PasswordPolicy` porque **ela
+estava valendo pela metade**: a troca obrigatória exigia os 12 com
+verificação, e a tela de configurações do starter kit aceitava o
+`Password::defaults()` — 8 caracteres, sem checagem. Quem trocasse a
+senha por configurações escapava da regra que este documento afirma, e
+nada reprovava. Na mesma correção, aquele caminho passou a preencher
+`password_changed_at`, que ficava mentindo sobre há quanto tempo a senha
+era a mesma.
+
+Toda troca dispara `PasswordChanged` e vira linha na trilha da
+[pasta 26](../26-Auditoria/README.md): `password` está em `$auditExclude`
+— e deve continuar —, então sem esse evento a troca de senha não deixaria
+rastro em lugar nenhum.
+
+### 3.4 Não existe autoexclusão de conta (2026-07-24)
+
+O starter kit trazia "excluir minha conta" nas configurações. **Foi
+removida** — rota, controller, componente e tela.
+
+O diagrama acima não tem estado "excluído": conta se encerra em
+`disabled`, que é terminal, e a decisão é de um admin. Autoexclusão
+contradiz isso de duas formas — dá ao próprio usuário o poder de encerrar
+o que a pasta 19 reserva a `users.manage`, e apaga a linha que a
+auditoria referencia (BR-008).
+
+Foi a trilha de segurança que reprovou a funcionalidade, não uma revisão:
+a FK de `security_events` para `users` é `RESTRICT`, e o teste do starter
+kit quebrou ao tentar apagar um usuário que já tinha eventos. O teste que
+o substituiu prova que a rota **não voltou** — uma atualização do starter
+kit poderia trazê-la de volta em silêncio.
+
+### 3.5 Proteção do próprio autor
 
 Ninguém altera os próprios papéis nem a própria situação. Sem isso,
 qualquer pessoa com `users.manage` poderia se promover a admin — e a

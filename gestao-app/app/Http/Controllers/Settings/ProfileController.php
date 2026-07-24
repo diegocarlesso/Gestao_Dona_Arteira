@@ -9,7 +9,6 @@ use App\Http\Requests\Settings\ProfileUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -42,24 +41,15 @@ class ProfileController extends Controller
         return to_route('profile.edit');
     }
 
-    /**
-     * Delete the user's account.
+    /*
+     * O `destroy()` do starter kit — autoexclusão de conta — foi removido
+     * em 2026-07-24. O ciclo de vida da pasta 18 §3 não tem estado
+     * "excluído": conta se encerra em `disabled`, decidido por um admin
+     * pelo ChangeUserStatusService.
+     *
+     * A trilha de segurança da pasta 26 tem FK RESTRICT para `users`
+     * justamente para que apagar uma conta não apague o registro de que
+     * ela existiu — e foi ela que fez esta funcionalidade reprovar, o que
+     * é o comportamento desejado.
      */
-    public function destroy(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'password' => ['required', 'current_password'],
-        ]);
-
-        $user = $request->user();
-
-        Auth::logout();
-
-        $user->delete();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return redirect('/');
-    }
 }

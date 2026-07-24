@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Identity\Events\PasswordChanged;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Rules\PasswordPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -35,10 +36,10 @@ class ForcedPasswordController extends Controller
 
         $validado = $request->validate([
             'current_password' => ['required', 'current_password'],
-            // Mínimo 12 caracteres e verificação contra vazamentos
-            // (pasta 18 §3). `uncompromised` consulta o k-anonymity do
-            // HaveIBeenPwned — só o prefixo do hash sai daqui.
-            'password' => ['required', Password::min(12)->uncompromised(), 'confirmed'],
+            // A política vive em PasswordPolicy, não aqui: ela valia neste
+            // caminho e não valia no de configurações, e regra duplicada
+            // é regra que diverge.
+            'password' => PasswordPolicy::validationRules(),
         ], [], [
             'current_password' => 'senha atual',
             'password' => 'nova senha',
@@ -49,6 +50,8 @@ class ForcedPasswordController extends Controller
             'must_change_password' => false,
             'password_changed_at' => now(),
         ])->save();
+
+        PasswordChanged::dispatch($usuario, obrigatoria: true);
 
         return to_route('dashboard')->with('sucesso', 'Senha alterada. Bem-vindo(a) ao ERP.');
     }

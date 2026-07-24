@@ -4,6 +4,7 @@ namespace Tests\Feature\Settings;
 
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class ProfileUpdateTest extends TestCase
@@ -61,38 +62,30 @@ class ProfileUpdateTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
-    public function test_user_can_delete_their_account()
+    /**
+     * O starter kit trazia autoexclusão de conta; ela foi removida em
+     * 2026-07-24. O ciclo de vida da pasta 18 §3 não tem estado
+     * "excluído" — conta se encerra em `disabled`, por um admin — e
+     * apagar a própria conta levaria junto a trilha de segurança da
+     * pasta 26, que existe para não perder o registro de que alguém
+     * existiu.
+     *
+     * Este teste substitui os dois que exercitavam a exclusão. Ele prova
+     * que a rota não voltou: um `php artisan install:api` ou uma
+     * atualização do starter kit poderia trazê-la de volta em silêncio.
+     */
+    public function test_self_service_account_deletion_does_not_exist()
     {
         $user = User::factory()->create();
 
-        $response = $this
-            ->actingAs($user)
-            ->delete('/settings/profile', [
-                'password' => 'password',
-            ]);
+        $this->assertFalse(
+            Route::has('profile.destroy'),
+            'A rota de autoexclusão de conta voltou a existir — ver pasta 18 §3.'
+        );
 
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect('/');
-
-        $this->assertGuest();
-        $this->assertNull($user->fresh());
-    }
-
-    public function test_correct_password_must_be_provided_to_delete_account()
-    {
-        $user = User::factory()->create();
-
-        $response = $this
-            ->actingAs($user)
-            ->from('/settings/profile')
-            ->delete('/settings/profile', [
-                'password' => 'wrong-password',
-            ]);
-
-        $response
-            ->assertSessionHasErrors('password')
-            ->assertRedirect('/settings/profile');
+        $this->actingAs($user)
+            ->delete('/settings/profile', ['password' => 'password'])
+            ->assertMethodNotAllowed();
 
         $this->assertNotNull($user->fresh());
     }
