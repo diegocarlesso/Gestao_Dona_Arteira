@@ -126,5 +126,5 @@ erDiagram
 
 ## Perguntas em aberto
 
-- Variações de produto (cores/tamanhos): o Woo usa *variable products*? Inventariar antes de decidir entre variação como produto próprio (SKU por variação — recomendado) ou atributos. Decidir no Gate 01 com dados reais.
+- ~~Variações de produto (cores/tamanhos)~~ → **decidido em 2026-07-25 com os dados reais do inventário**, como esta linha mandava: variação é **produto próprio com SKU próprio**, e o SKU é sequencial neutro `DA-0001`. Ver [ADR-0022](../27-ADR/ADR-0022-modelo-de-produto-e-sku.md) e a [pasta 32](../32-Catalogo/README.md).
 - Locais de estoque reais (só ateliê? loja separada?) — entrevista pasta 30.

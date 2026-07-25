@@ -48,6 +48,13 @@ Esta pasta é a **fonte canônica de conhecimento** do projeto. Regra de ouro: *
 | 29 | [Glossario](29-Glossario/README.md) | Linguagem ubíqua: negócio + técnica + fiscal | Sempre |
 | 30 | [Dominio-da-Dona-Arteira](30-Dominio-da-Dona-Arteira/README.md) | O negócio: processo artesanal, canais, sazonalidade, descoberta | Sempre |
 | 31 | [Inventario-Legado](31-Inventario-Legado/README.md) | Engenharia reversa do WooCommerce e do desktop: produtos, clientes, pedidos, plugins, qualidade de dados | Gate 01 |
+| 32 | [Catalogo](32-Catalogo/README.md) | Produto: SKU, variação, `kind`, categorias, preços, medidas, dados fiscais de cadastro | Gate 01+ |
+
+> O número 32 é a ordem de criação da pasta (2026-07-25), não a posição
+> do catálogo no domínio — que vem antes de estoque, vendas e produção. A
+> `docs/` original descrevia produto só como uma linha do modelo
+> conceitual, e a lacuna apareceu quando o módulo entrou na fila.
+> Renumerar quebraria centenas de links; o custo não se paga.
 
 ## Fluxo docs-first (obrigatório)
 

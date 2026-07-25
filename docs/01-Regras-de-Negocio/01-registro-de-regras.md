@@ -10,13 +10,14 @@ Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data)
 | ID | Regra | Origem | Status |
 |---|---|---|---|
 | BR-001 | CPF/CNPJ de cliente é obrigatório para faturamento (NF-e), validado por dígito verificador, e único no cadastro | legado (`validators.py`, unique em `clients.cpf_cnpj`) | 💡 validar se cliente de balcão sem NF pode ser cadastrado sem documento |
-| BR-002 | Todo produto (peça) tem código (SKU) único e imutável após criação | legado (`pieces.code` unique) | 💡 |
-| BR-003 | Toda peça possui dois preços de lista: varejo e atacado | legado (`price_retail`, `price_wholesale`) | 💡 confirmar critério de elegibilidade ao preço atacado (BR-301) |
+| BR-002 | Todo produto (peça) tem código (SKU) único e imutável após criação | legado (`pieces.code` unique) | ✅ **decidido** ([ADR-0022](../27-ADR/ADR-0022-modelo-de-produto-e-sku.md)): formato `DA-0001`, sequencial e **sem significado embutido**, gerado pelo ERP. O WooCommerce não tem SKU algum (0/716), então o ERP cria, não importa |
+| BR-003 | Toda peça possui dois preços de lista: varejo e atacado | legado (`price_retail`, `price_wholesale`) | ⚠️ **estruturalmente atendida, factualmente pendente**: o campo de atacado existe e aceita nulo, mas **não há fonte de dados** — o preço só existe no banco do desktop, cujo dump não está disponível (RC-02). Ver [pasta 32 §3.5](../32-Catalogo/README.md). Critério de elegibilidade segue por confirmar (BR-301) |
 | BR-004 | Toda peça vendável tem embalagem padrão associada, com dimensões e peso — insumo do cálculo de frete | legado (`packages` + `pieces.package_id`) | 💡 |
 | BR-005 | Peça tem dimensões (A×L×P cm) e peso (g) próprios, distintos dos da embalagem | legado | 💡 |
 | BR-006 | Cliente pode ser PF (CPF) ou PJ (CNPJ); PJ com IE habilita operações de atacado/revenda | derivada | 💡 |
 | BR-007 | Categorias de produto formam árvore (categoria → subcategoria), espelhada do WooCommerce na migração | Woo | 💡 |
 | BR-008 | Cadastros nunca são excluídos fisicamente se possuem movimento; são inativados (soft delete/arquivamento) | decisão nova | ✅ arquitetura (ADR-0002) |
+| BR-009 | Cada acabamento (cor) e tamanho de uma peça é um **produto próprio, com SKU e saldo próprios** — não é atributo de um produto-pai | decisão nova | ✅ **decidido** ([ADR-0022](../27-ADR/ADR-0022-modelo-de-produto-e-sku.md)): a cor é acabamento de pintura manual, produzido e estocado separadamente. Regra nova porque o legado não a expressava: o WooCommerce usava variações e o desktop não modelava variação alguma |
 
 ## BR-1xx — Produção
 
