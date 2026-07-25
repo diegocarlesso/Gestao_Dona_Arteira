@@ -106,27 +106,29 @@ desnormalizados.
 `valid_from`, preservando histórico — preço passado não é sobrescrito,
 porque pedido antigo precisa continuar explicável.
 
-> ⚠️ **O preço de atacado não existe em lugar nenhum — e nunca existiu.**
-> A BR-003 diz que todo produto tem preço de varejo **e** de atacado. O
-> WooCommerce guarda só o varejo.
+> ⚠️ **A empresa vende no atacado, mas o preço de atacado nunca foi
+> registrado em sistema nenhum.**
 >
-> A suposição inicial era que o atacado viria do sistema desktop, cujo
-> dump estaria apenas indisponível (RC-02 da pasta 31). **O dono
-> esclareceu em 2026-07-25 que o desktop nunca chegou a ser alimentado:
-> ele nunca entrou em operação.** As colunas `price_retail` e
-> `price_wholesale` são *esquema* de um sistema que ninguém usou, não
-> registro de uma prática.
+> O dono confirmou em 2026-07-25 que a Dona Arteira opera **os dois
+> canais**, varejo e atacado. A BR-003 é portanto regra real, e não
+> inferência do esquema do desktop — que, aliás, nunca chegou a ser
+> alimentado. O WooCommerce guarda só o preço de varejo, porque o site é
+> canal de varejo.
 >
-> Isso muda a natureza do problema. Não é dado a recuperar — é dado a
-> **criar**. E levanta uma pergunta anterior à técnica: *a empresa
-> pratica preço de atacado hoje?* A BR-003 foi derivada do esquema do
-> desktop, não de observação do negócio, e portanto ainda não foi
-> confirmada por ninguém que venda.
+> O que falta é **o dado, não a regra**: a lista de preços de atacado
+> existe na prática do negócio (na cabeça de quem vende, em planilha, em
+> tabela impressa) e precisa ser levantada e carregada. Não há de onde
+> extraí-la automaticamente.
 >
-> **Enquanto não houver resposta:** o campo existe e aceita nulo; venda
-> no atacado depende de preço digitado à mão no pedido. A BR-003 está
-> marcada como **a confirmar com o negócio** no registro de regras — não
-> como pendência de dados.
+> **Enquanto não for carregada:** o campo aceita nulo e a venda no
+> atacado usa preço digitado à mão no pedido. Um produto sem preço de
+> atacado é sinalizado na listagem, pelo mesmo critério do peso ausente
+> (§3.6) — o cadastro não trava, mas a lacuna fica visível em vez de
+> silenciosa.
+>
+> **Como sair:** levantar a tabela com quem vende. Se houver **regra de
+> formação** (por exemplo, atacado = varejo menos um percentual fixo), a
+> carga é trivial e vale confirmar isso antes de digitar 716 preços.
 
 Dinheiro é `DECIMAL(15,2)` e `brick/money` no PHP
 ([ADR-0013](../27-ADR/ADR-0013-dinheiro-decimal.md)) — nunca float.
@@ -200,7 +202,7 @@ Pasta [04](../04-Banco-de-Dados/README.md) (convenções e modelo) ·
 
 | Risco | Prob. | Impacto | Mitigação |
 |---|---|---|---|
-| **Preço de atacado nunca existiu como dado** | **Alta — já ocorrendo** | Alto | §3.5. Não é dado a recuperar, é dado a criar — e antes disso, confirmar com o negócio se a prática existe. Campo nulável; venda de atacado com preço manual até lá |
+| **Preço de atacado nunca registrado, embora o canal exista** | **Alta — já ocorrendo** | Alto | §3.5. A empresa vende atacado (confirmado), mas o preço nunca esteve em sistema. Levantar com quem vende; confirmar antes se há regra de formação a partir do varejo. Campo nulável e lacuna sinalizada na listagem; venda com preço manual até a carga |
 | Cadastro de variações ser penoso (uma peça, cinco cores) | Média | Médio | Reconhecido como dívida no [ADR-0022](../27-ADR/ADR-0022-modelo-de-produto-e-sku.md); só resolver se a operação reclamar, com "duplicar produto" — nunca reintroduzindo produto-pai |
 | SKU ilegível atrapalhar o balcão | Média | Baixo | Nome sempre ao lado; busca por nome e atributo |
 | Migração duplicar os 14 grupos de título repetido | Média | Alto | Pasta 17: os duplicados viram variações conscientemente, não por heurística cega |
