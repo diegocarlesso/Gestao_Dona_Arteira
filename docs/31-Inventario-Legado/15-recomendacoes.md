@@ -7,8 +7,8 @@
 
 | # | Recomendação | Prioridade |
 |---|---|---|
-| RC-01 | **Definir e gerar SKUs** para todo o catálogo e reconciliar com `pieces.code` do desktop — é a chave de casamento de tudo | 🔴 Alta |
-| RC-02 | **Obter o dump do banco do desktop (`dona_arteira`)** — sem ele, o atacado/balcão fica invisível e o dedupe cruzado é impossível | 🔴 Alta |
+| RC-01 | **Definir e gerar SKUs** para todo o catálogo — é a chave de casamento de tudo. ✅ **Feito em 2026-07-25** ([ADR-0022](../27-ADR/ADR-0022-modelo-de-produto-e-sku.md)): formato `DA-0001`. 📌 A parte de "reconciliar com `pieces.code` do desktop" **caiu**: o desktop nunca foi alimentado, não há código a reconciliar | 🔴 Alta |
+| RC-02 | ~~**Obter o dump do banco do desktop (`dona_arteira`)**~~ 📌 **Cancelada em 2026-07-25** — não é indisponibilidade, é inexistência: o dono esclareceu que o desktop **nunca entrou em operação**. Não há dump a obter. O efeito colateral é real e permanece: atacado e balcão **não existem como dado em lugar nenhum**, e terão de ser cadastrados do zero se a empresa os praticar | ~~🔴 Alta~~ ❌ sem objeto |
 | RC-03 | **Inventário físico de estoque no cutover** — não importar saldo do site (não confiável) | 🔴 Alta |
 | RC-04 | **Deduplicar produtos** por título+atributos antes de carregar | 🟡 Média |
 | RC-05 | **Higienizar** descrições (HTML; sem shortcodes) e títulos de pagamento (HTML) no ETL; descartar meta de page-builder | 🟡 Média |

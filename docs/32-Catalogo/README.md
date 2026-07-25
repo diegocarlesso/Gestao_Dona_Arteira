@@ -106,22 +106,27 @@ desnormalizados.
 `valid_from`, preservando histórico — preço passado não é sobrescrito,
 porque pedido antigo precisa continuar explicável.
 
-> ⚠️ **Pendência aberta: o preço de atacado nasce vazio.**
+> ⚠️ **O preço de atacado não existe em lugar nenhum — e nunca existiu.**
 > A BR-003 diz que todo produto tem preço de varejo **e** de atacado. O
-> WooCommerce guarda só o varejo; o atacado existe apenas no banco do
-> sistema desktop (`pieces.price_wholesale`), cujo **dump não está
-> disponível** — pendência RC-02 da [pasta 31](../31-Inventario-Legado/15-recomendacoes.md),
-> risco alto. O dono confirmou em 2026-07-25 que não tem acesso por ora e
-> decidiu seguir.
+> WooCommerce guarda só o varejo.
 >
-> Efeito: o campo existe e aceita nulo. A BR-003 fica **estruturalmente
-> atendida e factualmente pendente** — e é preciso dizer isso em voz alta,
-> porque um catálogo que parece completo e tem metade dos preços faltando
-> é pior que um que se declara incompleto. Enquanto durar, venda no atacado
-> depende de preço digitado à mão no pedido.
+> A suposição inicial era que o atacado viria do sistema desktop, cujo
+> dump estaria apenas indisponível (RC-02 da pasta 31). **O dono
+> esclareceu em 2026-07-25 que o desktop nunca chegou a ser alimentado:
+> ele nunca entrou em operação.** As colunas `price_retail` e
+> `price_wholesale` são *esquema* de um sistema que ninguém usou, não
+> registro de uma prática.
 >
-> **Como sair:** obter o dump do desktop, ou levantar a tabela de atacado
-> com o negócio e carregá-la por planilha.
+> Isso muda a natureza do problema. Não é dado a recuperar — é dado a
+> **criar**. E levanta uma pergunta anterior à técnica: *a empresa
+> pratica preço de atacado hoje?* A BR-003 foi derivada do esquema do
+> desktop, não de observação do negócio, e portanto ainda não foi
+> confirmada por ninguém que venda.
+>
+> **Enquanto não houver resposta:** o campo existe e aceita nulo; venda
+> no atacado depende de preço digitado à mão no pedido. A BR-003 está
+> marcada como **a confirmar com o negócio** no registro de regras — não
+> como pendência de dados.
 
 Dinheiro é `DECIMAL(15,2)` e `brick/money` no PHP
 ([ADR-0013](../27-ADR/ADR-0013-dinheiro-decimal.md)) — nunca float.
@@ -195,7 +200,7 @@ Pasta [04](../04-Banco-de-Dados/README.md) (convenções e modelo) ·
 
 | Risco | Prob. | Impacto | Mitigação |
 |---|---|---|---|
-| **Atacado sem fonte de dados** (RC-02) | **Alta — já ocorrendo** | Alto | §3.5. Campo nulável e pendência declarada; venda de atacado com preço manual até resolver |
+| **Preço de atacado nunca existiu como dado** | **Alta — já ocorrendo** | Alto | §3.5. Não é dado a recuperar, é dado a criar — e antes disso, confirmar com o negócio se a prática existe. Campo nulável; venda de atacado com preço manual até lá |
 | Cadastro de variações ser penoso (uma peça, cinco cores) | Média | Médio | Reconhecido como dívida no [ADR-0022](../27-ADR/ADR-0022-modelo-de-produto-e-sku.md); só resolver se a operação reclamar, com "duplicar produto" — nunca reintroduzindo produto-pai |
 | SKU ilegível atrapalhar o balcão | Média | Baixo | Nome sempre ao lado; busca por nome e atributo |
 | Migração duplicar os 14 grupos de título repetido | Média | Alto | Pasta 17: os duplicados viram variações conscientemente, não por heurística cega |
@@ -203,9 +208,9 @@ Pasta [04](../04-Banco-de-Dados/README.md) (convenções e modelo) ·
 
 ## 8. Evoluções futuras
 
-- **Código legado pesquisável:** quando o dump do desktop aparecer,
-  `pieces.code` vira campo de busca ao lado do SKU — sem trocar SKUs já
-  criados, que são imutáveis. É o gatilho de revisão do ADR-0022.
+- ~~Código legado pesquisável quando o dump do desktop aparecer~~ —
+  cancelado em 2026-07-25: o desktop nunca foi alimentado, não há código
+  legado. **O ERP é a primeira origem de SKU que a empresa terá.**
 - Ficha técnica (BOM) dos 213 kits/trios — Gate 03, pasta 08.
 - Importação de catálogo por planilha, se o cadastro em lote doer.
 - Busca FULLTEXT em `name`/`description`, avaliada quando o volume

@@ -51,7 +51,7 @@ A presença nativa de plugins Hostinger corrobora o cenário do [ADR-0016](../27
 **Limitações conhecidas:**
 1. **8 tabelas do Wordfence não importaram** (`wf*`: `wfblockediplog`, `wfblocks7`, `wfcrawlers`, `wffilemods`, `wflivetraffichuman`, `wflocs`, `wfreversecache`, `wftrafficrates`) por sintaxe exclusiva do MariaDB 11 (`DEFAULT x AS ...`) não suportada na 10.4. São tabelas de **segurança/log**, irrelevantes ao domínio — perda nula para a análise.
 2. **Arquivos físicos de imagem não estão no dump** (um dump SQL não carrega o filesystem). A existência real dos arquivos em `/wp-content/uploads` **não pôde ser verificada** — apenas as referências no banco. Ver [05](05-imagens.md).
-3. **O banco do desktop (`dona_arteira`) não foi fornecido** — só o do WooCommerce. Clientes/pedidos que existam **apenas** no desktop (balcão/atacado) não estão neste inventário. Ver [98](98-perguntas-para-o-negocio.md).
+3. ~~**O banco do desktop (`dona_arteira`) não foi fornecido**~~ 📌 **Corrigido em 2026-07-25:** não foi omissão de entrega — **o desktop nunca chegou a ser alimentado**, nunca entrou em operação. O que existe no repositório é o *código* do sistema (útil como referência de regras pretendidas), não dados. Portanto o WooCommerce não é "uma das fontes": é **a** fonte. Clientes de balcão, pedidos de atacado e preços de atacado **não existem como dado em lugar nenhum** — não estão faltando neste inventário, simplesmente nunca foram registrados.
 4. Mojibake de acentuação observado no terminal de análise é **apenas de exibição**; os dados no banco estão íntegros em UTF-8 (nomes reproduzidos corretamente nos documentos).
 
 ## 6. Retrato de volume (o que pesa no dump)

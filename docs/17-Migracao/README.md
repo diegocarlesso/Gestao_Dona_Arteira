@@ -5,7 +5,20 @@
 
 ## 1. Objetivo
 
-Levar para o ERP o patrimônio de dados da empresa — produtos, categorias, clientes, pedidos históricos, imagens (referências), estoque — a partir de **duas fontes**: WooCommerce (via REST API) e banco MySQL do sistema desktop legado. Nunca assumir cadastro manual. Após o cutover, o ERP controla os dados e o Woo apenas sincroniza.
+Levar para o ERP o patrimônio de dados da empresa — produtos, categorias, clientes, pedidos históricos, imagens (referências), estoque — **a partir de uma única fonte: o WooCommerce** (via REST API). Após o cutover, o ERP controla os dados e o Woo apenas sincroniza.
+
+> 📌 **Corrigido em 2026-07-25.** Este documento dizia "**duas fontes**:
+> WooCommerce e banco MySQL do sistema desktop legado". O dono esclareceu
+> que **o desktop nunca chegou a ser alimentado** — nunca entrou em
+> operação, e não há dado algum nele. O que existe no repositório é o
+> *código* do sistema, útil como referência de regras de negócio
+> pretendidas, não como origem de dados.
+>
+> A migração fica **mais simples** do que o planejado: uma fonte, sem
+> deduplicação cruzada entre sistemas e sem reconciliação de códigos. Em
+> compensação, tudo que só existiria no desktop — clientes de balcão,
+> pedidos de atacado, preços de atacado — **não existe em lugar nenhum**
+> e terá de ser cadastrado do zero, se a empresa o praticar.
 
 ## 2. Princípios (BR-706, ADR-0010)
 
@@ -19,7 +32,7 @@ Levar para o ERP o patrimônio de dados da empresa — produtos, categorias, cli
 
 ```mermaid
 flowchart LR
-    A[1. Inventário<br/>volumes, plugins, qualidade] --> B[2. Extração<br/>Woo API + dump legado → stg_*]
+    A[1. Inventário<br/>volumes, plugins, qualidade] --> B[2. Extração<br/>Woo API → stg_*]
     B --> C[3. Saneamento<br/>dedupe, SKUs, docs, preços]
     C --> D[4. Carga<br/>stg_* → modelo ERP + mappings]
     D --> E[5. Validação<br/>contagens, amostras, centavos]
@@ -32,7 +45,7 @@ Contagens (produtos, variações, clientes, pedidos por ano), plugins do Woo (ma
 
 ### F2 — Extração
 - Woo: paginação via REST (products, categories, customers, orders com `after`), incremental por `modified_after` nas re-execuções.
-- Legado: leitura direta do MySQL do desktop (é fonte nossa, não sistema externo — exceção documentada ao BR-701, aplicável só à migração) → `stg_legacy_*`.
+- ~~Legado: leitura direta do MySQL do desktop → `stg_legacy_*`~~ — **não se aplica** (2026-07-25): o desktop nunca foi alimentado. Não há `stg_legacy_*`, nem a exceção ao BR-701 que este item abria.
 
 ### F3 — Saneamento (onde a migração é ganha ou perdida)
 | Problema esperado | Tratamento |

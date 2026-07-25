@@ -1,6 +1,18 @@
 # ADR-0022: Modelo de produto — variação é produto próprio, SKU sequencial neutro
 
 > **Status:** ✅ **Aceito 2026-07-25** (dono) · **Data:** 2026-07-25 · **Decisores:** dono, chief-architect
+>
+> 📌 **Correção de premissa — 2026-07-25, poucas horas após o aceite.**
+> Este ADR foi escrito supondo que o banco do desktop existia com dados e
+> apenas não estava acessível. **O dono esclareceu que o sistema desktop
+> nunca chegou a ser alimentado: ele nunca entrou em operação, e não há
+> dado algum nele.** As duas decisões abaixo **não mudam** — na verdade
+> ficam mais firmes, porque a Alternativa C (reaproveitar `pieces.code`)
+> deixa de ser "indisponível" e passa a ser **impossível**: não existem
+> códigos para reaproveitar. O texto original fica preservado; o que
+> muda de fato está marcado com 📌 ao longo do documento. Um ADR aceito
+> não se reescreve (regra 3 da [pasta 27](README.md)), mas também não
+> pode seguir afirmando um fato falso.
 > **Módulos afetados:** 32 (Catálogo), 09 (Estoque), 10 (Vendas), 16 (WooCommerce), 17 (Migração), 04 (Banco)
 > **Regras:** [BR-002](../01-Regras-de-Negocio/01-registro-de-regras.md) (SKU único e imutável), BR-003 (varejo/atacado), BR-007 (categorias)
 
@@ -103,6 +115,11 @@ convivendo desde o primeiro dia.
 **Descartada por indisponibilidade**, não por mérito. Ver gatilho de
 revisão.
 
+> 📌 **Correção (2026-07-25):** não é indisponibilidade, é inexistência.
+> O desktop nunca foi alimentado — `pieces` está vazia, não há um único
+> `code` para reaproveitar. Esta alternativa é **impossível**, não
+> adiada, e o gatilho de revisão correspondente foi cancelado abaixo.
+
 ## Consequências
 
 **Positivas:**
@@ -141,10 +158,12 @@ revisão.
   aqui — diferente do `public_id` dos usuários, que é ULID por isso mesmo.
 
 **Gatilhos de revisão:**
-- **O dump do desktop aparecer** → reabrir a Alternativa C, não para
-  trocar os SKUs já criados (imutáveis), mas para decidir se `pieces.code`
-  vira um campo de **código legado** pesquisável ao lado do SKU. É o
-  caminho provável, e barato.
+- ~~O dump do desktop aparecer → reabrir a Alternativa C~~
+  📌 **Gatilho cancelado em 2026-07-25:** o desktop nunca foi alimentado,
+  então não há dump que possa aparecer nem código legado a preservar. O
+  ERP é a **primeira** origem de SKU que a empresa terá — o que também
+  significa que ninguém tem código decorado, e a legibilidade do SKU
+  importa menos do que este ADR supunha ao pesar a Alternativa B.
 - Cadastro em lote de variações se mostrar penoso na prática (relato da
   operação, não suposição) → avaliar "duplicar produto" ou importação por
   planilha na tela de catálogo. Não muda o modelo.
