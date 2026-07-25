@@ -4,7 +4,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { usePermissions } from '@/lib/permissions';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { LayoutGrid, Users } from 'lucide-react';
+import { LayoutGrid, Package, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 
 /**
@@ -16,9 +16,15 @@ import AppLogo from './app-logo';
  */
 const ITENS: (NavItem & { permissao?: string })[] = [
     {
-        title: 'Dashboard',
+        title: 'Painel',
         url: '/dashboard',
         icon: LayoutGrid,
+    },
+    {
+        title: 'Produtos',
+        url: '/produtos',
+        icon: Package,
+        permissao: 'catalog.view',
     },
     {
         title: 'Usuários',
