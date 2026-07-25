@@ -23,26 +23,43 @@ Artisan::command('inspire', function () {
 | silêncio, e o primeiro sintoma seria alguém perguntando por que o
 | e-mail de convite nunca chegou.
 |
+| ## Por que `Schedule::call()` e não `Schedule::command()`
+|
+| **`Schedule::command()` não funciona neste servidor.** Ele dispara o
+| comando por `Symfony\Process` — em background E em foreground —, e
+| `proc_open` está em `disable_functions` no plano Business (P-15). O
+| sintoma é traiçoeiro: o `schedule:run` roda, o batimento do cron é
+| gravado normalmente, e a tarefa simplesmente não acontece; o erro só
+| aparece no `laravel.log`. Descoberto em 2026-07-25, e só foi visível
+| porque o log da produção passou a funcionar no dia anterior (P-16).
+|
+| `Schedule::call()` executa no próprio processo do `schedule:run`, sem
+| subprocesso — logo, sem `proc_open`. Vale para QUALQUER tarefa agendada
+| que este projeto vier a ter, não só para a fila.
+|
 | O `schedule:run` já roda a cada minuto pelo cron do hPanel
 | (`~/scheduler.sh`, com caminho absoluto por causa da P-13).
 |
 */
 
-Schedule::command('queue:work --stop-when-empty --max-time=55 --tries=3')
-    ->everyMinute()
+Schedule::call(function (): void {
     // `--stop-when-empty` sai assim que a fila esvazia: na maioria dos
-    // minutos o processo nasce, não encontra nada e morre. Segurar um
-    // worker ocioso por 55 s a cada minuto desperdiçaria um dos processos
-    // que o plano divide com o WordPress (P-11).
-    //
-    // `withoutOverlapping` porque, sem ele, um job travado acumularia um
-    // worker por minuto até esbarrar no limite do plano — e derrubaria o
-    // site junto, que roda sob o mesmo usuário.
-    ->withoutOverlapping()
-    ->runInBackground();
+    // minutos isto retorna de imediato. Sem ele, o `schedule:run` ficaria
+    // preso os 55 s inteiros todo minuto, segurando um dos processos que
+    // o plano divide com o WordPress (P-11).
+    Artisan::call('queue:work --stop-when-empty --max-time=55 --tries=3');
+})
+    ->name('fila-worker')
+    ->everyMinute()
+    // Sem isto, um job travado acumularia execuções sobrepostas até
+    // esbarrar no limite de processos do plano — e derrubaria o site
+    // junto, que roda sob o mesmo usuário.
+    ->withoutOverlapping();
 
 /*
 | `failed_jobs` só cresce. Duas semanas é tempo de sobra para investigar
 | uma falha; o que passa disso é arqueologia, não operação.
 */
-Schedule::command('queue:prune-failed --hours=336')->weekly();
+Schedule::call(function (): void {
+    Artisan::call('queue:prune-failed --hours=336');
+})->name('fila-limpeza')->weekly();
