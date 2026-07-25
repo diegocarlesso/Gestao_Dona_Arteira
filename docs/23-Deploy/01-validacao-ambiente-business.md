@@ -186,13 +186,33 @@ Consumo médio das últimas 24 h, com o **WordPress em produção** já rodando 
 
 | Uso | Precisa? | Observação |
 |---|---|---|
-| `composer install` / `update` | **Sim** | Composer executa git, descompactação e scripts pós-instalação (`@php artisan package:discover`) em subprocessos |
+| `composer install` / `update` | **Sim** | Composer executa git, descompactação e scripts pós-instalação (`@php artisan package:discover`) em subprocessos. Contorno: rodar `php artisan package:discover` direto depois |
 | `artisan queue:work` | Não | Processa os jobs no próprio processo |
-| `artisan schedule:run` com `->command()` | Não | Executa em processo, salvo se usar `runInBackground()` |
-| `artisan schedule:run` com `->exec()` ou `runInBackground()` | **Sim** | Evitável por decisão de projeto |
+| **`Schedule::command()`** | **Sim** | ⚠️ **Corrigido em 2026-07-25.** Esta linha dizia "Não", e estava errada: o `Illuminate\Console\Scheduling\Event` usa `Symfony\Process` **também em foreground** (`runCommandInForeground()` chama `Process::fromShellCommandline()`). Não é só o `runInBackground()` |
+| `Schedule::exec()` | **Sim** | Mesma razão |
+| **`Schedule::call()`** | Não | Executa no próprio processo do `schedule:run`. **É a forma que funciona neste host** — usada em `routes/console.php` para o worker de fila |
 | `artisan migrate`, `key:generate`, etc. | Não | Processo único |
 
-Ou seja: a operação normal do ERP não depende de `proc_open` — **o deploy sim**.
+Ou seja: a operação normal do ERP não depende de `proc_open` — **o deploy
+e o agendador sim**, este último até 2026-07-25.
+
+#### Como a linha errada foi descoberta (e por que quase não seria)
+
+O primeiro agendamento real do projeto (o worker de fila, ADR-0014) foi
+escrito com `Schedule::command()` confiando nesta tabela. Em produção,
+o resultado foi **silencioso da pior forma**: o cron rodava, o
+`~/scheduler-ultima-execucao.txt` era atualizado a cada minuto — todos
+os sinais de saúde verdes —, e a tarefa simplesmente não acontecia. O
+job ficava na tabela `jobs` para sempre.
+
+O único rastro era uma `LogicException` no `laravel.log`. Ou seja: a
+falha só foi diagnosticável porque o **P-16 tinha sido corrigido no dia
+anterior**. Antes disso, o log não gravava nada, e este erro teria sido
+invisível — o e-mail de convite nunca chegaria e não haveria onde olhar.
+
+**Regra para este projeto: toda tarefa agendada usa `Schedule::call()`
+com `Artisan::call()` dentro.** Não é preferência de estilo; é a única
+forma que executa neste host.
 
 **Ordem de tentativa:**
 
