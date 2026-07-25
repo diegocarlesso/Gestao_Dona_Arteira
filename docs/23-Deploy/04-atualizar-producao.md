@@ -144,6 +144,36 @@ php artisan up
 | 6 | Logs graváveis | `php artisan tinker --execute='Log::error("canario");'` e conferir `storage/logs/laravel.log`. Passou a funcionar em 2026-07-24 — mas a correção do P-16 pode ser desfeita pelo painel, então **verificar em todo deploy**, não presumir. Ver §7 |
 | 7 | WordPress intacto | `https://donaarteira.com.br` |
 | 8 | Nenhuma rota do Fortify vazou | `php artisan route:list \| grep -i 'fortify\|passkey'` — tem de vir **vazio**. O [ADR-0021](../27-ADR/ADR-0021-2fa-totp.md) usa só as Actions do pacote; o provider dele é barrado por `dont-discover`, e um `composer update` desatento o traria de volta com rotas de login/registro duplicando as nossas. `php artisan package:discover` também não deve listar `laravel/fortify` nem `laravel/passkeys` |
+| 9 | **Fila andando** | `php artisan schedule:list` mostra o `queue:work` de minuto em minuto, e `DB::table('jobs')->count()` não fica subindo entre dois deploys. Fila configurada sem worker é a falha mais silenciosa do ADR-0014: o job entra, nada o processa, e o sintoma só aparece dias depois como "o e-mail nunca chegou" |
+
+## 3.7 E-mail (SMTP)
+
+O convite de usuário (pasta 18 §3.2) é o primeiro recurso que depende de
+e-mail. Config em produção, no `.env`:
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.hostinger.com
+MAIL_PORT=465
+MAIL_USERNAME=no-reply@donaarteira.com.br
+MAIL_PASSWORD=
+MAIL_ENCRYPTION=ssl
+MAIL_FROM_ADDRESS="no-reply@donaarteira.com.br"
+MAIL_FROM_NAME="Dona Arteira"
+```
+
+`MAIL_ENCRYPTION=ssl` acompanha a porta 465 (TLS implícito). A 587 usaria
+`tls` — trocar uma sem a outra dá erro de conexão que parece senha
+errada, e é onde se perde meia hora.
+
+Depois de editar, **`php artisan config:cache`** — sem isso o `.env` novo
+é ignorado e a aplicação segue com a configuração antiga em cache (§2).
+
+Conferir com um envio real, não com a configuração:
+
+```bash
+php artisan tinker --execute='Mail::raw("canario", fn($m) => $m->to("SEU-EMAIL")->subject("Teste ERP")); echo "enviado";'
+```
 
 ## 4. Rollback
 

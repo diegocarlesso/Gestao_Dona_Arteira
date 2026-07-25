@@ -14,6 +14,7 @@ use App\Modules\Identity\Events\TwoFactorEnabled;
 use App\Modules\Identity\Events\UserInvited;
 use App\Modules\Identity\Events\UserRolesChanged;
 use App\Modules\Identity\Events\UserStatusChanged;
+use App\Modules\Identity\Listeners\ActivateInvitedAccount;
 use App\Modules\Identity\Listeners\ForgetDevicesOnPasswordChange;
 use App\Modules\Identity\Listeners\RecordDeviceRemembered;
 use App\Modules\Identity\Listeners\RecordFailedLogin;
@@ -28,6 +29,7 @@ use App\Modules\Identity\Listeners\RecordStatusChange;
 use App\Modules\Identity\Listeners\RecordSuccessfulLogin;
 use App\Modules\Identity\Listeners\RecordTwoFactorDisabled;
 use App\Modules\Identity\Listeners\RecordTwoFactorEnabled;
+use App\Modules\Identity\Listeners\SendInvitationEmail;
 use App\Modules\Identity\Listeners\UpdateLastLoginAt;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Policies\UserPolicy;
@@ -87,12 +89,20 @@ class IdentityServiceProvider extends ServiceProvider
 
         // Trocar a senha, por qualquer caminho, revoga os dispositivos
         // lembrados (ADR-0021) — além de registrar o fato.
-        PasswordReset::class => [RecordPasswordReset::class, ForgetDevicesOnPasswordChange::class],
+        // `ActivateInvitedAccount` por último de propósito: se a promoção
+        // Invited → Active falhasse, o registro do reset já estaria na
+        // trilha. O contrário deixaria uma conta ativada sem rastro do que
+        // a ativou.
+        PasswordReset::class => [
+            RecordPasswordReset::class,
+            ForgetDevicesOnPasswordChange::class,
+            ActivateInvitedAccount::class,
+        ],
         PasswordChanged::class => [RecordPasswordChange::class, ForgetDevicesOnPasswordChange::class],
 
         UserStatusChanged::class => [RecordStatusChange::class],
         UserRolesChanged::class => [RecordRoleChange::class],
-        UserInvited::class => [RecordInvitation::class],
+        UserInvited::class => [RecordInvitation::class, SendInvitationEmail::class],
 
         // 2FA (ADR-0021). Eventos nossos, não os do Fortify: o gatilho de
         // revisão do ADR prevê trocar o pacote, e a trilha não pode parar

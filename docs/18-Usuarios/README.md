@@ -1,6 +1,6 @@
 # 18 — Usuários
 
-> **Status:** 🟡 **Parcialmente implementado** — model, ciclo de vida, telas de gestão, middlewares, política de senha, trilha de segurança e **2FA TOTP** prontos; **só o e-mail de convite pendente** · **Última atualização:** 2026-07-24 · **Responsável:** security-specialist
+> **Status:** ✅ **Implementado** — model, ciclo de vida, telas de gestão, middlewares, política de senha, trilha de segurança, 2FA TOTP e convite por e-mail com ativação · **Última atualização:** 2026-07-24 · **Responsável:** security-specialist
 > **Fase:** Gate 01 · **ADR:** 0005 (Sanctum), [0021](../27-ADR/ADR-0021-2fa-totp.md) (2FA TOTP) · Permissões: [pasta 19](../19-Permissoes/README.md)
 > **Código:** `app/Modules/Identity/` · telas em `resources/js/pages/identity/` · testes em `tests/Feature/Identity/`
 
@@ -54,6 +54,43 @@ o route key — o `id` sequencial não sai daqui), `two_factor_secret` e
 para que nenhum campo escondido de formulário os alcance),
 `two_factor_confirmed_at`, `password_changed_at`, `must_change_password`
 e `last_login_at`.
+
+### 3.2 Convite e ativação (implementado em 2026-07-24)
+
+1. Um admin cria a conta pela tela de usuários. Ela nasce `invited`, com
+   **senha aleatória que ninguém conhece** — senha nunca transita por
+   e-mail, console ou conversa.
+2. A notificação `ConviteDeAcesso` sai **pela fila** com um link de
+   definição de senha. O token é o do mesmo mecanismo de "esqueci minha
+   senha": uso único e com prazo, já existente e já testado. Inventar um
+   token de convite paralelo seria uma segunda chance de errar o mesmo
+   problema.
+3. A pessoa define a senha (política completa da §3.5 — 12 caracteres e
+   checagem de vazamento).
+4. **Definir a senha é a ativação**: `invited → active`, pelo
+   `ChangeUserStatusService`, o que valida a transição e deixa
+   `user.status_changed` na trilha da pasta 26.
+5. Se o papel exigir 2FA (BR-804), o middleware `2fa.confirmado` conduz à
+   configuração no primeiro acesso.
+
+> **O elo que faltava.** Até 2026-07-24 os passos 2 e 4 não existiam. O
+> efeito não era "o convite não chega": era um **laço fechado**. A pessoa
+> definia a senha, tentava entrar, e o middleware `conta.ativa` a
+> expulsava com "Esta conta ainda não foi ativada. Verifique o convite
+> enviado por e-mail" — mandando-a justamente ao e-mail que não resolvia
+> nada. Só um admin, mudando o status à mão, destravava. O diagrama acima
+> sempre descreveu a ativação ao definir a senha; faltava alguém
+> executá-la.
+
+**Redefinição de senha não reativa conta suspensa.** Só `invited` é
+promovido. Quem foi suspenso não volta pedindo "esqueci minha senha" —
+reativar é decisão de quem administra, e o enum recusaria a transição de
+qualquer forma.
+
+**Pré-requisitos de produção:** SMTP configurado (`MAIL_*`) e o worker de
+fila agendado — ver [runbook 04](../23-Deploy/04-atualizar-producao.md).
+Sem o worker, a notificação fica parada na tabela `jobs` em silêncio, e o
+primeiro sintoma seria alguém perguntando por que o convite nunca chegou.
 
 ### 3.2 Os dois middlewares que fazem as regras valerem
 

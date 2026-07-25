@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Identity\Rules\PasswordPolicy;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -39,8 +39,13 @@ class NewPasswordController extends Controller
         $request->validate([
             'token' => 'required',
             'email' => 'required|email',
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+            // `PasswordPolicy`, não `Rules\Password::defaults()`. Este era
+            // o TERCEIRO caminho de definição de senha, e continuava
+            // aceitando 8 caracteres sem checagem de vazamento depois que
+            // os outros dois foram unificados — inclusive para quem acaba
+            // de ser convidado e define a primeira senha justamente aqui.
+            'password' => PasswordPolicy::validationRules(),
+        ], [], ['password' => 'nova senha']);
 
         // Here we will attempt to reset the user's password. If it is successful we
         // will update the password on an actual user model and persist it to the
@@ -51,6 +56,12 @@ class NewPasswordController extends Controller
                 $user->forceFill([
                     'password' => Hash::make($request->password),
                     'remember_token' => Str::random(60),
+                    // A troca obrigatória já preenchia isto; o reset não,
+                    // e a coluna ficava mentindo que a senha nunca mudou.
+                    'password_changed_at' => now(),
+                    // Quem redefine a senha acabou de escolher uma sua —
+                    // não faz sentido exigir troca no primeiro acesso.
+                    'must_change_password' => false,
                 ])->save();
 
                 event(new PasswordReset($user));

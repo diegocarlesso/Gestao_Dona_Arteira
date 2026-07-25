@@ -56,11 +56,16 @@ class PasswordResetTest extends TestCase
         $this->post('/forgot-password', ['email' => $user->email]);
 
         Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
+            // Era `password`, de 8 caracteres, que o starter kit aceitava.
+            // A redefinição passou a exigir a `PasswordPolicy` como os
+            // outros dois caminhos (12 caracteres + checagem de vazamento),
+            // então o teste que afirmava o padrão fraco tinha de mudar
+            // junto — ele documentava o furo, não a regra.
             $response = $this->post('/reset-password', [
                 'token' => $notification->token,
                 'email' => $user->email,
-                'password' => 'password',
-                'password_confirmation' => 'password',
+                'password' => 'senha-longa-de-teste-123',
+                'password_confirmation' => 'senha-longa-de-teste-123',
             ]);
 
             $response
