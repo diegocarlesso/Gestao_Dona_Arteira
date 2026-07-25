@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Catalog\Providers\CatalogServiceProvider;
 use App\Modules\Identity\Providers\IdentityServiceProvider;
 use App\Providers\AppServiceProvider;
 
@@ -12,4 +13,5 @@ return [
     // boot: Identity vem primeiro porque define o Gate que os demais
     // módulos consultam.
     IdentityServiceProvider::class,
+    CatalogServiceProvider::class,
 ];

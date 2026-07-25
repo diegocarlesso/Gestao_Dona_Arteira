@@ -67,6 +67,14 @@ class IdentityServiceProvider extends ServiceProvider
     private const SEMPRE_PELA_POLICY = [
         'changeStatus',
         'assignRoles',
+
+        // BR-008: cadastro com movimento nunca é excluído fisicamente —
+        // é arquivado. A regra vale para o sistema inteiro, e sem esta
+        // linha o atalho do admin responderia `true` a qualquer
+        // `can('delete', ...)`, convidando alguém a construir a tela de
+        // exclusão que a regra proíbe. A Policy de cada recurso decide;
+        // as do catálogo negam sempre.
+        'delete',
     ];
 
     /**
