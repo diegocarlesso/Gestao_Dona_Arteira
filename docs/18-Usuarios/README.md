@@ -168,6 +168,14 @@ Código em `app/Modules/Identity/`, telas em
 `resources/js/pages/identity/two-factor*.tsx`, testes em
 `tests/Feature/Identity/DoisFatoresTest.php`.
 
+> **O nome que aparece no aplicativo autenticador vem de `APP_NAME`** — e
+> é gravado no QR **no momento do cadastro**. Trocar `APP_NAME` depois
+> **não** atualiza quem já cadastrou: o celular continua exibindo o nome
+> antigo até a pessoa desativar e reativar o 2FA. Em produção isso foi
+> corrigido de `Laravel` para `Dona Arteira` em 2026-07-25, quando só uma
+> conta tinha 2FA. Se o nome mudar de novo, o custo é um reescaneamento
+> por pessoa cadastrada.
+
 **Configurar** (`/dois-fatores`): gerar o segredo abre o QR mas **não
 ativa nada** — só a confirmação com um código do aplicativo ativa. A
 separação existe para que abrir a tela e desistir seja inofensivo; se

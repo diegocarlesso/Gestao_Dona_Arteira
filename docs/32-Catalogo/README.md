@@ -126,9 +126,12 @@ porque pedido antigo precisa continuar explicável.
 > (§3.6) — o cadastro não trava, mas a lacuna fica visível em vez de
 > silenciosa.
 >
-> **Como sair:** levantar a tabela com quem vende. Se houver **regra de
-> formação** (por exemplo, atacado = varejo menos um percentual fixo), a
-> carga é trivial e vale confirmar isso antes de digitar 716 preços.
+> **Como sai:** o dono definiu em 2026-07-25 que **a equipe preencherá os
+> preços de atacado depois**, produto a produto — não há regra de formação
+> a partir do varejo. Logo, a tela de produto precisa tornar esse
+> preenchimento **rápido e conferível**: campo de atacado ao lado do
+> varejo no cadastro, e um filtro "sem preço de atacado" na listagem, para
+> a equipe saber o que ainda falta sem varrer 716 fichas.
 
 Dinheiro é `DECIMAL(15,2)` e `brick/money` no PHP
 ([ADR-0013](../27-ADR/ADR-0013-dinheiro-decimal.md)) — nunca float.
