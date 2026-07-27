@@ -7,6 +7,7 @@ namespace App\Modules\Integrations\WooCommerce\Services;
 use App\Modules\Catalog\Enums\ProductKind;
 use App\Modules\Catalog\Enums\ProductStatus;
 use App\Modules\Catalog\Services\ImportProductCategoryService;
+use App\Modules\Catalog\Services\ImportProductImagesService;
 use App\Modules\Catalog\Services\ImportProductService;
 use App\Modules\Integrations\WooCommerce\Enums\DestinoDaTriagem;
 use App\Modules\Integrations\WooCommerce\Models\IntegrationMapping;
@@ -49,20 +50,22 @@ class LoadWooCatalog
     public function __construct(
         private readonly ImportProductService $produtos,
         private readonly ImportProductCategoryService $categorias,
+        private readonly ImportProductImagesService $imagens,
     ) {}
 
     /**
-     * @return array{categorias: int, produtos: int, precos: int, peso_recusado: int, total_mapeado: int}
+     * @return array{categorias: int, produtos: int, precos: int, imagens: int, peso_recusado: int, total_mapeado: int}
      */
     public function executar(): array
     {
-        $contagem = ['categorias' => 0, 'produtos' => 0, 'precos' => 0, 'peso_recusado' => 0, 'total_mapeado' => 0];
+        $contagem = ['categorias' => 0, 'produtos' => 0, 'precos' => 0, 'imagens' => 0, 'peso_recusado' => 0, 'total_mapeado' => 0];
 
         DB::transaction(function () use (&$contagem): void {
             $contagem['categorias'] = $this->carregarCategorias();
-            [$produtos, $precos, $recusados] = $this->carregarProdutos();
+            [$produtos, $precos, $imagens, $recusados] = $this->carregarProdutos();
             $contagem['produtos'] = $produtos;
             $contagem['precos'] = $precos;
+            $contagem['imagens'] = $imagens;
             $contagem['peso_recusado'] = $recusados;
         });
 
@@ -115,12 +118,13 @@ class LoadWooCatalog
     }
 
     /**
-     * @return array{0: int, 1: int, 2: int}
+     * @return array{0: int, 1: int, 2: int, 3: int}
      */
     private function carregarProdutos(): array
     {
         $criados = 0;
         $precos = 0;
+        $imagens = 0;
         $pesoRecusado = 0;
 
         $linhas = StgWooProduct::query()
@@ -157,11 +161,12 @@ class LoadWooCatalog
 
             $criados += $novo ? 1 : 0;
             $precos += ($novo && $temPreco) ? 1 : 0;
+            $imagens += $this->imagens->importar($localId, $this->imagensDe($linha));
 
             IntegrationMapping::registrar('product', $localId, $linha->woo_id);
         }
 
-        return [$criados, $precos, $pesoRecusado];
+        return [$criados, $precos, $imagens, $pesoRecusado];
     }
 
     /**
@@ -225,6 +230,48 @@ class LoadWooCatalog
         }
 
         return null;
+    }
+
+    /**
+     * As imagens do item, normalizadas — ADR-0017, fase 1.
+     *
+     * O produto traz uma galeria em `images` (plural); a variação traz uma
+     * imagem só em `image` (singular). É o mesmo singular/plural da cor —
+     * um padrão do Woo, não descuido de quem extraiu.
+     *
+     * Guardamos a URL, não o arquivo: a mídia segue no WordPress até o
+     * Gate 06. O `thumbnail` que a origem já oferece evita baixar a foto
+     * inteira para exibir numa prévia de listagem.
+     *
+     * @return list<array{remote_id: string|int|null, url: string, thumbnail_url: string|null, alt: string|null}>
+     */
+    private function imagensDe(StgWooProduct $linha): array
+    {
+        $brutas = $linha->payload['images'] ?? null;
+
+        if (! is_array($brutas) || $brutas === []) {
+            $unica = $linha->payload['image'] ?? null;
+            $brutas = is_array($unica) && $unica !== [] ? [$unica] : [];
+        }
+
+        $imagens = [];
+
+        foreach ($brutas as $bruta) {
+            if (! is_array($bruta) || ! is_string($bruta['src'] ?? null) || $bruta['src'] === '') {
+                continue;
+            }
+
+            $imagens[] = [
+                'remote_id' => $bruta['id'] ?? null,
+                'url' => $bruta['src'],
+                'thumbnail_url' => is_string($bruta['thumbnail'] ?? null) && $bruta['thumbnail'] !== ''
+                    ? $bruta['thumbnail']
+                    : null,
+                'alt' => is_string($bruta['alt'] ?? null) && $bruta['alt'] !== '' ? $bruta['alt'] : null,
+            ];
+        }
+
+        return $imagens;
     }
 
     private function categoriaDe(StgWooProduct $linha): ?int

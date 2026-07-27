@@ -154,6 +154,24 @@ class Product extends Model implements Auditable
     }
 
     /**
+     * Imagens, na ordem em que a origem as trouxe (ADR-0017).
+     *
+     * @return HasMany<ProductImage, $this>
+     */
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class)->orderBy('position');
+    }
+
+    /**
+     * A imagem que representa o produto numa listagem.
+     */
+    public function imagemPrincipal(): ?ProductImage
+    {
+        return $this->images->first();
+    }
+
+    /**
      * O preço que vale hoje numa lista, ou nulo se nunca houve.
      *
      * Nulo é resposta legítima e esperada para `wholesale`: a empresa

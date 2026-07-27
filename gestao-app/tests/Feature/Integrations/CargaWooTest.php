@@ -179,3 +179,61 @@ it('lê a cor da variação, que vem no singular', function () {
     // perderia metade dos casos.
     expect(Product::query()->value('color'))->toBe('Rosê gold');
 });
+
+it('guarda a referência da imagem, não o arquivo', function () {
+    aprovado(100, 'DA-0001', [
+        'images' => [[
+            'id' => 555,
+            'src' => 'https://donaarteira.com.br/wp-content/uploads/2025/07/7.jpg',
+            'thumbnail' => 'https://donaarteira.com.br/wp-content/uploads/2025/07/7-150x150.jpg',
+            'alt' => 'Buda azul',
+        ]],
+    ]);
+
+    app(LoadWooCatalog::class)->executar();
+
+    $imagem = Product::query()->first()->imagemPrincipal();
+
+    // ADR-0017 fase 1: a mídia segue hospedada no WordPress; o ERP guarda
+    // a URL e exibe. Migrar os arquivos agora custaria disco e pipeline.
+    expect($imagem->url)->toContain('wp-content/uploads')
+        ->and($imagem->source)->toBe('woo')
+        ->and($imagem->alt)->toBe('Buda azul')
+        // A prévia usa a miniatura: a foto inteira num quadro de 160 px
+        // seria download desperdiçado.
+        ->and($imagem->paraPrevia())->toContain('150x150');
+});
+
+it('lê a imagem da variação, que vem no singular', function () {
+    aprovado(100, 'DA-0001', [
+        'image' => ['id' => 9, 'src' => 'https://exemplo.test/v.jpg'],
+    ]);
+
+    app(LoadWooCatalog::class)->executar();
+
+    // Mesmo padrão da cor: produto usa `images`, variação usa `image`.
+    expect(Product::query()->first()->imagemPrincipal()->url)->toBe('https://exemplo.test/v.jpg');
+});
+
+it('cai para a imagem original quando não há miniatura', function () {
+    aprovado(100, 'DA-0001', [
+        'images' => [['id' => 1, 'src' => 'https://exemplo.test/inteira.jpg']],
+    ]);
+
+    app(LoadWooCatalog::class)->executar();
+
+    expect(Product::query()->first()->imagemPrincipal()->paraPrevia())
+        ->toBe('https://exemplo.test/inteira.jpg');
+});
+
+it('não duplica imagens ao recarregar', function () {
+    aprovado(100, 'DA-0001', [
+        'images' => [['id' => 7, 'src' => 'https://exemplo.test/a.jpg']],
+    ]);
+
+    $carga = app(LoadWooCatalog::class);
+    $carga->executar();
+    $carga->executar();
+
+    expect(Product::query()->first()->images()->count())->toBe(1);
+});

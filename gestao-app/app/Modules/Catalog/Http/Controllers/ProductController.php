@@ -36,7 +36,10 @@ class ProductController extends Controller
         $pendencia = $request->string('pendencia')->trim()->value();
 
         $produtos = Product::query()
-            ->with(['category:id,name', 'prices'])
+            // `images` no eager loading: sem isso a listagem faria uma
+            // consulta por produto só para achar a miniatura — 20 linhas,
+            // 21 consultas.
+            ->with(['category:id,name', 'prices', 'images'])
             ->when($busca !== '', fn ($q) => $q->where(
                 fn ($q) => $q->where('name', 'like', "%{$busca}%")
                     // Busca por SKU **e** por nome porque o código é
@@ -215,6 +218,11 @@ class ProductController extends Controller
             'sell_on_woo' => $produto->sell_on_woo,
             'preco_varejo' => $produto->precoVigente(PriceList::Retail)?->price,
             'preco_atacado' => $produto->precoVigente(PriceList::Wholesale)?->price,
+            // Miniatura para a prévia ao passar o mouse. A imagem continua
+            // hospedada no WordPress (ADR-0017, fase 1) — daqui sai só a
+            // referência.
+            'imagem' => $produto->imagemPrincipal()?->paraPrevia(),
+            'imagem_alt' => $produto->imagemPrincipal()?->alt,
             // A lacuna vai para a tela em vez de ficar em silêncio: é o
             // que evita descobrir na hora da venda (pasta 32 §3.6).
             'pendencias' => $produto->pendencias(),

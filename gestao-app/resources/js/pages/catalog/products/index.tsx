@@ -1,3 +1,4 @@
+import { PreviaDoProduto } from '@/components/catalog/previa-do-produto';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,8 @@ type ProdutoDaLista = {
     sell_on_woo: boolean;
     preco_varejo: string | null;
     preco_atacado: string | null;
+    imagem: string | null;
+    imagem_alt: string | null;
     pendencias: string[];
 };
 
@@ -128,9 +131,11 @@ export default function ProdutosIndex({ produtos, filtros, contagemPendencias }:
                                         <td className="p-3">
                                             {/* O nome sempre ao lado do código: o SKU
                                                 não diz nada sozinho, por decisão. */}
-                                            <Link href={`/produtos/${p.public_id}`} className="font-medium hover:underline">
-                                                {p.name}
-                                            </Link>
+                                            <PreviaDoProduto imagem={p.imagem} alt={p.imagem_alt}>
+                                                <Link href={`/produtos/${p.public_id}`} className="font-medium hover:underline">
+                                                    {p.name}
+                                                </Link>
+                                            </PreviaDoProduto>
                                             {p.color && <span className="text-muted-foreground"> · {p.color}</span>}
                                             <div className="text-muted-foreground text-xs">{p.kind}</div>
                                         </td>
