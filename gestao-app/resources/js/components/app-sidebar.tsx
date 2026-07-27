@@ -4,7 +4,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { usePermissions } from '@/lib/permissions';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { Boxes, CopyCheck, LayoutGrid, Package, Users } from 'lucide-react';
+import { Boxes, Contact, CopyCheck, LayoutGrid, Package, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 
 /**
@@ -31,6 +31,12 @@ const ITENS: (NavItem & { permissao?: string })[] = [
         url: '/estoque',
         icon: Boxes,
         permissao: 'inventory.view',
+    },
+    {
+        title: 'Clientes',
+        url: '/clientes',
+        icon: Contact,
+        permissao: 'sales.view',
     },
     {
         title: 'Nomes repetidos',

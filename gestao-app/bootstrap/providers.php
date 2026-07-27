@@ -6,6 +6,7 @@ use App\Modules\Catalog\Providers\CatalogServiceProvider;
 use App\Modules\Identity\Providers\IdentityServiceProvider;
 use App\Modules\Integrations\Providers\IntegrationsServiceProvider;
 use App\Modules\Inventory\Providers\InventoryServiceProvider;
+use App\Modules\Sales\Providers\SalesServiceProvider;
 use App\Providers\AppServiceProvider;
 
 return [
@@ -19,5 +20,6 @@ return [
     // Estoque depois do Catálogo: o movimento aponta para produto, e não
     // o contrário (pasta 09 §7).
     InventoryServiceProvider::class,
+    SalesServiceProvider::class,
     IntegrationsServiceProvider::class,
 ];

@@ -10,6 +10,39 @@ Unificar pedidos de **todos os canais** (balcão/atacado/encomenda no ERP + WooC
 ## 2. Responsabilidades
 
 - **Faz:** pedidos e itens, máquina de estados, preços/descontos com alçada, clientes, separação/embalagem/expedição, devoluções (fase 2 do módulo).
+
+> ✅ **Clientes implementados em 2026-07-27** — é a parte do módulo que o
+> Gate 01 pede; pedidos continuam no Gate 02. O módulo `Sales/` nasce com
+> eles, e não como um módulo `Customers/` que depois teria de ser fundido
+> (pasta 05 §2 já os colocava aqui).
+>
+> Cadastro com múltiplos endereços, marcação de atacadista, consentimento
+> LGPD e inativação por *soft delete* — cliente não se apaga, porque há
+> histórico de compra apontando para ele e a NF-e emitida guarda o
+> destinatário por obrigação fiscal.
+>
+> **Três decisões que a implementação obrigou a tomar:**
+>
+> - **O documento é nulável, e isso resolve a pendência da BR-001**
+>   ("validar se cliente de balcão sem NF pode ser cadastrado sem
+>   documento"): pode. Exigi-lo no cadastro empurraria a operação a
+>   inventar número para fechar a venda — e número inventado ou reprova no
+>   dígito verificador, ou passa no de outra pessoa. Sem documento o
+>   cliente existe e a **emissão** é que fica bloqueada, no momento em que
+>   a falta importa. A listagem mostra a pendência antes da venda.
+> - **Guardado só com dígitos.** A máscara é apresentação; gravá-la faria
+>   o mesmo CPF escrito de dois jeitos passar pela unicidade. A busca
+>   também limpa a máscara antes de comparar.
+> - **A validação de CPF/CNPJ mora em `Support\Documento`**, não em
+>   `Sales/`: fornecedor, transportadora e o emitente da NF-e usam a mesma
+>   regra (ADR-0020 — value object no núcleo compartilhado). Duas
+>   implementações divergiriam, e a que divergisse seria descoberta pela
+>   SEFAZ.
+>
+> **Ainda não existe:** anonimização LGPD (pasta 25 §3). Fica para quando
+> houver pedido e NF-e — a rotina precisa recusar anonimizar quem tem
+> dever legal de guarda, e hoje essa checagem não teria o que consultar.
+> Construí-la agora entregaria um controle que sempre diz "pode".
 - **Não faz:** mexer em saldo (pede reserva/baixa ao Estoque), emitir NF-e (chama Fiscal), cobrar (Financeiro), falar com Woo (Integrações reage a eventos).
 
 ## 3. Máquina de estados do pedido (BR-303)
