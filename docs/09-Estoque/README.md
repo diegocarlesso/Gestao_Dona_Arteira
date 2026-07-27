@@ -33,12 +33,34 @@ Ser a fonte única e auditável da posição de estoque de **tudo** (matéria-pr
 > inteiro. A busca por nome/código também é do Catálogo — duplicá-la
 > deste lado criaria duas buscas que divergem com o tempo.
 >
-> **Ainda não existe:** contagem e ajuste pela tela (BR-205, com aprovador
-> ≠ contador), reserva (BR-203, depende de Vendas), publicação no site
-> (BR-204, depende de Integrações) e o job de reconciliação. Sem a
-> contagem, o estoque ainda **não** é operável por gente — que é critério
-> de saída do Gate 01 —, e é ela que recebe o saldo inicial dos 754
-> produtos migrados.
+> ✅ **Contagem física com segregação — 2026-07-27.** `stock_counts` +
+> `stock_count_items`, com o ciclo `counting` → `awaiting_approval` →
+> `approved`. Abrir congela a lista com o saldo daquele instante; a
+> aprovação transforma cada divergência em movimento de ajuste
+> referenciando a contagem. **Com isto o estoque é operável por gente, e
+> o critério de saída do Gate 01 está atendido.**
+>
+> **Quatro decisões que a implementação obrigou a tomar:**
+>
+> - **Aprovador ≠ contador é do serviço, não da tela.** A tela esconde o
+>   botão de quem contou, mas o `ApproveStockCountService` recusa de
+>   qualquer forma — esconder não é proteger.
+> - **`qty_counted` nulo não é zero.** "Ainda não contei" e "contei e não
+>   tem nenhuma" levam a ações opostas, e num inventário de 754 peças o
+>   não-contado é a maior parte da lista até o fim. Item não contado não
+>   gera ajuste; se `null` virasse zero, aprovar no meio do trabalho
+>   zeraria o estoque de tudo que ninguém percorreu ainda.
+> - **O ajuste sai contra o saldo congelado**, não contra o saldo de
+>   agora. O que a contagem afirma é o que havia quando ela abriu;
+>   expedição ocorrida durante a contagem é real e permanece.
+> - **Uma contagem aberta por local.** Duas produziriam ajustes calculados
+>   sobre o mesmo saldo congelado, e a segunda desfaria a primeira sem
+>   que ninguém percebesse.
+>
+> **Ainda não existe:** reserva (BR-203, depende de Vendas), publicação no
+> site (BR-204, depende de Integrações), custo médio alimentado por
+> compra/produção (BR-206 — o cálculo existe e é testado, mas nenhum
+> módulo ainda envia custo) e o job de reconciliação noturno.
 >
 > **Três decisões que a implementação obrigou a tomar:**
 >

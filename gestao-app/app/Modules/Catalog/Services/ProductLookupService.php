@@ -82,6 +82,22 @@ class ProductLookupService
             ->all();
     }
 
+    /**
+     * Ids de tudo que está ativo no catálogo.
+     *
+     * O Estoque usa para congelar a lista de uma contagem física (BR-205)
+     * — e quem decide o que é "ativo" é o Catálogo, porque produto
+     * arquivado não deve entrar numa contagem nova mesmo que ainda tenha
+     * saldo. O saldo remanescente de um arquivado se resolve por ajuste
+     * nomeado, não por inventário de rotina.
+     *
+     * @return list<int>
+     */
+    public function idsAtivos(): array
+    {
+        return Product::query()->active()->orderBy('id')->pluck('id')->all();
+    }
+
     private function resumoDe(Product $produto): ProductSummary
     {
         return new ProductSummary(
