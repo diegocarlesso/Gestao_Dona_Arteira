@@ -135,8 +135,11 @@ revisão.
 - Um só formato de SKU para o catálogo inteiro, sem exceções a explicar.
 
 **Negativas / dívidas assumidas:**
-- O catálogo cresce de 716 para aproximadamente **793 linhas** (716 − 39
-  pais + 77 variações). Cadastro mais trabalhoso: uma peça em cinco cores
+- O catálogo cresce de 716 para aproximadamente ~~793~~ **754 linhas**
+  (716 − 39 pais + 77 variações). 📌 **Corrigido em 2026-07-27:** o "793"
+  era erro de conta — a própria fórmula ao lado dá 754, e a extração real
+  confirmou. O 793 é o total do *staging*, que guarda também os 39
+  invólucros descartados na carga. Cadastro mais trabalhoso: uma peça em cinco cores
   são cinco cadastros. Mitigável depois com "duplicar produto" na tela,
   que **não** é a mesma coisa que um produto-pai — é conveniência de
   digitação, não estrutura.

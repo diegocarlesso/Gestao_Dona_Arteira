@@ -71,6 +71,38 @@ Três coisas que a implementação obrigou a decidir:
 **Credenciais:** `WOO_ENABLED`, `WOO_URL`, `WOO_KEY`, `WOO_SECRET` no
 `.env` (ver `.env.example`). Permissão de **leitura** basta. A integração
 nasce desligada de propósito.
+
+#### Resultado da primeira extração real — 2026-07-27, produção
+
+Rodada em produção (é lá que a carga vai acontecer, então é lá que o
+staging precisa estar). 15 páginas de produtos, sem falha, precedida de
+`--dry-run` com os mesmos números.
+
+| Métrica | [Inventário](../31-Inventario-Legado/02-produtos.md) | Extraído | |
+|---|---:|---:|:-:|
+| `simple` | 677 | 677 | ✅ |
+| `variable` | 39 | 39 | ✅ |
+| `variation` | 77 | 77 | ✅ |
+| **Total no staging** | — | **793** | |
+| Sem SKU | 716 de 716 | 793 de 793 | ✅ |
+| Sem peso | 46 | 46 | ✅ |
+| Categorias | — | **48** | 🆕 |
+
+**A conferência bateu em todas as linhas.** É a validação da F5 feita já
+na F2: se a extração fosse infiel, seria aqui que apareceria.
+
+**754 dos 793 têm preço** — e esse número não é coincidência. Os 39
+`variable` são invólucros: no Woo o preço mora nas variações, não no pai.
+Ou seja, os itens com preço são exatamente os que viram produto no ERP
+(677 simples + 77 variações = **754**), e os 39 pais são descartados na
+carga por não terem correspondente no nosso modelo
+([ADR-0022](../27-ADR/ADR-0022-modelo-de-produto-e-sku.md)).
+
+> 📌 **Correção de número:** o ADR-0022 estimou "aproximadamente 793
+> linhas" para o catálogo do ERP, mas a fórmula que ele mesmo enuncia
+> (716 − 39 + 77) dá **754** — e a medição confirma 754. O 793 é o total
+> do *staging*, que guarda também os 39 invólucros. A decisão não muda;
+> só o tamanho esperado do catálogo, para menos.
 - ~~Legado: leitura direta do MySQL do desktop → `stg_legacy_*`~~ — **não se aplica** (2026-07-25): o desktop nunca foi alimentado. Não há `stg_legacy_*`, nem a exceção ao BR-701 que este item abria.
 
 ### F3 — Saneamento (onde a migração é ganha ou perdida)
