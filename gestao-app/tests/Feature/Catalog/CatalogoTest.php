@@ -10,10 +10,12 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Services\ArchiveProductService;
 use App\Modules\Catalog\Services\CreateProductService;
 use App\Modules\Catalog\Services\GenerateSku;
+use App\Modules\Catalog\Services\ImportProductImagesService;
 use App\Modules\Catalog\Services\SetProductPriceService;
 use App\Modules\Identity\Enums\Role;
 use App\Modules\Identity\Models\User;
 use Database\Seeders\Identity\RolePermissionSeeder;
+use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
 
@@ -227,4 +229,41 @@ it('cadastra um produto pela tela e mostra o código gerado', function () {
         ->assertSessionHas('sucesso', fn (string $m): bool => str_contains($m, 'DA-0001'));
 
     expect(Product::query()->where('sku', 'DA-0001')->exists())->toBeTrue();
+});
+
+it('mostra a galeria na ficha do produto', function () {
+    $produto = app(CreateProductService::class)->handle(atributosDeProduto());
+
+    app(ImportProductImagesService::class)->importar($produto->id, [
+        ['remote_id' => 1, 'url' => 'https://exemplo.test/a.jpg', 'thumbnail_url' => 'https://exemplo.test/a-mini.jpg', 'alt' => 'Frente'],
+        ['remote_id' => 2, 'url' => 'https://exemplo.test/b.jpg', 'thumbnail_url' => null, 'alt' => null],
+    ]);
+
+    actingAs(admin())
+        ->get("/produtos/{$produto->public_id}")
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('catalog/products/edit')
+            // A galeria inteira, não só a principal: quem confere o
+            // cadastro precisa dos ângulos que a origem tem.
+            ->has('produto.imagens', 2)
+            ->where('produto.imagens.0.previa', 'https://exemplo.test/a-mini.jpg')
+            // Sem miniatura, cai para a original — melhor pesada que nenhuma.
+            ->where('produto.imagens.1.previa', 'https://exemplo.test/b.jpg')
+        );
+});
+
+it('expõe a miniatura na listagem, para a prévia do mouse', function () {
+    $produto = app(CreateProductService::class)->handle(atributosDeProduto());
+
+    app(ImportProductImagesService::class)->importar($produto->id, [
+        ['remote_id' => 1, 'url' => 'https://exemplo.test/a.jpg', 'thumbnail_url' => 'https://exemplo.test/a-mini.jpg'],
+    ]);
+
+    actingAs(admin())
+        ->get('/produtos')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('produtos.data.0.imagem', 'https://exemplo.test/a-mini.jpg')
+        );
 });

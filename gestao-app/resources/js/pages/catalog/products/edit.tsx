@@ -1,4 +1,5 @@
 import { FormularioDeProduto, type OpcoesDoFormulario, type ValoresDoProduto } from '@/components/catalog/formulario-de-produto';
+import { GaleriaDoProduto, type ImagemDoProduto } from '@/components/catalog/galeria-do-produto';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ type Produto = Partial<ValoresDoProduto> & {
     status: string;
     pendencias: string[];
     historicoDePrecos: HistoricoDePreco[];
+    imagens: ImagemDoProduto[];
 };
 
 interface Props extends OpcoesDoFormulario {
@@ -66,6 +68,8 @@ export default function ProdutoEdit({ produto, ...opcoes }: Props) {
                         )}
                     </Button>
                 </div>
+
+                <GaleriaDoProduto imagens={produto.imagens} nome={produto.name} />
 
                 <FormularioDeProduto
                     opcoes={opcoes}

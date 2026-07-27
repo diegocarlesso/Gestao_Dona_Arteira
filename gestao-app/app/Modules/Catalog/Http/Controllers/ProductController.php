@@ -94,7 +94,7 @@ class ProductController extends Controller
     {
         $this->authorize('view', $product);
 
-        $product->load(['category:id,name', 'defaultPackage:id,name', 'prices']);
+        $product->load(['category:id,name', 'defaultPackage:id,name', 'prices', 'images']);
 
         return Inertia::render('catalog/products/edit', [
             'produto' => $this->paraTela($product) + [
@@ -119,6 +119,14 @@ class ProductController extends Controller
                         'preco' => $p->price,
                         'desde' => $p->valid_from->toIso8601String(),
                     ])->all(),
+                // A galeria inteira, não só a principal: alguns produtos
+                // têm mais de uma foto, e quem confere o cadastro precisa
+                // ver a peça de todos os ângulos que a origem tem.
+                'imagens' => $product->images->map(fn ($i): array => [
+                    'url' => $i->url,
+                    'previa' => $i->paraPrevia(),
+                    'alt' => $i->alt,
+                ])->all(),
             ],
         ] + $this->opcoesDeFormulario());
     }
