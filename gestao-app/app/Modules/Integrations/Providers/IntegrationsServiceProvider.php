@@ -1,0 +1,27 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Integrations\Providers;
+
+use App\Modules\Integrations\WooCommerce\Console\ExtractWooCommand;
+use Illuminate\Support\ServiceProvider;
+
+/**
+ * Provider do módulo Integrações — docs/15-Integracoes.
+ *
+ * A camada anticorrupção do projeto: é aqui que sistema externo encosta,
+ * e em lugar nenhum além daqui (BR-701, princípio 2 da pasta 15). Os
+ * módulos de domínio não conhecem formato externo.
+ */
+class IntegrationsServiceProvider extends ServiceProvider
+{
+    public function boot(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                ExtractWooCommand::class,
+            ]);
+        }
+    }
+}

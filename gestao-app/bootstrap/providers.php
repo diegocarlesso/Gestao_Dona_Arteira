@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Catalog\Providers\CatalogServiceProvider;
 use App\Modules\Identity\Providers\IdentityServiceProvider;
+use App\Modules\Integrations\Providers\IntegrationsServiceProvider;
 use App\Providers\AppServiceProvider;
 
 return [
@@ -14,4 +15,5 @@ return [
     // módulos consultam.
     IdentityServiceProvider::class,
     CatalogServiceProvider::class,
+    IntegrationsServiceProvider::class,
 ];

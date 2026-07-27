@@ -43,8 +43,34 @@ flowchart LR
 ### F1 — Inventário (pré-requisito de tudo)
 Contagens (produtos, variações, clientes, pedidos por ano), plugins do Woo (mapeamento pasta 16), qualidade: % produtos sem SKU, clientes duplicados por e-mail/doc, pedidos órfãos. Saída: relatório que **recalibra os NFRs** (pasta 03) e dimensiona o esforço de saneamento.
 
-### F2 — Extração
+### F2 — Extração ✅ *catálogo implementado em 2026-07-25*
 - Woo: paginação via REST (products, categories, customers, orders com `after`), incremental por `modified_after` nas re-execuções.
+
+**Estado:** produtos e categorias prontos —
+`php artisan erp:migrate:extract {produtos|categorias|tudo} [--dry-run] [--pagina=N]`.
+Clientes e pedidos ficam para quando os módulos correspondentes
+existirem. Código em `app/Modules/Integrations/WooCommerce/`.
+
+Três coisas que a implementação obrigou a decidir:
+
+- **As variações não vêm em `/products`.** O Woo as expõe por produto
+  pai (`/products/{id}/variations`), então a extração faz uma chamada
+  extra por produto variável — 39 no catálogo atual. Sem isso perderíamos
+  as 77 variações, que pelo [ADR-0022](../27-ADR/ADR-0022-modelo-de-produto-e-sku.md)
+  são produtos de pleno direito no ERP.
+- **SKU vazio vira NULL** no staging. A origem manda string vazia em 716
+  de 716; guardar como veio faria a triagem contar com `where('sku','')`,
+  que é a pergunta certa escrita do jeito errado.
+- **Trava de paginação.** A parada normal é a página vir incompleta, o
+  que confia no servidor se comportar — e do outro lado há um WordPress
+  com plugins não auditados. Um endpoint que ignore `page` giraria até
+  estourar a memória; o limite (`WOO_MAX_PAGES`, mil por padrão) falha com
+  mensagem em vez de travar. Não é hipótese: aconteceu no desenvolvimento
+  e derrubou a suíte de testes.
+
+**Credenciais:** `WOO_ENABLED`, `WOO_URL`, `WOO_KEY`, `WOO_SECRET` no
+`.env` (ver `.env.example`). Permissão de **leitura** basta. A integração
+nasce desligada de propósito.
 - ~~Legado: leitura direta do MySQL do desktop → `stg_legacy_*`~~ — **não se aplica** (2026-07-25): o desktop nunca foi alimentado. Não há `stg_legacy_*`, nem a exceção ao BR-701 que este item abria.
 
 ### F3 — Saneamento (onde a migração é ganha ou perdida)
