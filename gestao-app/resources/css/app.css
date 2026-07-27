@@ -56,6 +56,12 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    /* O rosa vivo da marca, exposto como `bg-brand`/`text-brand` para
+       ornamento — logo, destaque de vazio. O `--primary` interativo é o
+       mesmo rosa; a distinção é semântica, não de cor. */
+    --color-brand: var(--brand);
+    --color-brand-foreground: var(--brand-foreground);
 }
 
 /*
@@ -83,33 +89,42 @@
     --card-foreground: hsl(0, 0%, 3.9%);
     --popover: hsl(0, 0%, 100%);
     --popover-foreground: hsl(0, 0%, 3.9%);
-    --primary: hsl(0, 0%, 9%);
-    --primary-foreground: hsl(0, 0%, 98%);
+    /* Rosa vivo da marca (#FF66C4, do logo e do site) com texto
+       ameixa-escuro: rosa com texto branco reprova em contraste (2,6:1),
+       com texto escuro passa folgado (~7:1). Fiel e legível. */
+    --primary: hsl(323, 100%, 70%);
+    --primary-foreground: hsl(326, 60%, 12%);
     --secondary: hsl(0, 0%, 96.1%);
     --secondary-foreground: hsl(0, 0%, 9%);
     --muted: hsl(0, 0%, 96.1%);
     --muted-foreground: hsl(0, 0%, 45.1%);
     --accent: hsl(0, 0%, 96.1%);
     --accent-foreground: hsl(0, 0%, 9%);
+    /* Vermelho de erro fica distinto do coral da marca de propósito:
+       destrutivo é semântica, não identidade. */
     --destructive: hsl(0, 84.2%, 60.2%);
     --destructive-foreground: hsl(0, 0%, 98%);
     --border: hsl(0, 0%, 92.8%);
     --input: hsl(0, 0%, 89.8%);
-    --ring: hsl(0, 0%, 3.9%);
-    --chart-1: hsl(12, 76%, 61%);
-    --chart-2: hsl(173, 58%, 39%);
-    --chart-3: hsl(197, 37%, 24%);
-    --chart-4: hsl(43, 74%, 66%);
-    --chart-5: hsl(27, 87%, 67%);
+    --ring: hsl(323, 100%, 60%);
+    /* As cinco cores da marca — usadas nos gráficos e KPIs (pasta 21). */
+    --chart-1: hsl(323, 100%, 70%);
+    --chart-2: hsl(199, 86%, 58%);
+    --chart-3: hsl(102, 63%, 55%);
+    --chart-4: hsl(43, 95%, 62%);
+    --chart-5: hsl(0, 99%, 68%);
+    --brand: hsl(323, 100%, 70%);
+    --brand-foreground: hsl(326, 60%, 12%);
     --radius: 0.5rem;
     --sidebar-background: hsl(0, 0%, 98%);
     --sidebar-foreground: hsl(240, 5.3%, 30%);
-    --sidebar-primary: hsl(0, 0%, 10%);
-    --sidebar-primary-foreground: hsl(0, 0%, 98%);
-    --sidebar-accent: hsl(0, 0%, 94%);
-    --sidebar-accent-foreground: hsl(0, 0%, 30%);
+    --sidebar-primary: hsl(323, 100%, 70%);
+    --sidebar-primary-foreground: hsl(326, 60%, 12%);
+    /* Item ativo do menu: rosa clarinho de fundo, rosa escuro de texto. */
+    --sidebar-accent: hsl(324, 90%, 96%);
+    --sidebar-accent-foreground: hsl(324, 75%, 38%);
     --sidebar-border: hsl(0, 0%, 91%);
-    --sidebar-ring: hsl(217.2, 91.2%, 59.8%);
+    --sidebar-ring: hsl(323, 100%, 60%);
 }
 
 .dark {
@@ -119,8 +134,10 @@
     --card-foreground: hsl(0, 0%, 98%);
     --popover: hsl(0, 0%, 3.9%);
     --popover-foreground: hsl(0, 0%, 98%);
-    --primary: hsl(0, 0%, 98%);
-    --primary-foreground: hsl(0, 0%, 9%);
+    /* No escuro o mesmo rosa da marca: brilha contra o fundo e o texto
+       ameixa continua legível (~7:1). Um só rosa nos dois temas. */
+    --primary: hsl(323, 100%, 70%);
+    --primary-foreground: hsl(326, 60%, 12%);
     --secondary: hsl(0, 0%, 14.9%);
     --secondary-foreground: hsl(0, 0%, 98%);
     --muted: hsl(0, 0%, 6.9%);
@@ -131,20 +148,23 @@
     --destructive-foreground: hsl(0, 0%, 98%);
     --border: hsl(0, 0%, 14.9%);
     --input: hsl(0, 0%, 14.9%);
-    --ring: hsl(0, 0%, 83.1%);
-    --chart-1: hsl(220, 70%, 50%);
-    --chart-2: hsl(160, 60%, 45%);
-    --chart-3: hsl(30, 80%, 55%);
-    --chart-4: hsl(280, 65%, 60%);
-    --chart-5: hsl(340, 75%, 55%);
+    --ring: hsl(323, 90%, 62%);
+    --chart-1: hsl(323, 100%, 72%);
+    --chart-2: hsl(199, 86%, 60%);
+    --chart-3: hsl(102, 60%, 58%);
+    --chart-4: hsl(43, 95%, 64%);
+    --chart-5: hsl(0, 99%, 70%);
+    --brand: hsl(323, 100%, 70%);
+    --brand-foreground: hsl(326, 60%, 12%);
     --sidebar-background: hsl(0, 0%, 7%);
     --sidebar-foreground: hsl(0, 0%, 80%);
-    --sidebar-primary: hsl(360, 100%, 100%);
-    --sidebar-primary-foreground: hsl(0, 0%, 100%);
-    --sidebar-accent: hsl(0, 0%, 15.9%);
-    --sidebar-accent-foreground: hsl(240, 4.8%, 95.9%);
+    --sidebar-primary: hsl(323, 100%, 70%);
+    --sidebar-primary-foreground: hsl(326, 60%, 12%);
+    /* Item ativo no escuro: rosa profundo de fundo, rosa claro de texto. */
+    --sidebar-accent: hsl(324, 40%, 22%);
+    --sidebar-accent-foreground: hsl(324, 100%, 86%);
     --sidebar-border: hsl(0, 0%, 15.9%);
-    --sidebar-ring: hsl(217.2, 91.2%, 59.8%);
+    --sidebar-ring: hsl(323, 90%, 62%);
 }
 
 @layer base {

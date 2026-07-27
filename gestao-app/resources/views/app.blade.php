@@ -6,6 +6,12 @@
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
+        {{-- Favicon da marca (o icon.ico do logo). Não havia nenhum, então
+             a aba mostrava o ícone genérico do navegador. Versionado em
+             public/, chega por git pull — não pelo envio dos assets. --}}
+        <link rel="icon" href="/favicon.ico" sizes="any">
+
+
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 

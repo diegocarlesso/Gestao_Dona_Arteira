@@ -1,4 +1,4 @@
-import AppLogoIcon from '@/components/app-logo-icon';
+import logoDonaArteira from '@/assets/donaarteira-logo.png';
 import { Link } from '@inertiajs/react';
 
 interface AuthLayoutProps {
@@ -15,9 +15,11 @@ export default function AuthSimpleLayout({ children, title, description }: AuthL
                 <div className="flex flex-col gap-8">
                     <div className="flex flex-col items-center gap-4">
                         <Link href={route('home')} className="flex flex-col items-center gap-2 font-medium">
-                            <div className="mb-1 flex h-9 w-9 items-center justify-center rounded-md">
-                                <AppLogoIcon className="size-9 fill-current text-[var(--foreground)] dark:text-white" />
-                            </div>
+                            {/* O logo de verdade, onde há espaço para ele
+                                inteiro — respingos, nome e pincel. A barra
+                                lateral usa o selo compacto; a entrada, a
+                                marca completa. */}
+                            <img src={logoDonaArteira} alt="Dona Arteira" className="h-24 w-auto" />
                             <span className="sr-only">{title}</span>
                         </Link>
 

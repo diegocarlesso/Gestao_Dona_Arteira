@@ -125,6 +125,44 @@ A [validação do ambiente](../23-Deploy/01-validacao-ambiente-business.md) imp�
 
 **Alimenta:** [21-Dashboards](../21-Dashboards/README.md) (componentes de gráfico), [20-Relatorios](../20-Relatorios/README.md) (telas de filtro e exportação).
 
+## 10.1 Identidade visual (implementada em 2026-07-27)
+
+O starter kit deixava a marca "Laravel Starter Kit" no menu, o ícone
+geométrico dele e uma paleta neutra de cinzas. Substituídos pela
+identidade da Dona Arteira, com as cores tiradas **da fonte** — o logo
+(`assets/donaarteira-logo.png`) e o site `donaarteira.com.br`, que
+concordam no rosa como cor central.
+
+**Paleta da marca** (em `resources/css/app.css`, como tokens HSL):
+
+| Papel | Cor | Uso |
+|---|---|---|
+| Rosa (primária) | `#FF66C4` | botões, foco, item ativo, `--chart-1` |
+| Azul | `#38B6F0` | `--chart-2` |
+| Verde | `#7ED957` | `--chart-3` |
+| Amarelo | `#FAC641` | `--chart-4` |
+| Coral | `#FE5B5B` | `--chart-5` (é a cor do nome no logo) |
+
+Três decisões que a implementação obrigou a tomar:
+
+- **Rosa vivo com texto escuro, não branco.** `#FF66C4` com texto branco
+  dá 2,6:1 de contraste — reprova em acessibilidade. Com texto
+  ameixa-escuro dá ~7:1. Escurecer o rosa para caber texto branco
+  trairia a cor da marca; escurecer o *texto* preserva a cor e passa. É
+  o mesmo rosa nos dois temas.
+- **O vermelho de erro (`--destructive`) fica distinto do coral da
+  marca.** Destrutivo é semântica, não identidade — se o coral virasse o
+  vermelho de "excluir", a marca passaria a gritar perigo em cada tela.
+- **Dois logos, um por contexto.** A barra lateral usa um selo compacto
+  das gotas (`app-logo-icon.tsx`), porque ela recolhe para um quadrado de
+  32px onde o logo inteiro — respingos, nome e pincel — vira borrão. A
+  tela de login usa o **PNG real**, onde há espaço. O favicon é o
+  `icon.ico` da marca, versionado em `public/` (chega por `git pull`, não
+  pelo envio dos assets).
+
+Não virou ADR: a paleta foi definida pelo dono, que apontou o logo e o
+site como referência. O registro canônico é esta seção.
+
 ## 11. Riscos
 
 | Risco | Prob. | Impacto | Mitigação |
@@ -137,6 +175,7 @@ A [validação do ambiente](../23-Deploy/01-validacao-ambiente-business.md) imp�
 
 ## 12. Evoluções futuras
 
-- Tema visual da marca Dona Arteira (design tokens) — fase 2.
+- ~~Tema visual da marca Dona Arteira (design tokens)~~ — **feito em
+  2026-07-27** (§10.1).
 - PWA leve para apontamento de produção em tablet — fase 6/7.
 - Se surgir app mobile (fase 7): ele consome a **API de integração** ([pasta 07](../07-API/README.md)), que precisará ser ampliada — gatilho de revisão registrado no [ADR-0019](../27-ADR/ADR-0019-inertia-substitui-spa.md).
