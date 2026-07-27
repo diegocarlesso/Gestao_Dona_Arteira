@@ -100,6 +100,44 @@ WooCommerce na migração. Um produto pertence a uma categoria; a
 navegação por ancestrais é responsabilidade da consulta, não de campos
 desnormalizados.
 
+#### A categoria canônica, quando a origem oferece várias
+
+No Woo o produto está em **1,7 categoria em média** — 387 dos 716 estão
+em duas ou mais. O ERP guarda uma só, então a carga escolhe, e a escolha
+segue regra em vez de sorte:
+
+1. **Descarta vitrine e campanha.** `HOME SITE` (e tudo que desce dela) e
+   `DIA DAS MÃES` não dizem o que a peça **é** — dizem onde ela apareceu
+   e quando. Ver a ressalva adiante.
+2. **Entre as restantes, a mais profunda.** Produto em `INCENSÁRIOS` e em
+   `Incensários Cascata`: a específica é a resposta. **337 dos 346** casos
+   de múltipla categoria real são exatamente esse par mãe/filha.
+3. **Empate, a primeira da origem.** Sobram ~9 produtos com duas
+   categorias temáticas sem parentesco entre si — decisão humana, e uma
+   lista curta o bastante para resolver numa sentada.
+
+Sem nenhuma categoria real, o produto fica **sem categoria** e aparece
+nas pendências. Não acontece hoje — todo produto de vitrine tem também
+uma temática — mas escolher a vitrine em silêncio seria pior que a
+lacuna sinalizada.
+
+> ⚠️ **Vitrine e campanha ainda não têm modelagem própria.** Campanha é
+> uma segunda dimensão, não um ramo da árvore: os 62 produtos de "Dia das
+> Mães" atravessam duas raízes e três subcategorias reais, e "Lançamentos"
+> atravessa quatro subcategorias sob três raízes. Como subcategoria, cada
+> campanha teria de ser recriada sob cada pai, e o produto trocaria o que
+> ele é pelo período em que foi vendido.
+>
+> O dono decidiu em 2026-07-27 **adiar** a dimensão de coleções para o
+> Gate 02, quando vendas precisar dela. Até lá as seis categorias de
+> vitrine continuam na árvore, vazias, e a associação campanha↔produto
+> segue guardada no `stg_woo_products` e no próprio Woo — **nada se
+> perde**, e repovoar depois é releitura do staging.
+>
+> A lista de raízes de vitrine é **explícita** em `LoadWooCatalog`: uma
+> campanha nova no site (um "DIA DOS PAIS") não seria reconhecida
+> sozinha. É custo aceito do adiamento, e some quando coleções existirem.
+
 ### 3.5 Preços: duas listas, uma delas ainda sem fonte
 
 `product_prices` guarda preço por lista (`retail` / `wholesale`) com

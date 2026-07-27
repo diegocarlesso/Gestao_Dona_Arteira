@@ -213,10 +213,54 @@ e são **imutáveis** a partir daqui (BR-002).
 #### O que o catálogo herdou, e é decisão humana resolver
 
 Os 37 anúncios repetidos entraram como 37 produtos, conforme a decisão de
-2026-07-27 (um anúncio, um produto). `DA-0001` e `DA-0002` são o mesmo
-trio na mesma cor, em categorias diferentes — fundir é arquivar o
-repetido, e o relatório "produtos com nome repetido" ([pasta 20 §3.1](../20-Relatorios/README.md))
+2026-07-27 (um anúncio, um produto). O par mais próximo é `DA-0001` e
+`DA-0008` — o mesmo trio, na mesma cor (*rosa e capuccino*), na mesma
+categoria `Trio da Sabedoria`. Fundir é arquivar o repetido, e o
+relatório "produtos com nome repetido" ([pasta 20 §3.1](../20-Relatorios/README.md))
 existe para achá-los.
+
+> 📌 **Correção de 2026-07-27.** Este parágrafo dizia `DA-0001` e
+> `DA-0002`, "em categorias diferentes". Os dois números estavam errados:
+> `DA-0002` é o mesmo trio em **outra cor** (*rosa e preto*), não uma
+> duplicata, e a duplicata real de `DA-0001` está na **mesma** categoria.
+> Os SKUs saem em ordem de `woo_id`, e os dois anúncios repetidos são
+> 1177 e 1201 — oito posições de distância, não uma.
+
+Onde a duplicata se concentra, medido na origem:
+
+| Categoria | Grupos | Produtos |
+|---|---:|---:|
+| Trio da Sabedoria | 7 | 16 |
+| Incensários Cascata | 4 | 13 |
+| Incensários Vareta | 1 | 3 |
+| BUDAS | 1 | 3 |
+| ELEFANTES | 1 | 2 |
+| **total** | **14** | **37** |
+
+**Todos os 14 grupos duplicam dentro da mesma categoria** — nenhum está
+partido entre duas, o que torna a conferência uma comparação de fotos
+lado a lado dentro de uma lista só.
+
+#### A categoria canônica saiu errada em 34 produtos — corrigido em 2026-07-27
+
+A primeira carga tomava a **primeira** categoria que a API listasse, e a
+API não ordena por relevância. Medido em produção depois da carga:
+
+| Categoria no ERP | Produtos | O que ela é de verdade |
+|---|---:|---|
+| DIA DAS MÃES | 15 | campanha sazonal |
+| Home Kits | 8 | bloco da home |
+| Home Trios Da Sabedoria | 8 | bloco da home |
+| Home Lançamentos | 2 | bloco da home |
+| HOME SITE | 1 | raiz da vitrine |
+| **total** | **34** | |
+
+É o [RC-06](../31-Inventario-Legado/15-recomendacoes.md) entrando pela
+porta dos fundos: o inventário previu que merchandising contaminaria a
+árvore, e a carga não filtrou. A regra de escolha passou a ser a da
+[pasta 32 §3.4](../32-Catalogo/README.md) — descarta vitrine, prefere a
+mais profunda. Nenhum dos 34 fica órfão: todos têm categoria temática
+disponível na origem.
 
 ### F4 — Carga (planejamento original)
 Ordem por dependência: categorias → produtos+imagens(refs)+preços → clientes+endereços → pedidos históricos (com snapshot de preço original; itens de produto extinto apontam para produto `archived`) → financeiro histórico **não** é migrado (somente pedidos; saldo financeiro abre zerado no Gate 04 — decisão registrada).

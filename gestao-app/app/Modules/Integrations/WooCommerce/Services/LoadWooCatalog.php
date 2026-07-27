@@ -13,6 +13,7 @@ use App\Modules\Integrations\WooCommerce\Enums\DestinoDaTriagem;
 use App\Modules\Integrations\WooCommerce\Models\IntegrationMapping;
 use App\Modules\Integrations\WooCommerce\Models\StgWooCategory;
 use App\Modules\Integrations\WooCommerce\Models\StgWooProduct;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -46,6 +47,24 @@ class LoadWooCatalog
      * relatório de cadastro incompleto, que é onde alguém olha.
      */
     private const KG_MAXIMO_PLAUSIVEL = 30.0;
+
+    /**
+     * Raízes que não são categoria de produto — e tudo que desce delas.
+     *
+     * `HOME SITE` são blocos da vitrine do site e `DIA DAS MÃES` é
+     * campanha sazonal: dizem onde a peça apareceu e quando, não o que
+     * ela é (RC-06). Sem esta lista, 34 produtos ficaram classificados
+     * como "Home Kits" e "DIA DAS MÃES" na primeira carga, porque a
+     * escolha era "a primeira que a API listar".
+     *
+     * A lista é explícita porque **campanha é fato do negócio, não
+     * estrutura**: nada no esquema distingue `DIA DAS MÃES` de `BUDAS`.
+     * Uma campanha nova no site não é reconhecida sozinha — custo aceito
+     * de adiar a modelagem de coleções para o Gate 02 (pasta 32 §3.4).
+     *
+     * @var list<string>
+     */
+    private const RAIZES_DE_VITRINE = ['home-site', 'dia-das-maes'];
 
     public function __construct(
         private readonly ImportProductService $produtos,
@@ -134,6 +153,11 @@ class LoadWooCatalog
             ->orderBy('sku_proposto')
             ->cursor();
 
+        // Montado uma vez e passado adiante: são 48 categorias contra 754
+        // produtos, e subir a árvore por produto seria refazer o mesmo
+        // caminho centenas de vezes.
+        $categorias = $this->mapaDeCategorias();
+
         foreach ($linhas as $linha) {
             [$pesoG, $recusado] = $this->pesoEmGramas($linha->weight);
             $pesoRecusado += $recusado ? 1 : 0;
@@ -153,7 +177,7 @@ class LoadWooCatalog
                     'width_cm' => $this->dimensao($linha, 'width'),
                     'depth_cm' => $this->dimensao($linha, 'length'),
                     'description' => $linha->payload['description'] ?? null,
-                    'product_category_id' => $this->categoriaDe($linha),
+                    'product_category_id' => $this->categoriaDe($linha, $categorias),
                     'sell_on_woo' => true,
                 ],
                 $temPreco ? (string) $linha->regular_price : null,
@@ -274,19 +298,108 @@ class LoadWooCatalog
         return $imagens;
     }
 
-    private function categoriaDe(StgWooProduct $linha): ?int
+    /**
+     * A categoria canônica do produto — pasta 32 §3.4.
+     *
+     * No Woo o produto está em 1,7 categoria em média; o ERP guarda uma.
+     * Escolher "a primeira que a API listar" é sortear, e o sorteio já
+     * saiu errado 34 vezes. A regra: descarta vitrine, e entre as reais
+     * fica com a **mais profunda** — 337 dos 346 casos de múltipla
+     * categoria são um par mãe/filha, onde a filha é a resposta.
+     *
+     * @param  array<int, array{local: int, profundidade: int, vitrine: bool}>  $categorias
+     */
+    private function categoriaDe(StgWooProduct $linha, array $categorias): ?int
     {
-        foreach ((array) ($linha->payload['categories'] ?? []) as $categoria) {
-            if (is_array($categoria) && isset($categoria['id'])) {
-                $local = IntegrationMapping::localDe('product_category', (int) $categoria['id']);
+        $escolhida = null;
+        $profundidade = -1;
 
-                if ($local !== null) {
-                    return $local;
-                }
+        foreach ((array) ($linha->payload['categories'] ?? []) as $categoria) {
+            if (! is_array($categoria) || ! isset($categoria['id'])) {
+                continue;
+            }
+
+            $dados = $categorias[(int) $categoria['id']] ?? null;
+
+            if ($dados === null || $dados['vitrine']) {
+                continue;
+            }
+
+            // Estritamente maior mantém a primeira em caso de empate — os
+            // ~9 produtos com duas categorias temáticas sem parentesco
+            // ficam com a ordem da origem, e a decisão é humana.
+            if ($dados['profundidade'] > $profundidade) {
+                $escolhida = $dados['local'];
+                $profundidade = $dados['profundidade'];
             }
         }
 
-        return null;
+        return $escolhida;
+    }
+
+    /**
+     * Cada categoria do staging com o id local, a profundidade na árvore
+     * e se ela descende de uma raiz de vitrine.
+     *
+     * @return array<int, array{local: int, profundidade: int, vitrine: bool}>
+     */
+    private function mapaDeCategorias(): array
+    {
+        $linhas = StgWooCategory::query()->get()->keyBy('woo_id');
+        $mapa = [];
+
+        foreach ($linhas as $wooId => $_) {
+            $local = IntegrationMapping::localDe('product_category', (int) $wooId);
+
+            if ($local === null) {
+                continue;
+            }
+
+            [$profundidade, $vitrine] = $this->ancestralidade($linhas, (int) $wooId);
+
+            $mapa[(int) $wooId] = [
+                'local' => $local,
+                'profundidade' => $profundidade,
+                'vitrine' => $vitrine,
+            ];
+        }
+
+        return $mapa;
+    }
+
+    /**
+     * Sobe a árvore até a raiz: quantos degraus, e se a raiz é vitrine.
+     *
+     * @param  Collection<int, StgWooCategory>  $linhas
+     * @return array{0: int, 1: bool}
+     */
+    private function ancestralidade(Collection $linhas, int $wooId): array
+    {
+        $profundidade = 0;
+        $atual = $wooId;
+        $vistos = [];
+
+        while (true) {
+            $linha = $linhas->get($atual);
+
+            // `isset($vistos)` guarda contra ciclo na árvore vinda da
+            // origem. Não é hipótese remota: `parent` no Woo é um id
+            // solto, sem FK, e um laço aqui travaria a carga inteira
+            // dentro de uma transação.
+            if ($linha === null || isset($vistos[$atual])) {
+                return [$profundidade, false];
+            }
+
+            $vistos[$atual] = true;
+            $pai = (int) ($linha->parent_woo_id ?? 0);
+
+            if ($pai === 0) {
+                return [$profundidade, in_array((string) $linha->slug, self::RAIZES_DE_VITRINE, true)];
+            }
+
+            $profundidade++;
+            $atual = $pai;
+        }
     }
 
     private function temPreco(StgWooProduct $linha): bool

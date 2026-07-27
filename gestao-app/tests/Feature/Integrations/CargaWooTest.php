@@ -132,6 +132,84 @@ it('liga o produto à categoria pelo mapeamento', function () {
     expect(Product::query()->first()->category->name)->toBe('Budas');
 });
 
+it('prefere a subcategoria à categoria mãe', function () {
+    // 337 dos 346 produtos com mais de uma categoria real estão em
+    // exatamente este par. "A primeira que a API listar" sorteava entre
+    // o genérico e o específico.
+    StgWooCategory::query()->create(['woo_id' => 5, 'name' => 'INCENSÁRIOS', 'slug' => 'incensarios', 'payload' => []]);
+    StgWooCategory::query()->create(['woo_id' => 6, 'name' => 'Incensários Cascata', 'slug' => 'incensarios-cascata', 'parent_woo_id' => 5, 'payload' => []]);
+
+    aprovado(100, 'DA-0001', ['categories' => [
+        ['id' => 5, 'name' => 'INCENSÁRIOS'],
+        ['id' => 6, 'name' => 'Incensários Cascata'],
+    ]]);
+
+    app(LoadWooCatalog::class)->executar();
+
+    expect(Product::query()->first()->category->name)->toBe('Incensários Cascata');
+});
+
+it('descarta a campanha sazonal e fica com a categoria temática', function () {
+    // 15 produtos ficaram classificados como "DIA DAS MÃES" na primeira
+    // carga — campanha diz quando a peça vendeu, não o que ela é.
+    StgWooCategory::query()->create(['woo_id' => 401, 'name' => 'DIA DAS MÃES', 'slug' => 'dia-das-maes', 'payload' => []]);
+    StgWooCategory::query()->create(['woo_id' => 179, 'name' => 'ARTE SACRA', 'slug' => 'arte-sacra', 'payload' => []]);
+
+    // A campanha vem primeiro de propósito: é a ordem que causava o erro.
+    aprovado(100, 'DA-0001', ['categories' => [
+        ['id' => 401, 'name' => 'DIA DAS MÃES'],
+        ['id' => 179, 'name' => 'ARTE SACRA'],
+    ]]);
+
+    app(LoadWooCatalog::class)->executar();
+
+    expect(Product::query()->first()->category->name)->toBe('ARTE SACRA');
+});
+
+it('descarta o bloco de vitrine mesmo sendo mais profundo que a temática', function () {
+    // `Home Kits` é filha de `HOME SITE`, então é mais profunda que
+    // `BUDAS` — a regra da profundidade sozinha escolheria a errada.
+    StgWooCategory::query()->create(['woo_id' => 382, 'name' => 'HOME SITE', 'slug' => 'home-site', 'payload' => []]);
+    StgWooCategory::query()->create(['woo_id' => 384, 'name' => 'Home Kits', 'slug' => 'home-kits', 'parent_woo_id' => 382, 'payload' => []]);
+    StgWooCategory::query()->create(['woo_id' => 161, 'name' => 'BUDAS', 'slug' => 'budas', 'payload' => []]);
+
+    aprovado(100, 'DA-0001', ['categories' => [
+        ['id' => 384, 'name' => 'Home Kits'],
+        ['id' => 161, 'name' => 'BUDAS'],
+    ]]);
+
+    app(LoadWooCatalog::class)->executar();
+
+    expect(Product::query()->first()->category->name)->toBe('BUDAS');
+});
+
+it('deixa sem categoria, e sinalizado, quando só há vitrine', function () {
+    StgWooCategory::query()->create(['woo_id' => 382, 'name' => 'HOME SITE', 'slug' => 'home-site', 'payload' => []]);
+    aprovado(100, 'DA-0001', ['categories' => [['id' => 382, 'name' => 'HOME SITE']]]);
+
+    app(LoadWooCatalog::class)->executar();
+
+    // Não acontece no catálogo de hoje, mas classificar a peça como
+    // "HOME SITE" em silêncio seria pior que a lacuna visível.
+    $produto = Product::query()->first();
+
+    expect($produto->product_category_id)->toBeNull()
+        ->and($produto->pendencias())->toContain('sem categoria');
+});
+
+it('não trava se a árvore da origem vier com ciclo', function () {
+    // `parent` no Woo é id solto, sem FK. Um laço aqui giraria para
+    // sempre dentro da transação da carga.
+    StgWooCategory::query()->create(['woo_id' => 5, 'name' => 'A', 'slug' => 'a', 'parent_woo_id' => 6, 'payload' => []]);
+    StgWooCategory::query()->create(['woo_id' => 6, 'name' => 'B', 'slug' => 'b', 'parent_woo_id' => 5, 'payload' => []]);
+
+    aprovado(100, 'DA-0001', ['categories' => [['id' => 5, 'name' => 'A']]]);
+
+    app(LoadWooCatalog::class)->executar();
+
+    expect(Product::query()->first()->category->name)->toBe('A');
+});
+
 it('guarda o mapeamento com o id do Woo', function () {
     aprovado(100, 'DA-0001');
 

@@ -207,6 +207,13 @@ class Product extends Model implements Auditable
     {
         $pendencias = [];
 
+        // A carga deixa nulo quando a origem só oferece vitrine ou
+        // campanha (pasta 32 §3.4). Melhor a lacuna visível do que o
+        // produto arquivado em "DIA DAS MÃES" para sempre.
+        if ($this->product_category_id === null) {
+            $pendencias[] = 'sem categoria';
+        }
+
         if ($this->weight_g === null) {
             $pendencias[] = 'sem peso';
         }
