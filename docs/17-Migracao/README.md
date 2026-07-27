@@ -106,6 +106,70 @@ carga por não terem correspondente no nosso modelo
 - ~~Legado: leitura direta do MySQL do desktop → `stg_legacy_*`~~ — **não se aplica** (2026-07-25): o desktop nunca foi alimentado. Não há `stg_legacy_*`, nem a exceção ao BR-701 que este item abria.
 
 ### F3 — Saneamento (onde a migração é ganha ou perdida)
+
+> ✅ **Catálogo triado em 2026-07-27** —
+> `php artisan erp:migrate:triage [--duplicados]`. Classifica o staging e
+> propõe SKU e nome. **Nada é carregado**: a F4 só aceita o que estiver
+> aprovado, porque a BR-002 torna o código imutável e errar ali é errar
+> para sempre.
+
+#### O que os dados contrariaram
+
+A pasta 31 §04 diz que o eixo de variação é **cor e altura**. **Não é.**
+Das 77 variações: **56 são composição de kit** (`pa_peca-kit-1`, com
+preços e pesos próprios — 89,90 / 99,90 / 169,90) e **21 estão vazias**,
+de anúncios que declaram cor como eixo e nunca materializaram as
+variações. **Zero variações por cor.**
+
+A cor existe, mas como atributo do próprio produto: 614 dos 716 a
+declaram, quase todos com uma cor só — e esses já são "um produto, uma
+cor", que é o que o [ADR-0022](../27-ADR/ADR-0022-modelo-de-produto-e-sku.md)
+queria. O problema está nos ~20 anúncios "várias cores", que listam de 2
+a 5 num produto só.
+
+**Decisão do dono (2026-07-27):** nesses anúncios, **um anúncio vira um
+produto**, com a cor como texto. Expandir cada cor em produto próprio só
+faria sentido se a operação mantivesse peças pintadas em estoque.
+
+#### A classificação não é uniforme por tipo do Woo
+
+| Origem | Destino | Qtd |
+|---|---|---:|
+| `simple` | produto | 677 |
+| `variable` cuja única variação é vazia | **o anúncio** vira produto | 21 |
+| `variable` com variações reais | invólucro — descartado | 18 |
+| `variation` com atributo | produto | 56 |
+| `variation` vazia | descartada — o pai virou o produto | 21 |
+| | **total no catálogo** | **754** |
+
+Um `variable` vira produto **ou** é descartado conforme as variações dele
+existirem de verdade. A regra da última linha existe porque é o pai que
+carrega nome e anúncio; a variação vazia só empresta o preço.
+
+#### Duas correções que só apareceram ao rodar
+
+- **As variações de kit não herdam o nome do pai** — recebem o rótulo da
+  opção. Carregado como veio, o catálogo teria 18 produtos chamados "KIT
+  COMPLETO" e 11 "BUDA SIDARTA", cada um de um kit diferente, e a tela de
+  venda mostraria linhas idênticas. A triagem compõe:
+  `<peça> — KIT COMPLETO`, com as duas partes vindas da origem.
+- **O relatório inflava o trabalho manual**, contando essas variações
+  como títulos repetidos: acusava 88 produtos em 21 grupos quando a
+  duplicata real são **37 em 14** — o mesmo número que o inventário
+  achara por conta própria. Relatório que pede decisão humana onde não há
+  destrói a confiança na ferramenta.
+
+#### O que ainda espera decisão
+
+| Pendência | Itens |
+|---|---:|
+| Anúncios repetidos (mesma peça recriada com cores diferentes) | 37 em 14 grupos |
+| Sem peso | 35 |
+| Sem preço | 21 |
+
+SKUs propostos: `DA-0001` … `DA-0754`, em ordem estável de `woo_id` —
+rodar a triagem de novo propõe os mesmos códigos, senão a conferência já
+feita viraria lixo.
 | Problema esperado | Tratamento |
 |---|---|
 | Produto sem SKU no Woo | gerar SKU proposto → **aprovação humana** em lote |
