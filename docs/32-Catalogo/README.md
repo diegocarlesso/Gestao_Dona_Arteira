@@ -167,6 +167,29 @@ pedido, movimento de estoque e nota fiscal antigos o referenciam.
 `archived` some das telas de venda e do site, e continua existindo para o
 histórico.
 
+### 3.9 Imagens — referência, não arquivo
+
+Implementado em 2026-07-27, conforme o
+[ADR-0017](../27-ADR/ADR-0017-midia-canonica.md) fase 1: `product_images`
+guarda **URL e id remoto**, e a mídia continua hospedada no WordPress até
+o Gate 06. Migrar os arquivos agora custaria disco, pipeline de
+redimensionamento e reenvio ao Woo — que precisa deles localmente para a
+loja renderizar.
+
+A coluna `source` (`woo` hoje, `erp` na fase 2) é o que dirá, no dia da
+reavaliação, quanto do catálogo ainda depende do WordPress.
+
+**Na listagem, passar o mouse sobre o nome mostra a peça.** Não é
+enfeite: o catálogo tem seis produtos chamados "Incensário cascata buda
+na lua 12 cm", diferindo só pela cor — ler a linha não distingue, ver a
+peça sim. A prévia usa a **miniatura** que a origem já oferece, com
+carregamento adiado: sem isso o navegador baixaria as vinte fotos da
+página para exibir uma.
+
+Se a imagem sumir do WordPress, a prévia mostra "Imagem indisponível" em
+vez do ícone quebrado do navegador — a dependência do ADR-0017 fica
+visível em vez de disfarçada.
+
 ## 4. Fluxo
 
 ```mermaid
