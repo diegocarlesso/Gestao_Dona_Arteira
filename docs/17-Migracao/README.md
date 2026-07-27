@@ -179,7 +179,46 @@ feita viraria lixo.
 | Preço float com dízima | arredondamento + relatório de diferenças > R$ 0,01 |
 | Categoria órfã/duplicada | árvore consolidada com de-para |
 
-### F4 — Carga
+### F4 — Carga ✅ *catálogo carregado em 2026-07-27, produção*
+
+`erp:migrate:approve [--completos] [--sku=] [--desfazer]` → `erp:migrate:load`.
+Idempotente por `integration_mappings` (BR-704/BR-706): recarregar
+atualiza, então corrigir o staging não exige limpar o catálogo.
+
+| Resultado | |
+|---|---:|
+| Produtos no catálogo | **754** |
+| Categorias | 48 |
+| Preços de varejo | 733 |
+| Sem peso | 38 |
+| Sem preço de varejo | 21 |
+| Sem preço de atacado | 754 |
+
+Os 754 SKUs `DA-0001 … DA-0754` foram aprovados pelo dono antes da carga
+e são **imutáveis** a partir daqui (BR-002).
+
+#### Três conversões que os dados obrigaram
+
+- **Peso: quilos → gramas.** O Woo guarda em kg, o ERP em g. Sem
+  converter, uma peça de 450 g entraria pesando meio grama.
+- **Peso implausível recusado.** Três produtos trazem `970` num campo em
+  quilos — gramas digitadas no lugar errado. Carregar 970 kg produziria
+  frete absurdo **em silêncio**; o peso fica nulo e o produto aparece no
+  relatório de cadastro incompleto. Daí 38 sem peso, e não 35: 35 vieram
+  vazios da origem e 3 foram recusados aqui.
+- **Cor vem em dois formatos.** O produto lista as possíveis em `options`
+  (plural); a variação traz a escolhida em `option` (singular). Ler só um
+  perderia metade dos casos.
+
+#### O que o catálogo herdou, e é decisão humana resolver
+
+Os 37 anúncios repetidos entraram como 37 produtos, conforme a decisão de
+2026-07-27 (um anúncio, um produto). `DA-0001` e `DA-0002` são o mesmo
+trio na mesma cor, em categorias diferentes — fundir é arquivar o
+repetido, e o relatório "produtos com nome repetido" ([pasta 20 §3.1](../20-Relatorios/README.md))
+existe para achá-los.
+
+### F4 — Carga (planejamento original)
 Ordem por dependência: categorias → produtos+imagens(refs)+preços → clientes+endereços → pedidos históricos (com snapshot de preço original; itens de produto extinto apontam para produto `archived`) → financeiro histórico **não** é migrado (somente pedidos; saldo financeiro abre zerado no Gate 04 — decisão registrada).
 
 ### F5 — Validação
