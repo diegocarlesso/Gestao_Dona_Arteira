@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Catalog\Http\Controllers\DuplicateNamesReportController;
 use App\Modules\Catalog\Http\Controllers\ProductController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,4 +32,11 @@ Route::middleware(['web', 'auth', 'conta.ativa', 'senha.trocada', '2fa.confirmad
 
     Route::post('produtos/{product}/preco', [ProductController::class, 'setPrice'])->name('catalog.products.price');
     Route::post('produtos/{product}/arquivar', [ProductController::class, 'archive'])->name('catalog.products.archive');
+
+    // Relatórios do catálogo (pasta 20). Permissão `reports.view`, que é
+    // família própria na matriz da pasta 19 — não é `catalog.view`.
+    Route::get('relatorios/produtos-repetidos', [DuplicateNamesReportController::class, 'index'])
+        ->name('catalog.reports.duplicate-names');
+    Route::get('relatorios/produtos-repetidos/csv', [DuplicateNamesReportController::class, 'export'])
+        ->name('catalog.reports.duplicate-names.export');
 });

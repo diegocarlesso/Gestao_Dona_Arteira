@@ -34,6 +34,20 @@ class ProductPolicy
         return $usuario->can(Permission::CatalogView->value);
     }
 
+    /**
+     * Ver os relatórios do catálogo (pasta 20).
+     *
+     * `reports.view`, e não `catalog.view`: relatório é uma família de
+     * permissões própria na matriz da pasta 19, porque quem consulta uma
+     * ficha de produto no dia a dia não é necessariamente quem recebe uma
+     * lista consolidada do catálogo inteiro — e o contrário também vale,
+     * como no perfil do contador.
+     */
+    public function viewReports(Authorizable $usuario): bool
+    {
+        return $usuario->can(Permission::ReportsView->value);
+    }
+
     public function create(Authorizable $usuario): bool
     {
         return $usuario->can(Permission::CatalogManage->value);

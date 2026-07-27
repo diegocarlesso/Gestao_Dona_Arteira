@@ -38,7 +38,7 @@ Catálogo canônico dos relatórios do ERP e padrões de construção: todo rela
 | Divergências de sincronização | ERP e Woo estão iguais? | Integrações | 2 |
 | Pedidos por status (funil operacional) | o que está travado? | Vendas | 2 |
 | **Cadastro incompleto** | que produtos ainda não podem ser vendidos direito? | Catálogo | 1 |
-| **Produtos com nome repetido** | temos a mesma peça cadastrada duas vezes? | Catálogo | 2 |
+| **Produtos com nome repetido** | temos a mesma peça cadastrada duas vezes? | Catálogo | 1 |
 
 ### 3.1 Cadastro incompleto — por que é relatório, e não só aviso de tela
 
@@ -63,6 +63,55 @@ os 37 anúncios que o WooCommerce tinha em duplicidade
 ([17/F3](../17-Migracao/README.md)). Fica na fase 2 porque, terminada a
 migração, vira zeladoria: pega o cadastro feito em duplicidade por
 distração, que é o mesmo problema chegando por outra porta.
+
+### 3.2 Ficha — Produtos com nome repetido
+
+> **Antecipado para a fase 1 em 2026-07-27.** A ficha previa a fase 2,
+> mas o relatório passou a ser **pré-requisito da contagem física**: o
+> saldo inicial do estoque nasce de contagem, e uma peça que existe sob
+> dois códigos tem o saldo dividido ao acaso entre eles — dentro de um
+> ledger imutável ([ADR-0008](../27-ADR/ADR-0008-ledger-estoque.md)),
+> onde corrigir depois exige movimento de ajuste com motivo.
+
+| | |
+|---|---|
+| **Pergunta** | Temos a mesma peça cadastrada duas vezes? |
+| **Fonte** | Catálogo (`products`) |
+| **Permissão** | `reports.view` para ver; arquivar exige `catalog.manage` |
+| **Dono** | Catálogo |
+
+**Definição de "repetido": mesmo `name`, entre produtos ativos.** Três
+consequências que a definição carrega de propósito:
+
+- **Só ativos.** Arquivar o repetido faz o grupo sair do relatório
+  sozinho — a lista encolhe à medida que o trabalho anda, e chegar a zero
+  significa terminado. Um relatório que continuasse mostrando o grupo
+  resolvido não teria como sinalizar progresso.
+- **Diferença de caixa não separa.** "Buda Sidarta" e "BUDA SIDARTA" caem
+  no mesmo grupo — quem cadastra duas vezes por distração raramente
+  repete a capitalização. A colação do banco (`utf8mb4_unicode_ci`) faz
+  isso no `GROUP BY`, mas **o agrupamento em PHP precisa normalizar
+  também**: `Collection::groupBy` compara string do jeito do PHP, que é
+  sensível à caixa, e tornaria a separar o que o banco uniu. Consulta em
+  duas metades exige que as duas concordem sobre o que é "o mesmo nome".
+- **Cor não entra na chave.** Pelo [ADR-0022](../27-ADR/ADR-0022-modelo-de-produto-e-sku.md)
+  cada acabamento é produto próprio, e o nome migrado já traz a cor
+  (`… — rosa e capuccino`). Duas cores diferentes têm nomes diferentes e
+  não formam grupo; o que forma grupo é o mesmo nome, cor incluída.
+
+**Colunas:** código (SKU), nome, cor, categoria, preço de varejo, situação
+de cadastro (pendências), imagem. A imagem não é enfeite — com 754 peças
+de nomes parecidos, a foto é o que decide qual dos dois fica.
+
+**Sem filtros e sem paginação, por decisão.** O relatório é limitado por
+natureza (hoje 14 grupos, 37 produtos) e existe para ser **zerado**, não
+navegado. Paginar esconderia o tamanho do trabalho restante, que é
+justamente o número que interessa.
+
+**Ação na própria tela:** arquivar o produto repetido, pelo caminho já
+existente (`catalog.products.archive`, BR-008 — produto nunca é excluído).
+Relatório que aponta o problema e obriga a procurar a tela onde se
+resolve é relatório que ninguém usa duas vezes.
 
 ## 4. Dependências
 
