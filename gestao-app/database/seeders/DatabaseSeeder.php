@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use Database\Seeders\Identity\AdminInicialSeeder;
 use Database\Seeders\Identity\RolePermissionSeeder;
+use Database\Seeders\Inventory\LocalPadraoSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -22,6 +23,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RolePermissionSeeder::class,
             AdminInicialSeeder::class,
+            LocalPadraoSeeder::class,
         ]);
     }
 }

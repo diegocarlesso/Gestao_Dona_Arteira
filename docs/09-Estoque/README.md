@@ -12,6 +12,37 @@ Ser a fonte única e auditável da posição de estoque de **tudo** (matéria-pr
 - **Faz:** ledger imutável de movimentos, saldos materializados, reservas, contagens/ajustes, custo médio móvel, alertas de mínimo, extrato por produto.
 - **Não faz:** decidir *quando* comprar/produzir (sugere via evento `StockBelowMinimum`); publicar no Woo (Integrações consome os eventos).
 
+## 2.1 Estado da implementação
+
+> ✅ **Ledger e via de escrita no ar — 2026-07-27.** `locations`,
+> `inventory_movements` e `inventory_balances` criadas;
+> `RecordMovementService` é a única porta de escrita, com transação, lock
+> e as BR-201/202/205/206 cobertas por teste.
+>
+> **Ainda não existe:** tela alguma (extrato, posição, contagem), reserva
+> (BR-203, depende de Vendas), publicação no site (BR-204, depende de
+> Integrações) e o job de reconciliação. O módulo já é consumível por
+> outros módulos; ainda não é operável por gente — e "estoque operável
+> manualmente" é critério de saída do Gate 01, então falta a fatia das
+> telas.
+>
+> **Três decisões que a implementação obrigou a tomar:**
+>
+> - **O sinal vem do tipo, não de quem chama.** `MovementType::sinal()`
+>   decide, e o serviço só aceita quantidade positiva. Aceitar negativo
+>   criaria dois jeitos de registrar uma saída, e um deles inverteria o
+>   outro.
+> - **A BR-201 vale inclusive no ajuste.** A regra abre exceção para
+>   "ajuste com permissão específica"; a permissão existe
+>   (`inventory.adjust`, separada de `inventory.move`) e decide **quem
+>   ajusta** — não autoriza saldo negativo, porque contagem física devolve
+>   quantas peças há na prateleira e prateleira não tem menos que zero.
+>   Se aparecer caso real que exija furar o piso, muda-se aqui e no
+>   ADR-0008.
+> - **Ajuste não mexe no custo médio.** Contagem corrige quantidade, não
+>   valor. Deixá-la recalcular faria a peça reaparecida valer zero e
+>   contaminar a margem de todas as outras.
+
 ## 3. Arquitetura do módulo (ADR-0008)
 
 **Nenhum código altera `qty_on_hand` diretamente.** Toda mudança nasce como movimento append-only; o saldo é atualizado na mesma transação e é sempre reconciliável:
