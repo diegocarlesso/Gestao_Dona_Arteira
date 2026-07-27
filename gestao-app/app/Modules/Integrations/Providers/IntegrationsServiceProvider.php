@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Integrations\Providers;
 
 use App\Modules\Integrations\WooCommerce\Console\ExtractWooCommand;
+use App\Modules\Integrations\WooCommerce\Console\TriageWooCommand;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -21,6 +22,7 @@ class IntegrationsServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 ExtractWooCommand::class,
+                TriageWooCommand::class,
             ]);
         }
     }
