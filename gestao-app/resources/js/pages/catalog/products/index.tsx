@@ -14,6 +14,7 @@ type ProdutoDaLista = {
     name: string;
     color: string | null;
     kind: string;
+    kind_label: string;
     status: string;
     categoria: string | null;
     weight_g: string | null;
@@ -137,7 +138,7 @@ export default function ProdutosIndex({ produtos, filtros, contagemPendencias }:
                                                 </Link>
                                             </PreviaDoProduto>
                                             {p.color && <span className="text-muted-foreground"> · {p.color}</span>}
-                                            <div className="text-muted-foreground text-xs">{p.kind}</div>
+                                            <div className="text-muted-foreground text-xs">{p.kind_label}</div>
                                         </td>
                                         <td className="text-muted-foreground p-3">{p.categoria ?? '—'}</td>
                                         <td className="p-3 text-right whitespace-nowrap">{emReais(p.preco_varejo) ?? '—'}</td>

@@ -267,3 +267,42 @@ it('expõe a miniatura na listagem, para a prévia do mouse', function () {
             ->where('produtos.data.0.imagem', 'https://exemplo.test/a-mini.jpg')
         );
 });
+
+// ------------------------------------------------ ida e volta da ficha
+
+it('salva a ficha de volta sem alterar nada — o que a tela manda, a validação aceita', function () {
+    // O defeito que este teste existe para impedir: `paraTela()` mandava
+    // `kind` como rótulo ("Produto acabado") porque a mesma função
+    // alimenta a listagem. O `select` da edição recebia um valor que não
+    // casava com opção alguma, o PUT devolvia o texto, e salvar qualquer
+    // edição reprovava com "The selected tipo is invalid" — em produção,
+    // na primeira vez que alguém tentou.
+    $produto = app(CreateProductService::class)->handle(atributosDeProduto([
+        'color' => 'dourado e preto',
+        'description' => 'Peça de gesso pintada à mão.',
+    ]));
+
+    $pagina = actingAs(admin())->get("/produtos/{$produto->public_id}");
+    $daTela = $pagina->viewData('page')['props']['produto'];
+
+    // Exatamente o que o formulário devolve: as chaves que a validação
+    // conhece, com os valores que a tela recebeu.
+    $camposDoFormulario = [
+        'name', 'description', 'kind', 'unit', 'color',
+        'height_cm', 'width_cm', 'depth_cm', 'weight_g',
+        'ncm', 'cest', 'origin', 'gtin',
+        'product_category_id', 'default_package_id',
+        'min_stock', 'drying_days', 'sell_on_woo',
+    ];
+
+    $payload = array_intersect_key($daTela, array_flip($camposDoFormulario));
+
+    actingAs(admin())
+        ->put("/produtos/{$produto->public_id}", $payload)
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+
+    // E o produto continua o mesmo: salvar sem mexer não pode mudar nada.
+    expect($produto->fresh()->kind)->toBe($produto->kind)
+        ->and($produto->fresh()->name)->toBe($produto->name);
+});

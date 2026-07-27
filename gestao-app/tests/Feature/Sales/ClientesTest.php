@@ -220,3 +220,33 @@ it('barra quem so consulta de cadastrar', function () {
         ->post('/clientes', dadosDeCliente())
         ->assertForbidden();
 });
+
+it('salva a ficha do cliente de volta sem alterar nada', function () {
+    // Mesma armadilha que derrubou a edição de produto: a tela recebe o
+    // documento e o CEP com máscara, para leitura, e devolve exatamente
+    // isso no PUT. Se a validação não normalizasse antes de comparar,
+    // salvar sem mexer reprovaria.
+    $cliente = Customer::factory()->comCpf()->create();
+    CustomerAddress::factory()->create(['customer_id' => $cliente->id]);
+
+    $pagina = actingAs(vendedor())->get("/clientes/{$cliente->public_id}");
+    $daTela = $pagina->viewData('page')['props']['cliente'];
+
+    $payload = [
+        'type' => $daTela['type'],
+        'name' => $daTela['name'],
+        'doc' => $daTela['doc_formatado'],
+        'email' => $daTela['email'],
+        'phone' => $daTela['phone'],
+        'is_wholesale' => $daTela['is_wholesale'],
+        'enderecos' => $daTela['enderecos'],
+    ];
+
+    actingAs(vendedor())
+        ->put("/clientes/{$cliente->public_id}", $payload)
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+
+    expect($cliente->fresh()->doc)->toBe($cliente->doc)
+        ->and($cliente->addresses()->count())->toBe(1);
+});

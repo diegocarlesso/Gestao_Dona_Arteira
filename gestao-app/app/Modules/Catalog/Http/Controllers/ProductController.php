@@ -219,7 +219,13 @@ class ProductController extends Controller
             'sku' => $produto->sku,
             'name' => $produto->name,
             'color' => $produto->color,
-            'kind' => $produto->kind->label(),
+            // Valor e rótulo separados, e é decisão aprendida na marra: a
+            // mesma função alimenta a listagem e o formulário de edição.
+            // Enviando só o rótulo, o `select` recebia "Produto acabado",
+            // não casava com opção alguma, e o PUT devolvia o texto — que
+            // a validação recusa com "The selected tipo is invalid".
+            'kind' => $produto->kind->value,
+            'kind_label' => $produto->kind->label(),
             'status' => $produto->status->value,
             'categoria' => $produto->category?->name,
             'weight_g' => $produto->weight_g,
