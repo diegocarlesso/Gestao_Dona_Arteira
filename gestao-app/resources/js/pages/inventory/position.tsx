@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type Paginado } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search } from 'lucide-react';
+import { ClipboardList, Search } from 'lucide-react';
 import { useState } from 'react';
 
 type Produto = {
@@ -57,11 +57,22 @@ export default function PosicaoDeEstoque({ saldos, locais, filtros }: Props) {
             <Head title="Estoque" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <div>
-                    <h1 className="text-xl font-semibold">Posição de estoque</h1>
-                    <p className="text-muted-foreground text-sm">
-                        O que existe agora, por peça e por local. Clique no saldo para ver por que ele está assim.
-                    </p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <h1 className="text-xl font-semibold">Posição de estoque</h1>
+                        <p className="text-muted-foreground text-sm">
+                            O que existe agora, por peça e por local. Clique no saldo para ver por que ele está assim.
+                        </p>
+                    </div>
+
+                    {/* O saldo só entra por contagem — a tela precisa dizer
+                        por onde, especialmente enquanto está vazia. */}
+                    <Button variant="outline" asChild>
+                        <Link href="/estoque/contagens">
+                            <ClipboardList className="size-4" />
+                            Contagens
+                        </Link>
+                    </Button>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">

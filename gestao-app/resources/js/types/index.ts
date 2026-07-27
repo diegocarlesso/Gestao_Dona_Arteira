@@ -30,6 +30,8 @@ export interface NavItem {
     url: string;
     icon?: LucideIcon | null;
     isActive?: boolean;
+    /** Telas do mesmo módulo, um nível abaixo. */
+    children?: NavItem[];
 }
 
 export interface SharedData {
