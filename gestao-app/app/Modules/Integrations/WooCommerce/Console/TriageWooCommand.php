@@ -89,9 +89,14 @@ class TriageWooCommand extends Command
         $this->newLine();
         $this->components->twoColumnDetail('<fg=gray>Exige decisão humana</>', '<fg=gray>itens</>');
 
+        // Duplicata de verdade e variação com rótulo genérico são coisas
+        // diferentes, e misturá-las inflaria o trabalho manual: a segunda
+        // o saneamento já resolve compondo o nome.
+        $reais = $this->gruposDuplicados(apenasAnuncios: true);
+
         $this->components->twoColumnDetail(
-            '<fg=yellow>títulos repetidos</>',
-            (string) $this->gruposDuplicados()->sum('n').' produtos em '.$this->gruposDuplicados()->count().' grupos',
+            '<fg=yellow>anúncios repetidos</>',
+            $reais->sum('n').' produtos em '.$reais->count().' grupos',
         );
 
         $this->components->twoColumnDetail(
@@ -109,12 +114,15 @@ class TriageWooCommand extends Command
 
     private function listarDuplicados(): void
     {
-        $grupos = $this->gruposDuplicados();
+        $grupos = $this->gruposDuplicados(apenasAnuncios: true);
 
         $this->newLine();
-        $this->components->info("{$grupos->count()} títulos aparecem mais de uma vez ({$grupos->sum('n')} produtos)");
+        $this->components->info("{$grupos->count()} anúncios aparecem mais de uma vez ({$grupos->sum('n')} produtos)");
         $this->line('  Cada grupo é a mesma peça recriada no site, com cores diferentes.');
         $this->line('  Manter separados é a decisão de 2026-07-27 — fundir depois é arquivar os repetidos.');
+        $this->newLine();
+        $this->line('  <fg=gray>Variações de kit com nome repetido ("KIT COMPLETO" ×18) não entram');
+        $this->line('  nesta lista: não são duplicata, e a triagem já compõe o nome delas</>');
         $this->newLine();
 
         foreach ($grupos as $grupo) {
@@ -122,6 +130,7 @@ class TriageWooCommand extends Command
 
             $itens = StgWooProduct::query()
                 ->where('name', $grupo->name)
+                ->where('type', '!=', 'variation')
                 ->where('status_triagem', DestinoDaTriagem::Produto->value)
                 ->orderBy('woo_id')
                 ->get();
@@ -163,13 +172,16 @@ class TriageWooCommand extends Command
      * meio-preenchidos, fingindo ser linhas de staging que não são. O
      * `stdClass` diz a verdade sobre o que isto é: contagem por título.
      *
+     * @param  bool  $apenasAnuncios  exclui variações, cujos nomes repetidos
+     *                                são rótulo de opção, não duplicata
      * @return Collection<int, \stdClass>
      */
-    private function gruposDuplicados(): Collection
+    private function gruposDuplicados(bool $apenasAnuncios = false): Collection
     {
         return DB::table('stg_woo_products')
             ->selectRaw('name, count(*) as n')
             ->where('status_triagem', DestinoDaTriagem::Produto->value)
+            ->when($apenasAnuncios, fn ($q) => $q->where('type', '!=', 'variation'))
             ->groupBy('name')
             ->havingRaw('count(*) > 1')
             ->orderByDesc('n')

@@ -146,6 +146,37 @@ it('não carrega nada no catálogo', function () {
     expect(Product::query()->count())->toBe(0);
 });
 
+it('compõe o nome da variação com o do anúncio', function () {
+    stg(10, 'variable', ['name' => 'Kit trio de budas 14 cm']);
+    stg(101, 'variation', atributoDeKit('KIT COMPLETO') + ['name' => 'KIT COMPLETO'], pai: 10);
+
+    app(TriageWooProducts::class)->executar();
+
+    // A variação não herda o nome do pai: recebe o rótulo da opção. Nos
+    // dados reais isso daria 18 produtos chamados "KIT COMPLETO" e 11
+    // "BUDA SIDARTA" — um catálogo de linhas idênticas e inúteis.
+    expect(StgWooProduct::where('woo_id', 101)->first()->nome_proposto)
+        ->toBe('Kit trio de budas 14 cm — KIT COMPLETO');
+});
+
+it('não repete o nome quando a variação já o traz inteiro', function () {
+    stg(10, 'variable', ['name' => 'Kit trio de budas']);
+    stg(101, 'variation', atributoDeKit('X') + ['name' => 'Kit trio de budas'], pai: 10);
+
+    app(TriageWooProducts::class)->executar();
+
+    expect(StgWooProduct::where('woo_id', 101)->first()->nome_proposto)
+        ->toBe('Kit trio de budas');
+});
+
+it('mantém o nome do anúncio quando não é variação', function () {
+    stg(1, 'simple', ['name' => 'Buda sidarta 11 cm']);
+
+    app(TriageWooProducts::class)->executar();
+
+    expect(StgWooProduct::first()->nome_proposto)->toBe('Buda sidarta 11 cm');
+});
+
 it('registra o motivo de cada classificação', function () {
     stg(10, 'variable');
     stg(101, 'variation', atributoDeKit('BUDA'), pai: 10);

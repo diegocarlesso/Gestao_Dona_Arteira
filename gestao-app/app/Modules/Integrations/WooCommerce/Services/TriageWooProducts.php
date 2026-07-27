@@ -49,6 +49,7 @@ class TriageWooProducts
     {
         DB::transaction(function (): void {
             $this->classificar();
+            $this->proporNomes();
             $this->proporSkus();
         });
 
@@ -108,6 +109,46 @@ class TriageWooProducts
                 'status_triagem' => $destino->value,
                 'motivo_triagem' => $motivo,
             ])->save();
+        }
+    }
+
+    /**
+     * Compõe o nome que cada produto terá no ERP.
+     *
+     * Para quase tudo é o nome que veio do Woo. A exceção são as variações
+     * de kit, e ela só apareceu ao olhar os dados: **a variação não herda
+     * o nome do pai**, recebe o rótulo da opção. São 18 variações chamadas
+     * "KIT COMPLETO" e 11 chamadas "BUDA SIDARTA", cada uma pertencendo a
+     * um kit diferente.
+     *
+     * Carregadas assim, o catálogo teria 18 linhas idênticas — inúteis
+     * para quem procura um produto na tela de venda. O nome composto
+     * ("<peça> — KIT COMPLETO") resolve sem inventar dado: as duas partes
+     * vêm da origem.
+     */
+    private function proporNomes(): void
+    {
+        $nomesDosPais = StgWooProduct::query()
+            ->whereIn('type', ['variable', 'simple'])
+            ->pluck('name', 'woo_id');
+
+        foreach (StgWooProduct::query()->where('status_triagem', DestinoDaTriagem::Produto->value)->cursor() as $linha) {
+            $nome = (string) $linha->name;
+
+            if ($linha->type === 'variation' && $linha->parent_woo_id !== null) {
+                $doPai = (string) ($nomesDosPais[$linha->parent_woo_id] ?? '');
+
+                // Só compõe quando as duas partes existem e são
+                // diferentes: se a variação já viesse com o nome completo,
+                // repetir daria "Kit buda — Kit buda".
+                if ($doPai !== '' && $nome !== '' && $doPai !== $nome) {
+                    $nome = "{$doPai} — {$nome}";
+                } elseif ($doPai !== '') {
+                    $nome = $doPai;
+                }
+            }
+
+            $linha->forceFill(['nome_proposto' => mb_substr($nome, 0, 255)])->save();
         }
     }
 
