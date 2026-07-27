@@ -31,6 +31,12 @@ class StgWooProduct extends Model
         'woo_id', 'type', 'parent_woo_id', 'name', 'sku', 'status',
         'regular_price', 'weight', 'woo_modified_at', 'payload',
         'import_batch', 'status_triagem', 'error',
+
+        // Colunas da triagem (F3). Faltavam aqui: a triagem grava com
+        // `forceFill`, que ignora o `$fillable`, então a ausência só
+        // apareceu no teste da carga, onde um `create()` as descartou em
+        // silêncio e nenhum produto entrou.
+        'nome_proposto', 'sku_proposto', 'aprovado_em', 'motivo_triagem',
     ];
 
     /** @return array<string, string> */
@@ -39,6 +45,7 @@ class StgWooProduct extends Model
         return [
             'payload' => 'array',
             'woo_modified_at' => 'datetime',
+            'aprovado_em' => 'datetime',
         ];
     }
 }

@@ -37,6 +37,32 @@ Catálogo canônico dos relatórios do ERP e padrões de construção: todo rela
 | NF-e emitidas por período (+ XMLs em lote) | obrigação com contador | Fiscal | 5 |
 | Divergências de sincronização | ERP e Woo estão iguais? | Integrações | 2 |
 | Pedidos por status (funil operacional) | o que está travado? | Vendas | 2 |
+| **Cadastro incompleto** | que produtos ainda não podem ser vendidos direito? | Catálogo | 1 |
+| **Produtos com nome repetido** | temos a mesma peça cadastrada duas vezes? | Catálogo | 2 |
+
+### 3.1 Cadastro incompleto — por que é relatório, e não só aviso de tela
+
+Pedido do dono em 2026-07-27, durante o saneamento da migração.
+
+A tela de produtos já sinaliza a lacuna item a item (pasta 32 §3.6): sem
+peso, sem preço de varejo, sem preço de atacado. Isso serve para quem
+está com **aquele** produto aberto — e não serve para quem precisa saber
+**quanto falta** e **por onde começar**.
+
+São perguntas diferentes, e a segunda é de relatório: lista filtrável,
+com contagem e exportação em CSV, para a equipe dividir o trabalho de
+preencher. A migração entrega os números iniciais — 35 produtos sem peso
+e 21 sem preço entre os 754 —, mas o relatório continua útil depois dela:
+todo produto novo nasce podendo ter lacuna.
+
+Fica na fase 1 junto com o catálogo, e não na 6 com os demais, porque é
+disso que a equipe precisa **enquanto** completa a carga inicial.
+
+**Produtos com nome repetido** responde à outra pergunta do saneamento —
+os 37 anúncios que o WooCommerce tinha em duplicidade
+([17/F3](../17-Migracao/README.md)). Fica na fase 2 porque, terminada a
+migração, vira zeladoria: pega o cadastro feito em duplicidade por
+distração, que é o mesmo problema chegando por outra porta.
 
 ## 4. Dependências
 
