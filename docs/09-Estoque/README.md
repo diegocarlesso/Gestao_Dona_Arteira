@@ -19,12 +19,26 @@ Ser a fonte única e auditável da posição de estoque de **tudo** (matéria-pr
 > `RecordMovementService` é a única porta de escrita, com transação, lock
 > e as BR-201/202/205/206 cobertas por teste.
 >
-> **Ainda não existe:** tela alguma (extrato, posição, contagem), reserva
-> (BR-203, depende de Vendas), publicação no site (BR-204, depende de
-> Integrações) e o job de reconciliação. O módulo já é consumível por
-> outros módulos; ainda não é operável por gente — e "estoque operável
-> manualmente" é critério de saída do Gate 01, então falta a fatia das
-> telas.
+> ✅ **Telas de leitura no ar — 2026-07-27.** Posição (`/estoque`) e
+> extrato por peça e local, este com o **saldo depois de cada movimento**:
+> sem essa coluna a tela empilha entradas e saídas e deixa a soma para a
+> cabeça de quem lê, que é o trabalho que ela deveria poupar. O saldo
+> corrente é calculado de trás para frente a partir do saldo atual — uma
+> agregação por página, e não uma varredura do ledger desde o começo.
+>
+> O nome do produto chega pelo `ProductLookupService` do Catálogo, que
+> devolve `ProductSummary` e nunca o model: o ADR-0020 avisa que o
+> `arch()` verifica namespace e não semântica, e um Service que
+> devolvesse `Product` passaria no teste enquanto vazava o acoplamento
+> inteiro. A busca por nome/código também é do Catálogo — duplicá-la
+> deste lado criaria duas buscas que divergem com o tempo.
+>
+> **Ainda não existe:** contagem e ajuste pela tela (BR-205, com aprovador
+> ≠ contador), reserva (BR-203, depende de Vendas), publicação no site
+> (BR-204, depende de Integrações) e o job de reconciliação. Sem a
+> contagem, o estoque ainda **não** é operável por gente — que é critério
+> de saída do Gate 01 —, e é ela que recebe o saldo inicial dos 754
+> produtos migrados.
 >
 > **Três decisões que a implementação obrigou a tomar:**
 >
