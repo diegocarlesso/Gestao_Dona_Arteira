@@ -3,9 +3,27 @@
 > **Status:** Em revisão (aguarda entrevistas da pasta 30) · **Última atualização:** 2026-07-03 · **Responsável:** production-specialist
 > **Regras:** BR-101…BR-108 · **Fase:** Gate 03 · **Modelo de dados:** [04/01](../04-Banco-de-Dados/01-modelo-conceitual.md)
 
+> 🔴 **CORREÇÃO 2026-07-27 — este módulo está desenhado sobre premissa
+> falsa.** O dono confirmou que a Dona Arteira **não funde as peças**:
+> compra-as prontas mas cruas e **pinta**. Logo **não há fundição nem
+> moldes** — a etapa "🫙 Fundição", o `mold_id`, a vida útil de molde
+> (BR-105) e o consumo de MP para moldar **não se aplicam**. A produção
+> real é **pintura → acabamento → CQ**, e a **secagem é quarentena
+> pós-recebimento** (módulo de Compras), não etapa pós-fundição. Todo o
+> texto abaixo precisa ser reescrito num remodelamento dedicado; até lá,
+> **não implemente nada daqui**. Ver [pasta 30](../30-Dominio-da-Dona-Arteira/README.md)
+> e os relatórios externos de 2026-07-27 na raiz do projeto.
+
 ## 1. Objetivo
 
-Controlar a fabricação artesanal das peças de gesso — da fundição no molde à aprovação no controle de qualidade — dando visibilidade de WIP, perdas, consumo de matéria-prima, uso de moldes e custo. É o **core domain** do ERP: nada de prateleira modela bem este processo.
+Controlar a **pintura artesanal** das peças de gesso — da liberação da
+peça crua seca à aprovação no controle de qualidade — dando visibilidade
+de WIP, perdas, consumo de tinta/verniz e custo (incluindo mão de obra de
+pintura). É o **core domain** do ERP: nada de prateleira modela bem este
+processo.
+
+> O objetivo original falava em "fundição no molde" e "uso de moldes".
+> Falso — ver a correção acima.
 
 ## 2. Responsabilidades
 

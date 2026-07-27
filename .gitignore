@@ -34,6 +34,15 @@ Thumbs.db
 /docs/database_dump/
 *.sql
 !/database/**/*.sql
+# Planilhas de dados reais. `DADOS DONA ARTEIRA.xlsx` chegou a ser
+# versionado (o .gitignore cobria *.sql, não *.xlsx). Removido do
+# rastreamento em 2026-07-27 — mas continua no histórico, como o /.db:
+# untrack não apaga o passado. Se contiver PII e o repo for compartilhado,
+# só a reescrita de histórico remove de verdade.
+*.xlsx
+*.xls
+*.csv
+!/database/**/*.csv
 
 # Obsidian — estado local do editor
 .obsidian/workspace*.json

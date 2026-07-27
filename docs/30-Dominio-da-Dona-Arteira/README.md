@@ -3,9 +3,27 @@
 > **Status:** Rascunho — **este documento se completa com entrevistas** · **Última atualização:** 2026-07-03 · **Responsável:** business-analyst
 > Aqui vive o conhecimento do NEGÓCIO (não do software). O que está confirmado vem das instruções do projeto e do sistema legado; o restante está explicitamente marcado como a descobrir.
 
+> 🔴 **CORREÇÃO 2026-07-27 — premissa central errada.** O dono confirmou
+> que a Dona Arteira **NÃO funde as peças**. Compra-as **prontas, mas
+> cruas** (sem pintura, nem sempre secas) de fornecedores; a "produção" é
+> **pintura + acabamento**. Não há fundição, não há moldes, não há
+> consumo de gesso para moldar. O texto abaixo (fundição em moldes) está
+> **errado** e será reescrito num remodelamento dedicado de Produção e
+> Compras. Processo real: **compra → recebimento (peça úmida) →
+> secagem/quarentena → pintura → acabamento → CQ → acabado → venda →
+> expedição → NF-e → financeiro**.
+
 ## 1. O negócio (confirmado)
 
-A Dona Arteira fabrica artesanalmente e comercializa **peças decorativas em gesso pintadas manualmente**. Processo produtivo: compra de matéria-prima → fundição em moldes → secagem → pintura manual → acabamento → controle de qualidade → estoque → venda → separação → embalagem → expedição → NF-e → financeiro.
+A Dona Arteira **pinta artesanalmente e comercializa** peças decorativas
+em gesso. Compra as peças **prontas mas cruas** e as **pinta à mão**.
+Processo real: compra de peça crua → recebimento (peça úmida) →
+secagem/quarentena → **pintura manual** → acabamento → controle de
+qualidade → estoque → venda → separação → embalagem → expedição → NF-e →
+financeiro.
+
+> O parágrafo original dizia "fabrica artesanalmente… fundição em moldes".
+> Falso — ver a correção acima.
 
 Canais de venda hoje:
 - **E-commerce** próprio em WordPress/WooCommerce (produtos, clientes, pedidos, imagens, estoque e histórico — patrimônio de dados a migrar).

@@ -1,10 +1,38 @@
 # Dona Arteira ERP — Regras do Projeto
 
-ERP para fabricação artesanal e venda de peças decorativas em gesso. Idioma do projeto: **português (pt-BR)** — código em inglês, documentação/commits/UI em português.
+ERP para **pintura artesanal e venda** de peças decorativas em gesso. Idioma do projeto: **português (pt-BR)** — código em inglês, documentação/commits/UI em português.
 
-## Estado atual
+> ⚠️ **A Dona Arteira NÃO fabrica as peças** (confirmado pelo dono em
+> 2026-07-27). Compra as peças **prontas, mas cruas** — sem pintura, e
+> nem sempre secas — de fornecedores. A produção é **pintura +
+> acabamento**, não fundição. Boa parte de `docs/08-Producao` e
+> `docs/30-Dominio` ainda descreve fundição em moldes e é **premissa
+> falsa** a ser corrigida antes de qualquer código de Compras/Produção.
+> A secagem é uma etapa **pós-recebimento** (quarentena da peça úmida),
+> não pós-fundição. Ver o aviso no topo desses documentos.
 
-**Gate 00 (Fundação) concluído.** Existe apenas documentação. A implementação só começa quando o dono do produto autorizar o Gate 01 e as decisões pendentes do [ADR-0016 (hospedagem)](docs/27-ADR/ADR-0016-hospedagem.md) forem tomadas.
+## Estado atual (2026-07-27)
+
+**Gate 00 concluído. Gate 01 quase fechado** — só falta a validação F5 da
+migração assinada pelo dono. Implementado, testado e em produção:
+
+| Módulo | Estado |
+|---|---|
+| Identity | ✅ auth, 2FA TOTP, RBAC, auditoria, convite (ADR-0021/0011/0012) |
+| Catalog | ✅ 754 produtos migrados do Woo, SKU imutável, preço histórico |
+| Integrations/WooCommerce | ✅ extração → staging → triagem → carga (F2–F4) |
+| Inventory | ✅ ledger imutável, posição, extrato, contagem física (BR-205) |
+| Sales | ✅ clientes (PF/PJ, CPF/CNPJ validado, endereços, LGPD) |
+| Marca | ✅ identidade visual da Dona Arteira (docs/06 §10.1) |
+
+~309 testes Pest, PHPStan nível 6, CI verde. **Não é mais "existe apenas
+documentação".** Ao continuar, consulte o git e `app/Modules/` como fonte
+de verdade do que existe — não presuma pelo roadmap.
+
+> 🔴 **Dívida de segurança aberta:** o commit `e13ae02` versionou um
+> arquivo `.db` com segredos de produção em texto puro (removido do
+> rastreamento em `4eb9076`, mas **ainda no histórico**). Rotação de
+> credenciais em andamento pelo dono (2026-07-27). Segredo nunca no repo.
 
 ## Regras obrigatórias (valem para qualquer sessão)
 
