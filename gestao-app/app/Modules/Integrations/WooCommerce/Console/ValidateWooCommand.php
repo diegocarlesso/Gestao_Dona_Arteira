@@ -31,6 +31,18 @@ class ValidateWooCommand extends Command
         $this->components->twoColumnDetail('aprovados na triagem', (string) $r['contagens']['aprovados']);
         $this->components->twoColumnDetail('mapeados no catálogo', (string) $r['contagens']['mapeados']);
 
+        // Banco vazio não é migração fiel — é migração ausente. "0 = 0"
+        // batendo faria a validação mandar assinar a F5 sobre o nada; a
+        // F5 roda em PRODUÇÃO, e rodar no banco errado é o engano provável.
+        if ($r['contagens']['aprovados'] === 0) {
+            $this->newLine();
+            $this->components->error('Nada aprovado para validar neste banco.');
+            $this->line('  A F5 roda em <fg=yellow>produção</>, onde a migração aconteceu. Zero');
+            $this->line('  aprovados aqui quer dizer banco vazio (dev/local), não catálogo fiel.');
+
+            return self::FAILURE;
+        }
+
         if (! $r['contagens']['bate']) {
             $this->components->error('As contagens NÃO batem — há produto aprovado que não entrou, ou vice-versa.');
 

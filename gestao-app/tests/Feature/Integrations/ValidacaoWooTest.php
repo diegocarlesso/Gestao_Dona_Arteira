@@ -128,6 +128,15 @@ it('acusa quando a categoria escolhida é de vitrine', function () {
     expect($r['amostra'][0]['divergencias'][0])->toContain('vitrine');
 });
 
+it('recusa validar banco vazio em vez de dar falso-verde', function () {
+    // 0 aprovados = migração ausente, não fiel. "0 = 0" batendo faria o
+    // comando mandar assinar a F5 sobre o nada — o engano provável é
+    // rodar no banco local em vez de produção.
+    $this->artisan('erp:migrate:validate')
+        ->assertFailed()
+        ->expectsOutputToContain('Nada aprovado para validar');
+});
+
 it('amostra de forma estável — a mesma rodada devolve os mesmos produtos', function () {
     for ($i = 1; $i <= 50; $i++) {
         stgAprovado(100 + $i, sprintf('DA-%04d', $i));
