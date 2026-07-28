@@ -56,12 +56,7 @@ export default function PedidosIndex({ pedidos, filtros, status }: Props) {
 
                 <div className="flex flex-wrap gap-2">
                     {status.map((s) => (
-                        <Button
-                            key={s.valor}
-                            size="sm"
-                            variant={filtros.status === s.valor ? 'default' : 'outline'}
-                            onClick={() => filtrar(s.valor)}
-                        >
+                        <Button key={s.valor} size="sm" variant={filtros.status === s.valor ? 'default' : 'outline'} onClick={() => filtrar(s.valor)}>
                             {s.rotulo}
                         </Button>
                     ))}

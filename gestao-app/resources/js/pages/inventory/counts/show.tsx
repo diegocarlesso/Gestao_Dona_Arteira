@@ -69,11 +69,7 @@ export default function ContagemShow({ contagem, resumo, itens, filtros, podeAju
     ];
 
     const filtrar = (chave: 'divergentes' | 'pendentes') =>
-        router.get(
-            `/estoque/contagens/${contagem.public_id}`,
-            { [chave]: filtros[chave] ? '' : '1' },
-            { preserveState: false },
-        );
+        router.get(`/estoque/contagens/${contagem.public_id}`, { [chave]: filtros[chave] ? '' : '1' }, { preserveState: false });
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -188,9 +184,7 @@ export default function ContagemShow({ contagem, resumo, itens, filtros, podeAju
                                             {item.name}
                                             {item.color && <span className="text-muted-foreground"> · {item.color}</span>}
                                         </td>
-                                        <td className="text-muted-foreground p-3 text-right whitespace-nowrap">
-                                            {emQuantidade(item.qty_system)}
-                                        </td>
+                                        <td className="text-muted-foreground p-3 text-right whitespace-nowrap">{emQuantidade(item.qty_system)}</td>
                                         <td className="p-3 text-right">
                                             {contagem.aberta && podeAjustar ? (
                                                 <Input
@@ -200,9 +194,7 @@ export default function ContagemShow({ contagem, resumo, itens, filtros, podeAju
                                                     inputMode="decimal"
                                                     className="ml-auto h-8 w-24 text-right"
                                                     value={valor}
-                                                    onChange={(e) =>
-                                                        setQuantidades((atual) => ({ ...atual, [item.id]: e.target.value }))
-                                                    }
+                                                    onChange={(e) => setQuantidades((atual) => ({ ...atual, [item.id]: e.target.value }))}
                                                     aria-label={`Quantidade contada de ${item.name}`}
                                                 />
                                             ) : (

@@ -41,7 +41,8 @@ interface Props {
     podeCancelar: boolean;
 }
 
-const emReais = (valor: string | null) => (valor === null ? '—' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor)));
+const emReais = (valor: string | null) =>
+    valor === null ? '—' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor));
 
 async function buscar<T>(url: string, q: string): Promise<T[]> {
     if (q.trim().length < 2) return [];
@@ -71,10 +72,7 @@ export default function PedidoEdit({ pedido, podeConfirmar, podeCancelar }: Prop
 
     const adicionar = (p: ProdutoBusca) => {
         if (itens.some((i) => i.product === p.public_id)) return;
-        setItens([
-            ...itens,
-            { product: p.public_id, sku: p.sku, name: p.name, qty: '1', unit_price: p.retail_price, line_total: null, note: null },
-        ]);
+        setItens([...itens, { product: p.public_id, sku: p.sku, name: p.name, qty: '1', unit_price: p.retail_price, line_total: null, note: null }]);
         setBuscaProduto('');
         setResultados([]);
     };
@@ -277,11 +275,7 @@ export default function PedidoEdit({ pedido, podeConfirmar, podeCancelar }: Prop
                                             </td>
                                             <td className="p-2 text-right">
                                                 {pedido.rascunho && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => setItens(itens.filter((_, j) => j !== i))}
-                                                    >
+                                                    <Button variant="ghost" size="sm" onClick={() => setItens(itens.filter((_, j) => j !== i))}>
                                                         <Trash2 className="size-4" />
                                                     </Button>
                                                 )}

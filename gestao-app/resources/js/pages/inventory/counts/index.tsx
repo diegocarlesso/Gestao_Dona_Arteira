@@ -49,8 +49,8 @@ export default function ContagensIndex({ contagens, locais, podeAjustar }: Props
                 <div>
                     <h1 className="text-xl font-semibold">Contagens de estoque</h1>
                     <p className="text-muted-foreground max-w-2xl text-sm">
-                        O saldo do ERP nasce daqui. Quem conta registra o que viu na prateleira; outra pessoa confere a divergência antes de
-                        virar movimento.
+                        O saldo do ERP nasce daqui. Quem conta registra o que viu na prateleira; outra pessoa confere a divergência antes de virar
+                        movimento.
                     </p>
                 </div>
 

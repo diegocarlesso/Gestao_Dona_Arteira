@@ -137,11 +137,7 @@ export function FormularioDeCliente({ dados, tipos, metodo, url, rotuloDoBotao }
                 </div>
 
                 <label className="flex items-center gap-2 text-sm">
-                    <input
-                        type="checkbox"
-                        checked={form.data.is_wholesale}
-                        onChange={(e) => form.setData('is_wholesale', e.target.checked)}
-                    />
+                    <input type="checkbox" checked={form.data.is_wholesale} onChange={(e) => form.setData('is_wholesale', e.target.checked)} />
                     Cliente de atacado
                     <span className="text-muted-foreground text-xs">(o critério de preço ainda será definido — BR-301)</span>
                 </label>
@@ -160,7 +156,12 @@ export function FormularioDeCliente({ dados, tipos, metodo, url, rotuloDoBotao }
                             Entrega e cobrança podem ser diferentes — presente vai para um endereço e a nota, para outro.
                         </p>
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={() => form.setData('enderecos', [...form.data.enderecos, enderecoVazio()])}>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => form.setData('enderecos', [...form.data.enderecos, enderecoVazio()])}
+                    >
                         <Plus className="size-4" />
                         Adicionar
                     </Button>

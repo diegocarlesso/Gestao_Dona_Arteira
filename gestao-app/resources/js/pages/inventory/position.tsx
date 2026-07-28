@@ -121,8 +121,7 @@ export default function PosicaoDeEstoque({ saldos, locais, filtros }: Props) {
                     <div className="rounded-md border border-dashed p-8 text-center">
                         <p className="font-medium">Nenhum saldo por aqui.</p>
                         <p className="text-muted-foreground mt-1 text-sm">
-                            O estoque começa vazio de propósito: o saldo inicial nasce da contagem física, não de um número importado do
-                            site.
+                            O estoque começa vazio de propósito: o saldo inicial nasce da contagem física, não de um número importado do site.
                         </p>
                     </div>
                 ) : (
@@ -153,9 +152,7 @@ export default function PosicaoDeEstoque({ saldos, locais, filtros }: Props) {
                                             )}
                                         </td>
                                         <td className="p-3 text-right font-medium whitespace-nowrap">{emQuantidade(s.on_hand)}</td>
-                                        <td className="text-muted-foreground p-3 text-right whitespace-nowrap">
-                                            {emQuantidade(s.reserved)}
-                                        </td>
+                                        <td className="text-muted-foreground p-3 text-right whitespace-nowrap">{emQuantidade(s.reserved)}</td>
                                         <td className="p-3 text-right whitespace-nowrap">{emQuantidade(s.disponivel)}</td>
                                         <td className="text-muted-foreground p-3 text-right whitespace-nowrap">{emReais(s.avg_cost)}</td>
                                         <td className="p-3 text-right">

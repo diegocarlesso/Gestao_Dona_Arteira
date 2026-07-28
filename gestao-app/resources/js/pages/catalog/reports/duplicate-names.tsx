@@ -70,8 +70,7 @@ export default function NomesRepetidos({ grupos, totais, podeArquivar }: Props) 
                     <div>
                         <h1 className="text-xl font-semibold">Produtos com nome repetido</h1>
                         <p className="text-muted-foreground max-w-2xl text-sm">
-                            A mesma peça cadastrada duas vezes. Escolha qual fica e arquive a outra — o grupo some da lista assim que sobra
-                            um só.
+                            A mesma peça cadastrada duas vezes. Escolha qual fica e arquive a outra — o grupo some da lista assim que sobra um só.
                         </p>
                     </div>
 
@@ -95,8 +94,8 @@ export default function NomesRepetidos({ grupos, totais, podeArquivar }: Props) 
                 ) : (
                     <>
                         <p className="text-sm">
-                            <strong>{totais.produtos}</strong> produtos em <strong>{totais.grupos}</strong>{' '}
-                            {totais.grupos === 1 ? 'grupo' : 'grupos'}.
+                            <strong>{totais.produtos}</strong> produtos em <strong>{totais.grupos}</strong> {totais.grupos === 1 ? 'grupo' : 'grupos'}
+                            .
                         </p>
 
                         <div className="flex flex-col gap-6">
