@@ -6,6 +6,7 @@ namespace App\Modules\Sales\Services;
 
 use App\Modules\Inventory\Services\ReserveStockService;
 use App\Modules\Sales\Enums\OrderStatus;
+use App\Modules\Sales\Events\OrderCancelled;
 use App\Modules\Sales\Exceptions\PedidoInvalido;
 use App\Modules\Sales\Models\Order;
 use App\Modules\Sales\Models\OrderStatusHistory;
@@ -54,6 +55,8 @@ class CancelOrderService
                 'cancelled_at' => now(),
                 'cancel_reason' => $motivo,
             ])->save();
+
+            OrderCancelled::dispatch($pedido);
 
             return $pedido;
         });

@@ -10,7 +10,9 @@ use App\Modules\Integrations\WooCommerce\Console\LoadWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\PullWooOrdersCommand;
 use App\Modules\Integrations\WooCommerce\Console\TriageWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\ValidateWooCommand;
+use App\Modules\Integrations\WooCommerce\Listeners\CancelarNoWoo;
 use App\Modules\Integrations\WooCommerce\Listeners\EnviarExpedicaoAoWoo;
+use App\Modules\Sales\Events\OrderCancelled;
 use App\Modules\Sales\Events\OrderShipped;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -30,10 +32,11 @@ class IntegrationsServiceProvider extends ServiceProvider
         // CSRF nem sessão, autenticados pela assinatura HMAC (BR-701).
         $this->loadRoutesFrom(__DIR__.'/../Routes/webhooks.php');
 
-        // Saída ERP→Woo: a expedição de um pedido do site devolve status +
-        // rastreio ao Woo (sync-pedidos §7). Registrado aqui, no módulo que
-        // reage — Vendas não sabe que o Woo escuta (ADR-0020).
+        // Saída ERP→Woo: expedição devolve status + rastreio; cancelamento
+        // devolve `cancelled` (sync-pedidos §7). Registrado aqui, no módulo
+        // que reage — Vendas não sabe que o Woo escuta (ADR-0020).
         Event::listen(OrderShipped::class, EnviarExpedicaoAoWoo::class);
+        Event::listen(OrderCancelled::class, CancelarNoWoo::class);
 
         if ($this->app->runningInConsole()) {
             $this->commands([

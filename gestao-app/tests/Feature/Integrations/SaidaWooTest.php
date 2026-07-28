@@ -3,11 +3,13 @@
 declare(strict_types=1);
 
 use App\Modules\Integrations\WooCommerce\Client;
+use App\Modules\Integrations\WooCommerce\Jobs\PushCancellationToWoo;
 use App\Modules\Integrations\WooCommerce\Jobs\PushShipmentToWoo;
 use App\Modules\Integrations\WooCommerce\Models\IntegrationMapping;
 use App\Modules\Sales\Enums\OrderChannel;
 use App\Modules\Sales\Events\OrderShipped;
 use App\Modules\Sales\Models\Order;
+use App\Modules\Sales\Services\CancelOrderService;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 
@@ -106,5 +108,36 @@ describe('saída ERP→Woo', function () {
 
         Bus::assertDispatchedTimes(PushShipmentToWoo::class, 1);
         Bus::assertDispatched(PushShipmentToWoo::class, fn ($j) => $j->orderId === $woo->id && $j->trackingCode === 'BR9');
+    });
+});
+
+describe('cancelamento ERP→Woo', function () {
+    it('devolve status cancelled e o motivo como nota interna', function () {
+        ligarWoo();
+        Http::fake(['*' => Http::response([])]);
+        $pedido = pedidoWooMapeado(600);
+
+        (new PushCancellationToWoo($pedido->id, 'cliente desistiu'))->handle(app(Client::class));
+
+        Http::assertSent(fn ($r) => $r->method() === 'PUT'
+            && str_contains($r->url(), '/orders/600')
+            && $r['status'] === 'cancelled');
+
+        Http::assertSent(fn ($r) => $r->method() === 'POST'
+            && str_contains($r->url(), '/orders/600/notes')
+            && $r['customer_note'] === false
+            && str_contains($r['note'], 'cliente desistiu'));
+    });
+
+    it('cancelar um pedido do site dispara o push; um de balcão não', function () {
+        Bus::fake([PushCancellationToWoo::class]);
+        $woo = pedidoWooMapeado(601);
+        $erp = Order::factory()->create(['channel' => OrderChannel::Erp]);
+
+        app(CancelOrderService::class)->handle($woo, 'sem estoque');
+        app(CancelOrderService::class)->handle($erp, 'desistência');
+
+        Bus::assertDispatchedTimes(PushCancellationToWoo::class, 1);
+        Bus::assertDispatched(PushCancellationToWoo::class, fn ($j) => $j->orderId === $woo->id && $j->motivo === 'sem estoque');
     });
 });

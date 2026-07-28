@@ -56,8 +56,14 @@ status `completed` e o rastreio como **nota ao cliente** (o plugin de
 rastreio segue pendência de inventário — a nota é o caminho nativo). Só
 pedido do site (guarda de canal); assíncrono (BR-705); **anti-eco** de
 graça — o `order.updated` que o Woo dispara de volta cai no `duplicado` do
-`ImportWooOrder` (idempotência por id, BR-703). O listener respeita a
-fronteira (ADR-0020): lê o `Event` de Vendas, nunca o model `Order`.
+`ImportWooOrder` (idempotência por id, BR-703). O **cancelamento** no ERP
+tem o gêmeo `CancelarNoWoo`/`PushCancellationToWoo` (status `cancelled` +
+motivo como nota interna). Os listeners respeitam a fronteira (ADR-0020):
+leem o `Event` de Vendas, nunca o model `Order`.
+
+> Hoje todo cancelamento nasce no ERP. Quando existir o de-para de entrada
+> `order.updated` (cancelar vindo do site — sync-pedidos §5), o listener de
+> cancelamento precisará de guarda de origem para não empurrar o eco.
 
 - **Dois gatilhos, um miolo (ADR-0007):** o `WooWebhookController` (grava
   bruto → enfileira `ProcessWooOrder`) e o comando `erp:woo:pull-orders`
