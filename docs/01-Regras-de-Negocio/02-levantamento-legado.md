@@ -1,6 +1,6 @@
 # Levantamento do Sistema Legado (Desktop Python)
 
-> **Status:** Aprovado · **Última atualização:** 2026-07-03 · **Responsável:** business-analyst
+> **Status:** Aprovado · **Última atualização:** 2026-07-27 · **Responsável:** business-analyst
 > **Fonte:** `Dona_Arteira_Gestao_desktop/dagestao/` — leitura de referência, sem conversão automática
 
 ## 1. Objetivo
@@ -36,7 +36,9 @@ Registrar o que o sistema desktop faz hoje, que dados guarda e que regras eviden
 
 ## 5. Lacunas do legado (o que o ERP acrescenta)
 
-Produção e moldes · movimentos de estoque · compras · financeiro (a pagar/receber) · fiscal/NF-e · multiusuário com permissões · auditoria · integração WooCommerce (hoje os dois sistemas não conversam!) · relatórios.
+Produção (pintura) · movimentos de estoque · compras · financeiro (a pagar/receber) · fiscal/NF-e · multiusuário com permissões · auditoria · integração WooCommerce (hoje os dois sistemas não conversam!) · relatórios.
+
+> O legado (e a documentação antiga) modelava **fundição/moldes** — premissa falsa: a Dona Arteira compra peças cruas e só pinta. Corrigido no [ADR-0023](../27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md).
 
 ## 6. Pendências de levantamento
 

@@ -5,11 +5,17 @@ ERP para **pintura artesanal e venda** de peças decorativas em gesso. Idioma do
 > ⚠️ **A Dona Arteira NÃO fabrica as peças** (confirmado pelo dono em
 > 2026-07-27). Compra as peças **prontas, mas cruas** — sem pintura, e
 > nem sempre secas — de fornecedores. A produção é **pintura +
-> acabamento**, não fundição. Boa parte de `docs/08-Producao` e
-> `docs/30-Dominio` ainda descreve fundição em moldes e é **premissa
-> falsa** a ser corrigida antes de qualquer código de Compras/Produção.
-> A secagem é uma etapa **pós-recebimento** (quarentena da peça úmida),
-> não pós-fundição. Ver o aviso no topo desses documentos.
+> acabamento**, não fundição: não há moldes nem consumo de gesso para
+> moldar. A secagem é **quarentena pós-recebimento** (peça úmida), não
+> etapa pós-fundição. A documentação de Produção (08), Compras (11),
+> Domínio (30), Estoque (09), modelo de dados (04) e as BR-1xx **já foram
+> remodeladas** para essa premissa em 2026-07-27; as decisões estão nos
+> **[ADR-0023](docs/27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md)**
+> (produção é pintura) e **[ADR-0024](docs/27-ADR/ADR-0024-quarentena-de-secagem.md)**
+> (quarentena de secagem), ainda `Proposto` aguardando o aval do dono. O
+> ledger de estoque (ADR-0008) **não muda**: peça crua é um `kind` de
+> produto e a pintura é `production_input`(crua+tinta) →
+> `production_output`(acabado).
 
 ## Estado atual (2026-07-27)
 

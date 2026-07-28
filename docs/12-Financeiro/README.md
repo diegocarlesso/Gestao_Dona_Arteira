@@ -34,7 +34,7 @@ Projetado = títulos abertos por vencimento; realizado = baixas por data. Visõe
 
 ## 4. Plano de categorias gerencial (BR-503)
 
-Árvore inicial proposta (validar com o dono no Gate 04): Receitas (Vendas Site, Vendas Balcão, Vendas Atacado, Fretes cobrados) · Custos (Matéria-prima, Embalagens, Frete pago) · Despesas (Marketing, Taxas de gateway/marketplace, Hospedagem/Software, Pró-labore, Energia/Água, Outros) · Investimentos (Moldes, Equipamentos).
+Árvore inicial proposta (validar com o dono no Gate 04): Receitas (Vendas Site, Vendas Balcão, Vendas Atacado, Fretes cobrados) · Custos (Matéria-prima, Embalagens, Frete pago) · Despesas (Marketing, Taxas de gateway/marketplace, Hospedagem/Software, Pró-labore, Energia/Água, Outros) · Investimentos (Equipamentos, Ateliê/bancada).
 
 ## 5. Dependências
 

@@ -14,7 +14,7 @@ Painéis por papel que respondem "como estamos AGORA?" em uma tela — sem subst
 | Venda do dia/mês | Σ pedidos **confirmados** no período (cancelados excluídos), por canal |
 | Ticket médio | venda ÷ nº pedidos do período |
 | Disponível | on_hand − reservado (pasta 09) |
-| WIP | peças em OPs entre fundição e CQ |
+| WIP | peças em OPs de pintura (entre a saída da peça crua e a entrada da acabada) |
 | % de perda | qty_lost ÷ (qty_produced + qty_lost) por período |
 | Inadimplência | receivables vencidos > 5 dias ÷ receivables do período |
 | Saúde da sync | idade do item mais antigo na fila + falhas 24 h |
@@ -26,7 +26,7 @@ Toda visualização usa estas definições — divergência entre telas é bug.
 | Painel | Público | Conteúdo (cards/gráficos) |
 |---|---|---|
 | **Geral (home)** | admin | venda dia/mês por canal, pedidos por status (funil), alertas: estoque mínimo, encomendas atrasando, títulos vencendo hoje, saúde das integrações, certificado A1 (dias p/ vencer) |
-| **Produção** | production | OPs por etapa (kanban WIP), fila de encomendas por data prometida, perdas da semana, moldes perto do fim de vida |
+| **Produção** | production | OPs por etapa (kanban WIP), fila de encomendas por data prometida, perdas da semana, lotes prontos para liberar da secagem |
 | **Vendas/Expedição** | sales/fulfillment | pedidos a separar/embalar/expedir, atrasos, rastreios sem movimentação (fase 6) |
 | **Financeiro** | finance | fluxo de caixa 30/60/90, a receber/pagar da semana, aging |
 | **Integrações** | admin | status por integração, última sync, pendências, erros com ação de reprocesso |

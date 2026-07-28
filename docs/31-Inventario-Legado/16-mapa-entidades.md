@@ -84,7 +84,7 @@ erDiagram
 
 ## 5. Entidades AUSENTES em ambas as fontes (o ERP cria)
 
-Produção (OP, etapas, moldes, perdas, WIP) · **Ficha técnica/BOM** · Movimentos de estoque (ledger) · Reservas · Compras/fornecedores · Financeiro (títulos a pagar/receber, baixas) · Fiscal (NCM/CFOP/CSOSN) · NF-e · Usuários/permissões/auditoria · Mapeamentos de integração.
+Produção (OP de pintura, etapas, perdas, WIP) · **Ficha técnica/BOM** · Movimentos de estoque (ledger) · Reservas · Compras/fornecedores · Financeiro (títulos a pagar/receber, baixas) · Fiscal (NCM/CFOP/CSOSN) · NF-e · Usuários/permissões/auditoria · Mapeamentos de integração.
 
 Isso confirma o escopo do roadmap: as fontes cobrem **catálogo, clientes e pedidos**; o coração do ERP (**produção, estoque-ledger, financeiro, fiscal**) **nasce novo**.
 

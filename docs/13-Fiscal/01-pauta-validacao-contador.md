@@ -42,7 +42,7 @@ Sem estes dados exatos (como constam no cadastro da SEFAZ), a nota é rejeitada 
 | B-01 🔴 | Regime tributário atual | Simples Nacional | |
 | B-02 🔴 | **CRT** a informar na NF-e (1 Simples · 2 Simples c/ excesso de sublimite · 3 Regime Normal · 4 MEI) | 1 | |
 | B-03 | **Anexo e faixa** do Simples (fabricação → Anexo II? revenda → Anexo I?) | Anexo II para fabricação | |
-| B-04 | A empresa tem **dois anexos** convivendo (fabrica gesso + revende incenso/MDF)? Como segregar a receita? | provável | |
+| B-04 | A empresa tem **dois anexos** convivendo (**pintura de peças de gesso compradas cruas** — a pintura/acabamento é industrialização? — + revenda de incenso/MDF)? Como segregar a receita? | provável | |
 | B-05 | Regime de **caixa ou competência** no PGDAS-D | — | |
 | B-06 | Há previsão de estourar sublimite/limite do Simples nos próximos 12 meses? | não | |
 | B-07 | A empresa é **contribuinte de IPI** (estabelecimento industrial)? | provável, mas incluso no DAS | |

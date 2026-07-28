@@ -36,7 +36,9 @@
 | [0020](ADR-0020-fronteiras-entre-modulos.md) | Fronteiras entre módulos (verificadas por `arch()`), migrations centralizadas, testes em `tests/` | ✅ Aceito 2026-07-22 |
 | [0021](ADR-0021-2fa-totp.md) | **2FA TOTP (BR-804): `laravel/fortify` só pelas Actions, sem suas rotas/views** | ✅ Aceito 2026-07-24 |
 | [0022](ADR-0022-modelo-de-produto-e-sku.md) | **Produto: variação é produto próprio; SKU sequencial neutro `DA-0001`** | ✅ Aceito 2026-07-25 |
+| [0023](ADR-0023-producao-e-pintura-nao-fundicao.md) | **Produção é pintura, não fundição** (remove moldes; peça crua é `kind`; custeio ABC com mão de obra) | ⚠️ **Proposto — premissa do dono** |
+| [0024](ADR-0024-quarentena-de-secagem.md) | **Quarentena de secagem no recebimento** (peça úmida entra mas não libera para pintar; via localização, ledger inalterado) | ⚠️ **Proposto — premissa do dono** |
 
 ## Backlog de ADRs futuros (escrever quando o tema chegar)
 
-Gateway de pagamento completo — cartão/link de pagamento (fase 7, evolução do ADR-0018) · régua de cobrança/protesto/negativação (fase 7) · estratégia de marketplaces (fase 7) · PWA vs app nativo (fase 7) · lote/rastreabilidade de produção (se exigido) · **NFC-e** (se a resposta ao item F-06 da [pauta do contador](../13-Fiscal/01-pauta-validacao-contador.md) exigir) · saída do Simples Nacional (se ocorrer).
+Gateway de pagamento completo — cartão/link de pagamento (fase 7, evolução do ADR-0018) · régua de cobrança/protesto/negativação (fase 7) · estratégia de marketplaces (fase 7) · PWA vs app nativo (fase 7) · **rastreio por lote (`batch`) ao longo da vida da peça** — extensão do ADR-0008, se o atacado/recall exigir (a taxa de quebra por lote de recebimento já sai do ADR-0024 sem isso) · **NFC-e** (se a resposta ao item F-06 da [pauta do contador](../13-Fiscal/01-pauta-validacao-contador.md) exigir) · saída do Simples Nacional (se ocorrer).

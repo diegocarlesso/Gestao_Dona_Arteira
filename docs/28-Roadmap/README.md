@@ -35,7 +35,7 @@ Toda a documentação desta pasta `docs/`, agentes, skills, ADRs. **Saída:** de
 
 ## Gate 03 — Produção + Compras
 
-**Entrega:** OPs com etapas/perdas/moldes (08), fichas técnicas, compras+recebimento (11), custo médio ativo, sugestão de reposição, encomendas ligadas a OPs.
+**Entrega:** OPs de pintura com etapas/perdas (08), recebimento com quarentena de secagem (11), custeio com mão de obra, fichas técnicas, custo médio, sugestão de reposição, encomendas ligadas a OPs.
 **Critérios de saída:** 100% da produção passando por OP há 30 dias · fichas técnicas dos 50 produtos mais vendidos · custo médio conferido pelo dono.
 **Pré-requisito:** entrevistas da pasta 30 concluídas e BRs 1xx validadas.
 

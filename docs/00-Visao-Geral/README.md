@@ -44,7 +44,7 @@ O WordPress/WooCommerce **não é substituído**: continua sendo o e-commerce, r
 
 ## 4. Fluxo operacional coberto
 
-Compra de matéria-prima → Produção (fundição em molde) → Secagem → Pintura artesanal → Acabamento → Controle de qualidade → Estoque → Venda (loja/site/atacado) → Separação → Embalagem → Expedição → Emissão de NF-e → Financeiro → Relatórios.
+Compra de peça crua → Recebimento → Secagem/quarentena → Pintura artesanal → Acabamento → Controle de qualidade → Estoque → Venda (loja/site/atacado) → Separação → Embalagem → Expedição → Emissão de NF-e → Financeiro → Relatórios.
 
 Cada elo tem documentação própria (pastas 08 a 14) e regras registradas na pasta 01.
 

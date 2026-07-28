@@ -24,7 +24,7 @@ Esta pasta é a **fonte canônica de conhecimento** do projeto. Regra de ouro: *
 | 05 | [Backend](05-Backend/README.md) | Padrões Laravel, estrutura modular, pacotes | Gate 01+ |
 | 06 | [Frontend](06-Frontend/README.md) | Padrões React/Vite/TS, estrutura, UI | Gate 01+ |
 | 07 | [API](07-API/README.md) | Convenções REST, erros, versionamento, fluxo OpenAPI | Gate 01+ |
-| 08 | [Producao](08-Producao/README.md) | Ordens de produção, etapas artesanais, moldes, perdas, custo | Gate 03 |
+| 08 | [Producao](08-Producao/README.md) | Ordens de pintura, etapas, perdas, custo (com mão de obra) | Gate 03 |
 | 09 | [Estoque](09-Estoque/README.md) | Ledger de movimentos, reservas, inventário, custeio | Gate 01+ |
 | 10 | [Vendas](10-Vendas/README.md) | Pedidos multicanal, máquina de estados, preços, expedição | Gate 02 |
 | 11 | [Compras](11-Compras/README.md) | Fornecedores, pedidos de compra, recebimento | Gate 03 |

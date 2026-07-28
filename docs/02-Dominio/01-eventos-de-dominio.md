@@ -20,7 +20,7 @@ Nomear os fatos de negócio que o sistema anuncia internamente. Eventos desacopl
 | `ProductCreated` / `ProductUpdated` / `ProductArchived` | Catálogo | mutação de produto | Sync Woo (push), Auditoria |
 | `PriceChanged` | Catálogo | alteração de lista de preço | Sync Woo, Auditoria |
 | `ProductionOrderCreated` | Produção | OP aberta | Dashboard, Auditoria |
-| `ProductionStageCompleted` | Produção | etapa concluída (fundição, secagem…) | Dashboard WIP |
+| `ProductionStageCompleted` | Produção | etapa concluída (pintura, acabamento, CQ) | Dashboard WIP |
 | `ProductionLossRegistered` | Produção | perda/quebra apontada | Relatórios de perdas |
 | `ProductionOrderCompleted` | Produção | CQ aprovado, OP encerrada | **Estoque** (entrada PA), Custos |
 | `StockMovementRecorded` | Estoque | qualquer movimento no ledger | Saldos, Sync Woo (estoque), Auditoria |
@@ -30,7 +30,8 @@ Nomear os fatos de negócio que o sistema anuncia internamente. Eventos desacopl
 | `OrderConfirmed` / `OrderPaid` | Vendas | transições de status | Financeiro (título), Produção (encomenda) |
 | `OrderShipped` | Vendas | expedição concluída | Sync Woo (status+rastreio), Notificação cliente |
 | `OrderCancelled` | Vendas | cancelamento | Estoque (libera reserva), Financeiro (estorno), Sync Woo |
-| `PurchaseReceived` | Compras | recebimento conferido | Estoque (entrada MP), Financeiro (payable), Custo médio |
+| `PurchaseReceived` | Compras | recebimento conferido | Estoque (entrada em quarentena p/ peça crua), Financeiro (payable), Custo médio |
+| `DryingBatchReleased` | Compras | lote de peça crua liberado da secagem/quarentena | Estoque (transfer p/ Ateliê), Dashboard "pronto p/ pintar", Produção |
 | `ReceivableSettled` / `PayableSettled` | Financeiro | baixa de título | Fluxo de caixa, Dashboard |
 | `InvoiceAuthorized` | Fiscal | NF-e autorizada pela SEFAZ | Vendas (libera expedição, BR-309), E-mail XML/DANFE, Guarda |
 | `InvoiceRejected` / `InvoiceCancelled` | Fiscal | rejeição/cancelamento | Alertas, Vendas |
