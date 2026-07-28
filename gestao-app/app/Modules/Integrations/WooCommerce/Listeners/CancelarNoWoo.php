@@ -14,14 +14,18 @@ use App\Modules\Sales\Events\OrderCancelled;
  * Gêmeo do `EnviarExpedicaoAoWoo`: enxerga só o Event e o Enum de Vendas,
  * nunca `Order` (ADR-0020). Só pedido do site tem contraparte no Woo.
  *
- * Todo cancelamento hoje nasce no ERP, então empurrar de volta é sempre
- * correto. Quando existir cancelamento vindo do site, este listener
- * precisará de uma guarda de origem para não devolver o eco.
+ * **Anti-eco:** se o cancelamento veio do próprio site (`originadoNoCanal`),
+ * não devolve — o Woo já está cancelado, foi ele quem mandou. Empurrar de
+ * volta só duplicaria a nota e gastaria uma chamada à toa.
  */
 class CancelarNoWoo
 {
     public function handle(OrderCancelled $event): void
     {
+        if ($event->originadoNoCanal) {
+            return;
+        }
+
         $pedido = $event->pedido;
 
         if ($pedido->channel !== OrderChannel::WooCommerce) {

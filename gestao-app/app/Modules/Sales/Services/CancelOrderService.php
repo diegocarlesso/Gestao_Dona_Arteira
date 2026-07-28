@@ -27,15 +27,19 @@ class CancelOrderService
     public function __construct(private readonly ReserveStockService $reservas) {}
 
     /**
+     * `$originadoNoCanal` marca o cancelamento que **veio do site** (a
+     * Integração refletindo um `order.updated`), para o `OrderCancelled`
+     * carregar o anti-eco e ninguém devolver ao Woo o que o Woo mandou.
+     *
      * @throws PedidoInvalido
      */
-    public function handle(Order $pedido, string $motivo, ?int $canceladoPor = null): Order
+    public function handle(Order $pedido, string $motivo, ?int $canceladoPor = null, bool $originadoNoCanal = false): Order
     {
         if (! $pedido->status->cancelavel()) {
             throw PedidoInvalido::transicaoInvalida($pedido->status->label(), OrderStatus::Cancelled->label());
         }
 
-        return DB::transaction(function () use ($pedido, $motivo, $canceladoPor): Order {
+        return DB::transaction(function () use ($pedido, $motivo, $canceladoPor, $originadoNoCanal): Order {
             // O Estoque solta o que este pedido segurava. Vendas não
             // consulta `StockReservation` (ADR-0020) — pede pela origem e
             // o Estoque cuida. Rascunho não tem reserva; a chamada devolve
@@ -56,7 +60,7 @@ class CancelOrderService
                 'cancel_reason' => $motivo,
             ])->save();
 
-            OrderCancelled::dispatch($pedido);
+            OrderCancelled::dispatch($pedido, $originadoNoCanal);
 
             return $pedido;
         });

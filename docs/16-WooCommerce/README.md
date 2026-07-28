@@ -61,9 +61,17 @@ tem o gêmeo `CancelarNoWoo`/`PushCancellationToWoo` (status `cancelled` +
 motivo como nota interna). Os listeners respeitam a fronteira (ADR-0020):
 leem o `Event` de Vendas, nunca o model `Order`.
 
-> Hoje todo cancelamento nasce no ERP. Quando existir o de-para de entrada
-> `order.updated` (cancelar vindo do site — sync-pedidos §5), o listener de
-> cancelamento precisará de guarda de origem para não empurrar o eco.
+**Entrada `order.updated` — cancelamento do site (sync-pedidos §5):** um
+pedido **já importado** que o site cancela/reembolsa é refletido no ERP
+(`ImportWooOrder.refletirCancelamento` → `CancelChannelOrderService`), que
+libera a reserva. Itens/valores de pedido importado **não** mudam
+(BR-304); só o cancelamento é refletido. Casos da regra de "quem vence"
+(§3): já cancelado é no-op; **já expedido é conflito** (a peça saiu — vira
+alerta, não desfaz; desfazer é devolução). O **anti-eco** fecha aqui: o
+cancelamento originado no site entra com `originadoNoCanal`, e o
+`CancelarNoWoo` não o empurra de volta. A puxada reconcilia cancelamentos
+perdidos pelo webhook (não pula pedido mapeado quando o status é de
+cancelamento).
 
 - **Dois gatilhos, um miolo (ADR-0007):** o `WooWebhookController` (grava
   bruto → enfileira `ProcessWooOrder`) e o comando `erp:woo:pull-orders`

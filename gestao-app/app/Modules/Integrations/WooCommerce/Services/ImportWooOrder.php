@@ -6,6 +6,7 @@ namespace App\Modules\Integrations\WooCommerce\Services;
 
 use App\Modules\Integrations\WooCommerce\Models\IntegrationMapping;
 use App\Modules\Sales\Enums\OrderChannel;
+use App\Modules\Sales\Services\CancelChannelOrderService;
 use App\Modules\Sales\Services\RegisterChannelOrderService;
 use App\Modules\Sales\Services\ResolveCustomerService;
 use Illuminate\Support\Facades\DB;
@@ -51,9 +52,20 @@ class ImportWooOrder
      */
     private const RESERVAVEIS = ['processing', 'on-hold'];
 
+    /**
+     * Status do Woo que cancelam um pedido **já importado** — o `order.updated`
+     * que reflete o cancelamento/reembolso do site no ERP (sync-pedidos §5).
+     * Público para a puxada saber que estes não são "pedido já importado,
+     * pula", e sim "reconciliar o cancelamento".
+     *
+     * @var list<string>
+     */
+    public const CANCELAMENTO = ['cancelled', 'refunded', 'failed'];
+
     public function __construct(
         private readonly ResolveCustomerService $clientes,
         private readonly RegisterChannelOrderService $pedidos,
+        private readonly CancelChannelOrderService $cancelamentos,
     ) {}
 
     /**
@@ -71,7 +83,17 @@ class ImportWooOrder
         // Idempotência (BR-703/704): pedido já importado não se recria nem
         // se reedita. Cobre o reenvio do webhook e a sobreposição com a
         // puxada — o mapeamento é a fonte única da verdade sobre "já entrou".
-        if (IntegrationMapping::localDe('order', $wooId) !== null) {
+        $localId = IntegrationMapping::localDe('order', $wooId);
+
+        if ($localId !== null) {
+            // A única atualização de pedido já importado que o ERP reflete é
+            // o **cancelamento** (BR-304: itens/valores não mudam). Qualquer
+            // outro `order.updated` é no-op — inclusive o eco do próprio
+            // cancelamento que o ERP acabou de empurrar ao Woo.
+            if (in_array($status, self::CANCELAMENTO, true)) {
+                return $this->refletirCancelamento($localId, $status);
+            }
+
             return ResultadoDaImportacao::duplicado();
         }
 
@@ -120,6 +142,28 @@ class ImportWooOrder
                 $naoMapeados,
             );
         });
+    }
+
+    /**
+     * Reflete no ERP o cancelamento que veio do site (sync-pedidos §5).
+     *
+     * Passa pela superfície de Vendas (id, não model — ADR-0020), que
+     * resolve os casos da regra de "quem vence" (docs/16 §3): já cancelado
+     * é no-op (anti-eco); já expedido é conflito (alerta, não desfaz).
+     */
+    private function refletirCancelamento(int $localId, string $status): ResultadoDaImportacao
+    {
+        $desfecho = $this->cancelamentos->cancelarPorId($localId, "Cancelado no site (Woo: {$status})");
+
+        return match ($desfecho) {
+            CancelChannelOrderService::CANCELADO => ResultadoDaImportacao::cancelado($localId),
+            CancelChannelOrderService::CONFLITO_EXPEDIDO => ResultadoDaImportacao::conflito(
+                $localId,
+                'O site cancelou um pedido que o ERP já expediu — resolver por devolução.',
+            ),
+            // Já cancelado (anti-eco do próprio ERP) ou sumido: nada a fazer.
+            default => ResultadoDaImportacao::duplicado(),
+        };
     }
 
     /**

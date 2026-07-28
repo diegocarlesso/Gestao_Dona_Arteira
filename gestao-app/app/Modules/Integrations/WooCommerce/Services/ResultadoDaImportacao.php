@@ -27,6 +27,12 @@ final readonly class ResultadoDaImportacao
 
     public const SEM_ITENS = 'sem_itens';
 
+    /** Pedido já importado que o site cancelou → refletido no ERP. */
+    public const CANCELADO = 'cancelado';
+
+    /** Site cancelou um pedido que o ERP já expediu → alerta, não desfaz. */
+    public const CONFLITO = 'conflito';
+
     /**
      * @param  list<string>  $naoMapeados  SKUs/ids do Woo que não casaram
      */
@@ -53,6 +59,16 @@ final readonly class ResultadoDaImportacao
     public static function duplicado(): self
     {
         return new self(self::DUPLICADO);
+    }
+
+    public static function cancelado(int $orderId): self
+    {
+        return new self(self::CANCELADO, $orderId);
+    }
+
+    public static function conflito(int $orderId, string $motivo): self
+    {
+        return new self(self::CONFLITO, $orderId, motivo: $motivo);
     }
 
     public static function ignorado(string $motivo): self

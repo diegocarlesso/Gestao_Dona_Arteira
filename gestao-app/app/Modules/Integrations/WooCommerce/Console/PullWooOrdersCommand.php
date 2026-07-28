@@ -51,7 +51,7 @@ class PullWooOrdersCommand extends Command
             $parametros['modified_after'] = (string) $this->option('after');
         }
 
-        $contagem = ['vistos' => 0, 'importados' => 0, 'pendentes' => 0, 'duplicados' => 0, 'ignorados' => 0, 'erros' => 0];
+        $contagem = ['vistos' => 0, 'importados' => 0, 'pendentes' => 0, 'duplicados' => 0, 'cancelados' => 0, 'conflitos' => 0, 'ignorados' => 0, 'erros' => 0];
 
         try {
             foreach ($client->paginar('orders', $parametros) as $pagina) {
@@ -83,10 +83,15 @@ class PullWooOrdersCommand extends Command
     private function importarUm(ImportWooOrder $import, array $order, array &$contagem): void
     {
         $wooId = (string) ($order['id'] ?? '');
+        $status = (string) ($order['status'] ?? '');
 
         // Já importado: pula antes de gravar bruto, para o re-pull não
-        // encher a tabela de eventos com repetição.
-        if ($wooId !== '' && IntegrationMapping::localDe('order', $wooId) !== null) {
+        // encher a tabela de eventos com repetição — **exceto** se o site o
+        // cancelou, que é justamente a atualização que a reconciliação
+        // precisa pegar se o webhook se perdeu (sync-pedidos §5).
+        $jaImportado = $wooId !== '' && IntegrationMapping::localDe('order', $wooId) !== null;
+
+        if ($jaImportado && ! in_array($status, ImportWooOrder::CANCELAMENTO, true)) {
             $contagem['duplicados']++;
 
             return;
@@ -121,6 +126,8 @@ class PullWooOrdersCommand extends Command
             ResultadoDaImportacao::PENDENTE => $contagem['pendentes']++,
             ResultadoDaImportacao::DUPLICADO => $contagem['duplicados']++,
             ResultadoDaImportacao::SEM_ITENS => $contagem['pendentes']++,
+            ResultadoDaImportacao::CANCELADO => $contagem['cancelados']++,
+            ResultadoDaImportacao::CONFLITO => $contagem['conflitos']++,
             default => $contagem['ignorados']++,
         };
     }
@@ -161,7 +168,12 @@ class PullWooOrdersCommand extends Command
         $this->components->twoColumnDetail('Importados (confirmados)', (string) $contagem['importados']);
         $this->components->twoColumnDetail('<fg=yellow>Pendentes (rascunho)</>', (string) $contagem['pendentes']);
         $this->components->twoColumnDetail('Já existentes', (string) $contagem['duplicados']);
+        $this->components->twoColumnDetail('Cancelados (do site)', (string) $contagem['cancelados']);
         $this->components->twoColumnDetail('Ignorados (status)', (string) $contagem['ignorados']);
+
+        if ($contagem['conflitos'] > 0) {
+            $this->components->twoColumnDetail('<fg=yellow>Conflitos (cancelado no site, já expedido)</>', (string) $contagem['conflitos']);
+        }
 
         if ($contagem['erros'] > 0) {
             $this->components->twoColumnDetail('<fg=red>Erros</>', (string) $contagem['erros']);

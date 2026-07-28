@@ -14,13 +14,17 @@ use Illuminate\Foundation\Events\Dispatchable;
  * devolvendo `cancelled` ao Woo (sync-pedidos §7), o financeiro estornando
  * — ouve isto. Vendas não conhece nenhum deles.
  *
- * Hoje todo cancelamento nasce no ERP (`CancelOrderService`); quando
- * existir o caminho de cancelar vindo do site, o anti-eco terá de impedir
- * que esse cancelamento seja empurrado de volta ao Woo.
+ * `$originadoNoCanal` é o **anti-eco**: quando o cancelamento veio do
+ * próprio site (a Integração refletindo um `order.updated`), quem ouve
+ * para devolver ao Woo (`CancelarNoWoo`) precisa ficar quieto — senão
+ * empurra de volta o que o Woo acabou de mandar.
  */
 class OrderCancelled
 {
     use Dispatchable;
 
-    public function __construct(public readonly Order $pedido) {}
+    public function __construct(
+        public readonly Order $pedido,
+        public readonly bool $originadoNoCanal = false,
+    ) {}
 }

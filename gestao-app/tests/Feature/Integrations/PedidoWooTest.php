@@ -5,12 +5,14 @@ declare(strict_types=1);
 use App\Modules\Catalog\Enums\PriceList;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Services\SetProductPriceService;
+use App\Modules\Integrations\WooCommerce\Jobs\PushCancellationToWoo;
 use App\Modules\Integrations\WooCommerce\Models\IntegrationMapping;
 use App\Modules\Integrations\WooCommerce\Models\WooWebhookEvent;
 use App\Modules\Integrations\WooCommerce\Services\ImportWooOrder;
 use App\Modules\Integrations\WooCommerce\Services\ResultadoDaImportacao;
 use App\Modules\Inventory\Enums\MovementType;
 use App\Modules\Inventory\Enums\ReservationStatus;
+use App\Modules\Inventory\Models\InventoryBalance;
 use App\Modules\Inventory\Models\Location;
 use App\Modules\Inventory\Models\StockReservation;
 use App\Modules\Inventory\Services\RecordMovementService;
@@ -20,6 +22,8 @@ use App\Modules\Sales\Enums\OrderChannel;
 use App\Modules\Sales\Enums\OrderStatus;
 use App\Modules\Sales\Models\Customer;
 use App\Modules\Sales\Models\Order;
+use App\Modules\Sales\Services\FulfillmentService;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 
@@ -390,5 +394,69 @@ describe('entrada por puxada (pull)', function () {
         test()->artisan('erp:woo:pull-orders --dry-run')->assertSuccessful();
 
         expect(Order::query()->count())->toBe(0);
+    });
+});
+
+// ============================================ cancelamento do site (order.updated)
+
+describe('cancelamento vindo do site', function () {
+    it('reflete no ERP o cancelamento do site, liberando a reserva', function () {
+        $produto = produtoWooMapeado(501, '100.00', '5');
+        $import = app(ImportWooOrder::class);
+
+        // Entra confirmado e reservado.
+        $import->handle(pedidoWoo(2100, [itemWoo(501, 1, '100.00')], ['total' => '100.00']));
+        $orderId = IntegrationMapping::localDe('order', 2100);
+
+        // O site cancela: chega um order.updated com status cancelled.
+        $r = $import->handle(pedidoWoo(2100, [itemWoo(501, 1, '100.00')], ['status' => 'cancelled', 'total' => '100.00']));
+
+        expect($r->status)->toBe(ResultadoDaImportacao::CANCELADO)
+            ->and(Order::query()->find($orderId)->status)->toBe(OrderStatus::Cancelled);
+
+        // Reserva liberada; a peça nunca saiu, o on_hand fica intacto.
+        $saldo = InventoryBalance::query()->where('product_id', $produto->id)->firstOrFail();
+        expect($saldo->qty_reserved)->toBe('0.000')
+            ->and($saldo->qty_on_hand)->toBe('5.000');
+    });
+
+    it('não empurra o cancelamento de volta ao Woo (anti-eco)', function () {
+        produtoWooMapeado(501, '100.00', '5');
+        $import = app(ImportWooOrder::class);
+        $import->handle(pedidoWoo(2101, [itemWoo(501, 1, '100.00')], ['total' => '100.00']));
+
+        Bus::fake([PushCancellationToWoo::class]);
+        $import->handle(pedidoWoo(2101, [itemWoo(501, 1, '100.00')], ['status' => 'cancelled', 'total' => '100.00']));
+
+        Bus::assertNotDispatched(PushCancellationToWoo::class);
+    });
+
+    it('cancelar duas vezes é no-op na segunda (idempotente)', function () {
+        produtoWooMapeado(501, '100.00', '5');
+        $import = app(ImportWooOrder::class);
+        $import->handle(pedidoWoo(2102, [itemWoo(501, 1, '100.00')], ['total' => '100.00']));
+
+        $cancelado = pedidoWoo(2102, [itemWoo(501, 1, '100.00')], ['status' => 'cancelled', 'total' => '100.00']);
+        expect($import->handle($cancelado)->status)->toBe(ResultadoDaImportacao::CANCELADO)
+            ->and($import->handle($cancelado)->status)->toBe(ResultadoDaImportacao::DUPLICADO);
+    });
+
+    it('não desfaz expedição: cancelamento do site já expedido vira conflito', function () {
+        produtoWooMapeado(501, '100.00', '5');
+        $import = app(ImportWooOrder::class);
+        $import->handle(pedidoWoo(2103, [itemWoo(501, 1, '100.00')], ['total' => '100.00']));
+        $orderId = IntegrationMapping::localDe('order', 2103);
+
+        // Leva o pedido até expedido.
+        $pedido = Order::query()->findOrFail($orderId);
+        $f = app(FulfillmentService::class);
+        $f->iniciarSeparacao($pedido);
+        $f->embalar($pedido);
+        $f->expedir($pedido);
+
+        $r = $import->handle(pedidoWoo(2103, [itemWoo(501, 1, '100.00')], ['status' => 'cancelled', 'total' => '100.00']));
+
+        expect($r->status)->toBe(ResultadoDaImportacao::CONFLITO)
+            ->and(Order::query()->find($orderId)->status)->toBe(OrderStatus::Expedido);
     });
 });
