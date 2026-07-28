@@ -16,6 +16,7 @@ use App\Modules\Sales\Models\OrderItem;
 use App\Modules\Sales\Models\OrderStatusHistory;
 use App\Modules\Sales\Services\CancelOrderService;
 use App\Modules\Sales\Services\ConfirmOrderService;
+use App\Modules\Sales\Services\FulfillmentService;
 use App\Modules\Sales\Services\SaveOrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -167,6 +168,71 @@ class OrderController extends Controller
         }
 
         return back()->with('sucesso', "Pedido #{$order->number} cancelado.");
+    }
+
+    public function separar(Request $request, Order $order, FulfillmentService $service): RedirectResponse
+    {
+        $this->authorize('fulfill', $order);
+
+        try {
+            $service->iniciarSeparacao($order, $request->user()?->id);
+        } catch (PedidoInvalido $e) {
+            return back()->withErrors(['fulfillment' => $e->getMessage()]);
+        }
+
+        return back()->with('sucesso', "Pedido #{$order->number} em separação.");
+    }
+
+    public function embalar(Request $request, Order $order, FulfillmentService $service): RedirectResponse
+    {
+        $this->authorize('fulfill', $order);
+
+        try {
+            $service->embalar($order, $request->user()?->id);
+        } catch (PedidoInvalido $e) {
+            return back()->withErrors(['fulfillment' => $e->getMessage()]);
+        }
+
+        return back()->with('sucesso', "Pedido #{$order->number} embalado.");
+    }
+
+    public function expedir(Request $request, Order $order, FulfillmentService $service): RedirectResponse
+    {
+        $this->authorize('fulfill', $order);
+
+        $dados = $request->validate([
+            'tracking_code' => ['nullable', 'string', 'max:100'],
+            'carrier' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        try {
+            $service->expedir(
+                $order,
+                $dados['tracking_code'] ?? null,
+                $dados['carrier'] ?? null,
+                $request->user()?->id,
+            );
+        } catch (PedidoInvalido|ReservaInvalida $e) {
+            // ReservaInvalida não deveria acontecer no Embalado (a reserva
+            // está ativa desde a confirmação), mas se acontecer a mensagem
+            // diz qual peça travou — repassada como está.
+            return back()->withErrors(['fulfillment' => $e->getMessage()]);
+        }
+
+        return back()->with('sucesso', "Pedido #{$order->number} expedido.");
+    }
+
+    public function entregar(Request $request, Order $order, FulfillmentService $service): RedirectResponse
+    {
+        $this->authorize('fulfill', $order);
+
+        try {
+            $service->entregar($order, $request->user()?->id);
+        } catch (PedidoInvalido $e) {
+            return back()->withErrors(['fulfillment' => $e->getMessage()]);
+        }
+
+        return back()->with('sucesso', "Pedido #{$order->number} entregue.");
     }
 
     /**

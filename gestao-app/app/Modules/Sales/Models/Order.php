@@ -40,6 +40,10 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property string $total
  * @property string|null $notes
  * @property Carbon|null $confirmed_at
+ * @property Carbon|null $shipped_at
+ * @property Carbon|null $delivered_at
+ * @property string|null $tracking_code
+ * @property string|null $carrier
  * @property Carbon|null $cancelled_at
  * @property string|null $cancel_reason
  * @property int|null $created_by
@@ -67,6 +71,10 @@ class Order extends Model implements Auditable
         'total',
         'notes',
         'confirmed_at',
+        'shipped_at',
+        'delivered_at',
+        'tracking_code',
+        'carrier',
         'cancelled_at',
         'cancel_reason',
         'created_by',
@@ -81,6 +89,8 @@ class Order extends Model implements Auditable
             'channel' => OrderChannel::class,
             'status' => OrderStatus::class,
             'confirmed_at' => 'datetime',
+            'shipped_at' => 'datetime',
+            'delivered_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
     }

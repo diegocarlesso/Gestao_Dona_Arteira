@@ -113,6 +113,32 @@ class ReserveStockService
     }
 
     /**
+     * Consome todas as reservas ativas de uma origem (o pedido expedido).
+     *
+     * Espelho do `liberarPorReferencia`: existe para Vendas dizer "expedi o
+     * pedido 42, baixe o que ele segurava" sem tocar em `StockReservation`
+     * (ADR-0020). Cada reserva vira `sale_shipment` no ledger.
+     *
+     * @return int quantas reservas foram consumidas
+     *
+     * @throws ReservaInvalida
+     */
+    public function consumirPorReferencia(string $referenceType, int $referenceId, ?int $createdBy = null): int
+    {
+        $reservas = StockReservation::query()
+            ->ativas()
+            ->where('reference_type', $referenceType)
+            ->where('reference_id', $referenceId)
+            ->get();
+
+        foreach ($reservas as $reserva) {
+            $this->consumir($reserva, $createdBy);
+        }
+
+        return $reservas->count();
+    }
+
+    /**
      * Consome a reserva — pedido expedido. A peça sai de verdade:
      * `sale_shipment` no ledger (baixa `on_hand`) e a reserva deixa de
      * pesar em `qty_reserved`. O disponível não muda no ato — já estava

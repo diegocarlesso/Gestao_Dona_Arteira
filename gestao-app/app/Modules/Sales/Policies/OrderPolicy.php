@@ -49,4 +49,14 @@ class OrderPolicy
     {
         return $usuario->can(Permission::SalesCancel->value);
     }
+
+    /**
+     * Separar, embalar, expedir e entregar — alçada da Expedição
+     * (`fulfillment.execute`), distinta de criar/cancelar venda. É a mão que
+     * mexe na peça, não a que fecha o negócio.
+     */
+    public function fulfill(Authorizable $usuario, Order $pedido): bool
+    {
+        return $usuario->can(Permission::FulfillmentExecute->value);
+    }
 }

@@ -33,4 +33,11 @@ Route::middleware(['web', 'auth', 'conta.ativa', 'senha.trocada', '2fa.confirmad
     Route::put('pedidos/{order}', [OrderController::class, 'update'])->name('sales.orders.update');
     Route::post('pedidos/{order}/confirmar', [OrderController::class, 'confirm'])->name('sales.orders.confirm');
     Route::post('pedidos/{order}/cancelar', [OrderController::class, 'cancel'])->name('sales.orders.cancel');
+
+    // Fulfillment (corte 3): separar → embalar → expedir → entregar.
+    // Alçada da Expedição (fulfillment.execute), não a de criar venda.
+    Route::post('pedidos/{order}/separar', [OrderController::class, 'separar'])->name('sales.orders.separar');
+    Route::post('pedidos/{order}/embalar', [OrderController::class, 'embalar'])->name('sales.orders.embalar');
+    Route::post('pedidos/{order}/expedir', [OrderController::class, 'expedir'])->name('sales.orders.expedir');
+    Route::post('pedidos/{order}/entregar', [OrderController::class, 'entregar'])->name('sales.orders.entregar');
 });

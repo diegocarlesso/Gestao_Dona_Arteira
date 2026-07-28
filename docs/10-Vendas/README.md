@@ -58,20 +58,25 @@ O que entra em cada corte, e o porquê da ordem:
 |---|---|---|
 | 1. Reserva de estoque | `ReserveStockService` (BR-203) — pré-requisito do pedido | ✅ 2026-07-28 |
 | 2. Pedido | rascunho → confirmado (reserva) → cancelado (libera); item com preço de varejo congelado (BR-302) | ✅ 2026-07-28 |
-| 3. Fulfillment | separação → expedição → `consumir` reserva (baixa) | 🅿️ standby (2026-07-28) |
-| 4. Sync Woo (entrada) | pedido do site entra já confirmado, com reserva; casado por id do Woo | 🔄 em andamento (2026-07-28) |
+| 3. Fulfillment | separação → embalagem → expedição → `consumir` reserva (baixa) → entrega | 🔄 em andamento (2026-07-28) |
+| 4. Sync Woo (entrada) | pedido do site entra já confirmado, com reserva; casado por id do Woo | ✅ 2026-07-28 (em produção, inerte até o cutover) |
 
 > **Reordenação (2026-07-28, decisão do dono).** O corte 3 (fulfillment)
-> foi para **standby** e o **corte 4 (entrada de pedidos do site)** assumiu
-> a frente. O motivo é de negócio: a loja continua vendendo, e trazer
-> esses pedidos para dentro do ERP vale mais agora do que a separação/
-> expedição interna — que ainda arrasta a NF-e sem o gate fiscal.
+> foi para **standby** e o corte 4 (entrada de pedidos do site) assumiu a
+> frente; entregue e **em produção** no mesmo dia (inerte até o cutover).
+> Em seguida o corte 3 **saiu do standby** — é ele que fecha o ciclo
+> "pedido do site ao rastreio" e destrava a **saída** ERP→Woo (status/
+> rastreio), que nasce na expedição.
 >
-> **O corte 4 fica pela metade de propósito.** Só a **entrada**
-> (Woo→ERP: o pedido do site vira pedido no ERP, com reserva) é
-> construída. A **saída** (ERP→Woo: status de fulfillment + rastreio)
-> **nasce no corte 3** — sem expedição não há rastreio para devolver —,
-> então acompanha o standby até o corte 3 sair da espera.
+> **Escopo do corte 3 (fluxo completo, sem fiscal por ora):** máquina de
+> estados `Confirmado → EmSeparacao → Embalado → Expedido → Entregue`; a
+> expedição **consome a reserva** (`sale_shipment` no ledger baixa o
+> `on_hand`) e dispara `OrderShipped`. **Pago** é pulado até o Gate 04
+> (Financeiro) — o pedido do site já entra `Confirmado` (corte 4), e a
+> separação parte daí. **NF-e** (BR-309, Gate 05) e **Melhor Envio**
+> (etiqueta/frete, fase 6) ficam de fora: expede-se com rastreio e frete
+> informados à mão, documentado. `OrderShipped` é o gancho que o corte 4
+> usará para devolver status/rastreio ao Woo quando for ativado.
 
 > ✅ **Corte 2 (pedido) em 2026-07-28.** `Order` + `OrderItem` +
 > `order_status_history`, máquina `draft → confirmed → cancelled`.
