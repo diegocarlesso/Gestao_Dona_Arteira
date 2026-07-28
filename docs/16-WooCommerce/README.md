@@ -47,10 +47,17 @@ sequenceDiagram
 
 Casos de borda documentados no [mapeamento](01-mapeamento-de-campos.md): item com id desconhecido (pedido entra com item "não mapeado" + alerta — nunca se perde venda), pedido editado no Woo após importado, reembolso/cancelamento no gateway, cliente convidado (sem conta).
 
-### O que o corte 4 entregou (2026-07-28) — só a entrada
+### O que já entrou (2026-07-28): entrada (corte 4) + saída
 
-A **entrada** (Woo→ERP) do fluxo acima. A **saída** (status/rastreio de
-volta) nasce no corte 3 (fulfillment), em standby — ver [pasta 10 §2.1](../10-Vendas/README.md).
+**Entrada (Woo→ERP, corte 4):** o fluxo acima. **Saída (ERP→Woo):** o
+listener `EnviarExpedicaoAoWoo` ouve `OrderShipped` (que a expedição do
+corte 3 dispara) e enfileira `PushShipmentToWoo`, que devolve ao site o
+status `completed` e o rastreio como **nota ao cliente** (o plugin de
+rastreio segue pendência de inventário — a nota é o caminho nativo). Só
+pedido do site (guarda de canal); assíncrono (BR-705); **anti-eco** de
+graça — o `order.updated` que o Woo dispara de volta cai no `duplicado` do
+`ImportWooOrder` (idempotência por id, BR-703). O listener respeita a
+fronteira (ADR-0020): lê o `Event` de Vendas, nunca o model `Order`.
 
 - **Dois gatilhos, um miolo (ADR-0007):** o `WooWebhookController` (grava
   bruto → enfileira `ProcessWooOrder`) e o comando `erp:woo:pull-orders`

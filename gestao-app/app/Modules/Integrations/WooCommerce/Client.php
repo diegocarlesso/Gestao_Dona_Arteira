@@ -50,6 +50,50 @@ class Client
     }
 
     /**
+     * Cria um recurso (POST) e devolve o objeto criado.
+     *
+     * A superfície de **escrita** da sync de saída (ADR-0007): devolver
+     * status/rastreio ao site, criar nota no pedido. Exige chave REST com
+     * escopo de escrita.
+     *
+     * @param  array<string, mixed>  $dados
+     * @return array<string, mixed>
+     */
+    public function post(string $recurso, array $dados = []): array
+    {
+        $resposta = $this->request()->post($this->url($recurso), $dados);
+
+        if ($resposta->failed()) {
+            throw IntegracaoWooIndisponivel::resposta($recurso, $resposta->status(), $resposta->body());
+        }
+
+        /** @var array<string, mixed> $corpo */
+        $corpo = $resposta->json() ?? [];
+
+        return $corpo;
+    }
+
+    /**
+     * Atualiza um recurso (PUT) e devolve o objeto atualizado.
+     *
+     * @param  array<string, mixed>  $dados
+     * @return array<string, mixed>
+     */
+    public function put(string $recurso, array $dados = []): array
+    {
+        $resposta = $this->request()->put($this->url($recurso), $dados);
+
+        if ($resposta->failed()) {
+            throw IntegracaoWooIndisponivel::resposta($recurso, $resposta->status(), $resposta->body());
+        }
+
+        /** @var array<string, mixed> $corpo */
+        $corpo = $resposta->json() ?? [];
+
+        return $corpo;
+    }
+
+    /**
      * Percorre todas as páginas de um recurso, uma de cada vez.
      *
      * Generator, não array: o catálogo tem 716 produtos com descrição em

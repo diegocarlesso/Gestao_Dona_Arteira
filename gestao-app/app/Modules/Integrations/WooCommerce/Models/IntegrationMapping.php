@@ -52,6 +52,20 @@ class IntegrationMapping extends Model
             ->value('local_id');
     }
 
+    /**
+     * O id externo de um registro local, se mapeado — o caminho inverso do
+     * `localDe`. É a pergunta de toda sincronização de **saída**: "qual é o
+     * id deste pedido no Woo, para eu devolver o status?".
+     */
+    public static function remoteDe(string $tipo, int $localId): ?string
+    {
+        return static::query()
+            ->where('remote_system', self::SISTEMA_WOO)
+            ->where('entity_type', $tipo)
+            ->where('local_id', $localId)
+            ->value('remote_id');
+    }
+
     public static function registrar(string $tipo, int $localId, string|int $remoteId): void
     {
         static::query()->updateOrCreate(

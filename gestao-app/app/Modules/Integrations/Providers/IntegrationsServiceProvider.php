@@ -10,6 +10,9 @@ use App\Modules\Integrations\WooCommerce\Console\LoadWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\PullWooOrdersCommand;
 use App\Modules\Integrations\WooCommerce\Console\TriageWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\ValidateWooCommand;
+use App\Modules\Integrations\WooCommerce\Listeners\EnviarExpedicaoAoWoo;
+use App\Modules\Sales\Events\OrderShipped;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -26,6 +29,11 @@ class IntegrationsServiceProvider extends ServiceProvider
         // Webhooks entram por aqui (docs/16 §4). Fora do grupo `web`: sem
         // CSRF nem sessão, autenticados pela assinatura HMAC (BR-701).
         $this->loadRoutesFrom(__DIR__.'/../Routes/webhooks.php');
+
+        // Saída ERP→Woo: a expedição de um pedido do site devolve status +
+        // rastreio ao Woo (sync-pedidos §7). Registrado aqui, no módulo que
+        // reage — Vendas não sabe que o Woo escuta (ADR-0020).
+        Event::listen(OrderShipped::class, EnviarExpedicaoAoWoo::class);
 
         if ($this->app->runningInConsole()) {
             $this->commands([

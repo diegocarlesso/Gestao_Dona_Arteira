@@ -59,7 +59,7 @@ O que entra em cada corte, e o porquê da ordem:
 | 1. Reserva de estoque | `ReserveStockService` (BR-203) — pré-requisito do pedido | ✅ 2026-07-28 |
 | 2. Pedido | rascunho → confirmado (reserva) → cancelado (libera); item com preço de varejo congelado (BR-302) | ✅ 2026-07-28 |
 | 3. Fulfillment | separação → embalagem → expedição → `consumir` reserva (baixa) → entrega | 🔄 em andamento (2026-07-28) |
-| 4. Sync Woo (entrada) | pedido do site entra já confirmado, com reserva; casado por id do Woo | ✅ 2026-07-28 (em produção, inerte até o cutover) |
+| 4. Sync Woo (entrada+saída) | pedido do site entra (reserva); e a expedição devolve status/rastreio ao Woo | ✅ 2026-07-28 (em produção, inerte até o cutover) |
 
 > **Reordenação (2026-07-28, decisão do dono).** O corte 3 (fulfillment)
 > foi para **standby** e o corte 4 (entrada de pedidos do site) assumiu a
