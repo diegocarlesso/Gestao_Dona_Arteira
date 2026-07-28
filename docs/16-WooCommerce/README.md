@@ -38,14 +38,37 @@ sequenceDiagram
     W->>WH: order.created (HMAC)
     WH->>WH: verifica assinatura, grava bruto
     WH-->>W: 200 (imediato)
-    Q->>Q: job processa (dedupe por delivery/order id)
-    Q->>S: cria pedido canal=woocommerce<br/>cliente resolvido/dedupe<br/>itens casados por SKU
+    Q->>Q: job processa (dedupe por order id no mapeamento)
+    Q->>S: cria pedido canal=woocommerce<br/>cliente resolvido/dedupe<br/>itens casados por id do Woo
     S->>S: reserva estoque (BR-203)
     S-->>W: (job) estoque atualizado nos produtos afetados
     Note over S: pedido pronto para separação no ERP
 ```
 
-Casos de borda documentados no [mapeamento](01-mapeamento-de-campos.md): item com SKU desconhecido (pedido entra com item "não mapeado" + alerta — nunca se perde venda), pedido editado no Woo após importado, reembolso/cancelamento no gateway, cliente convidado (sem conta).
+Casos de borda documentados no [mapeamento](01-mapeamento-de-campos.md): item com id desconhecido (pedido entra com item "não mapeado" + alerta — nunca se perde venda), pedido editado no Woo após importado, reembolso/cancelamento no gateway, cliente convidado (sem conta).
+
+### O que o corte 4 entregou (2026-07-28) — só a entrada
+
+A **entrada** (Woo→ERP) do fluxo acima. A **saída** (status/rastreio de
+volta) nasce no corte 3 (fulfillment), em standby — ver [pasta 10 §2.1](../10-Vendas/README.md).
+
+- **Dois gatilhos, um miolo (ADR-0007):** o `WooWebhookController` (grava
+  bruto → enfileira `ProcessWooOrder`) e o comando `erp:woo:pull-orders`
+  (rede de segurança, filtra por `modified_after`) entregam o mesmo array
+  ao `ImportWooOrder`. O webhook é assinado por HMAC-SHA256 (BR-701); a
+  puxada usa a chave REST.
+- **Casamento por id do Woo, não por SKU** (`integration_mappings`): 716 de
+  716 produtos vieram sem SKU. Item sem casar → pedido em **rascunho** +
+  pendência anotada; a operação mapeia o produto e a próxima passada
+  confirma. Venda nunca se perde.
+- **Idempotência por id do pedido** (BR-703/704): o mesmo pedido, venha por
+  webhook ou puxada, entra uma vez só.
+- **Confirmado, não Pago:** o pedido reserva estoque (BR-203). "Pago" e o
+  pagamento esperam o Gate 04 — o status/pagamento do Woo ficam no bruto.
+  Antes da contagem física (cutover) não há saldo, então os pedidos entram
+  como rascunho e confirmam depois — o mesmo mecanismo do corte 2.
+- **Endereço de entrega** fica no bruto (`woo_webhook_events`) para o corte
+  3 consumir na expedição, sem nova chamada à API.
 
 ## 5. Reconciliação (rede de segurança)
 

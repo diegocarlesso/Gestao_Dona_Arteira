@@ -30,6 +30,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property string $public_id
  * @property int $number
  * @property OrderChannel $channel
+ * @property string|null $channel_order_ref
  * @property int|null $customer_id
  * @property OrderStatus $status
  * @property string $price_list
@@ -56,6 +57,7 @@ class Order extends Model implements Auditable
     protected $fillable = [
         'number',
         'channel',
+        'channel_order_ref',
         'customer_id',
         'status',
         'price_list',

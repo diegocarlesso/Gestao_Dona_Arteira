@@ -40,7 +40,7 @@ De-para canônico usado pelos Adapters e pelo importador da migração (pasta 17
 | channel | — | fixo `woocommerce` |
 | number | `number` (exibição) + `id` (mapping) | ERP mantém numeração própria; nº Woo visível na tela |
 | status | `status` | tabela abaixo |
-| itens | `line_items[]` | casados por SKU; sem SKU → item não-mapeado + alerta |
+| itens | `line_items[]` | **casados por id do Woo** (`variation_id`, senão `product_id`) via `integration_mappings` — **não por SKU**: 716 de 716 produtos vieram sem SKU (corte 4). Sem casar → pedido entra em rascunho + item na pendência + alerta |
 | totais/frete/desconto | `total`, `shipping_total`, `discount_total` | conferência de centavos na importação |
 | pagamento | `payment_method_title`, `transaction_id` | vira `payments` + baixa conforme status |
 | rastreio (saída) | meta/plugin de rastreio ou nota ao cliente | definir plugin no Gate 02 |
@@ -51,7 +51,7 @@ De-para canônico usado pelos Adapters e pelo importador da migração (pasta 17
 |---|---|---|
 | pending | não importa (aguarda pagamento) | importar apenas ≥ processing; `on-hold` configurável |
 | on-hold | Confirmado (sem pagamento) | boleto/PIX aguardando |
-| processing | **Pago** (pronto p/ separar) | caso principal |
+| processing | **Confirmado** (reserva estoque) | caso principal. *Pago* é o alvo final, mas o ERP não modela pagamento até o Gate 04 (Financeiro) — no corte 4 entra Confirmado; o status/pagamento do Woo ficam no bruto (`woo_webhook_events`) |
 | completed | Expedido/Entregue | na migração de histórico: Entregue |
 | cancelled / refunded / failed | Cancelado (com estorno se pago) | reembolso parcial: caso de borda documentar no Gate 02 |
 

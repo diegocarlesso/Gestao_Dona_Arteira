@@ -32,7 +32,7 @@ Toda a documentação desta pasta `docs/`, agentes, skills, ADRs. **Saída:** de
 
 **Entrega:** pedidos multicanal (10), integração Woo bidirecional (15/16), **cutover executado** (17), painel de integrações, dashboards mínimos, e-mail transacional.
 **Critérios de saída:** 14 dias de operação assistida com divergência zero não explicada · pedido do site ao rastreio sem tocar no wp-admin · equipe treinada operando pedidos no ERP.
-**Decisão de sequência (2026-07-28):** o dono escolheu o fluxo *reserva-e-envia-depois* como primeiro; ordem dos cortes e o que fica adiado em [10/§2.1](../10-Vendas/README.md). Corte 1 (reserva de estoque, BR-203) entregue.
+**Decisão de sequência (2026-07-28):** o dono escolheu o fluxo *reserva-e-envia-depois* como primeiro; ordem dos cortes e o que fica adiado em [10/§2.1](../10-Vendas/README.md). Cortes 1 (reserva de estoque, BR-203) e 2 (pedido) entregues. **Reordenação no mesmo dia:** o corte 3 (fulfillment) foi para *standby* e o **corte 4 (entrada de pedidos do site, Woo→ERP)** assumiu a frente; a saída de status/rastreio (ERP→Woo) depende do corte 3 e acompanha o adiamento.
 
 ## Gate 03 — Produção + Compras
 

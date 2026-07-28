@@ -51,7 +51,7 @@ Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data)
 | BR-301 | Preço atacado aplica-se a clientes marcados como atacadistas e/ou pedidos acima de quantidade mínima — critério a definir | legado (dois preços) | 💡 **entrevista obrigatória** |
 | BR-302 | Preço do item é congelado no pedido (snapshot); mudança de tabela não altera pedidos existentes | legado (`order_items.price`) | ✅ padrão de mercado |
 | BR-303 | Pedido segue máquina de estados única independente do canal: Rascunho → Confirmado → Pago → Em separação → Embalado → Expedido → Entregue (+ Cancelado/Devolvido) | decisão nova | 💡 |
-| BR-304 | Pedidos do WooCommerce entram no ERP com status mapeado do status Woo e **não são editáveis** no ERP exceto avanço de fulfillment | decisão nova | 💡 |
+| BR-304 | Pedidos do WooCommerce entram no ERP com status mapeado do status Woo e **não são editáveis** no ERP exceto avanço de fulfillment | decisão nova | ✅ **entrada implementada (corte 4, 2026-07-28):** casados por id do Woo, importados como Confirmado (reserva) ou rascunho+pendência; `SaveOrderService` só edita rascunho, então pedido do site (confirmado) não se edita. Saída de status/rastreio no corte 3 |
 | BR-305 | Desconto manual acima de limite configurável exige aprovação de alçada superior | decisão nova | 💡 definir limite |
 | BR-306 | Entrega pode ser Retirada ou Envio; envio exige endereço validado e cálculo de frete | legado (`DeliveryMethod`) | 💡 |
 | BR-307 | Encomenda (produto sem estoque) é permitida e gera demanda de produção com data prometida | legado (`delivery_date`) | 💡 confirmar fluxo real |

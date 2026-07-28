@@ -31,6 +31,14 @@ return [
         'key' => env('WOO_KEY'),
         'secret' => env('WOO_SECRET'),
 
+        // Segredo do webhook (WooCommerce → Configurações → Avançado →
+        // Webhooks → "Chave secreta"). **Não** é o `secret` da REST API:
+        // um assina o corpo do POST que o site envia (HMAC-SHA256, BR-701),
+        // o outro autentica as chamadas que o ERP faz. Sem ele, a entrada
+        // por webhook recusa tudo — de propósito, um webhook sem assinatura
+        // conferível é uma porta aberta para qualquer um criar pedido.
+        'webhook_secret' => env('WOO_WEBHOOK_SECRET'),
+
         // A API do Woo aceita até 100; o inventário da pasta 31 conta 716
         // produtos, então são 8 páginas. Lotes pequenos e retomáveis por
         // causa dos limites do shared hosting (pasta 03).
