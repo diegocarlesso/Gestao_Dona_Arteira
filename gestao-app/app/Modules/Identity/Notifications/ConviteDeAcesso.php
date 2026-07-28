@@ -56,7 +56,13 @@ class ConviteDeAcesso extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $token = Password::broker()->createToken($notifiable);
+        // `Password::createToken()` encaminha para o broker padrão — o mesmo
+        // que `Password::broker()->createToken()` fazia, com comportamento
+        // idêntico. A diferença é de tipo: `createToken` mora na classe
+        // concreta, não no contrato `PasswordBroker` que `broker()` devolve,
+        // então o Larastan reprovava a chamada via `broker()`. A facade a
+        // expõe por `@method`, e é a forma idiomática.
+        $token = Password::createToken($notifiable);
 
         $url = url(route('password.reset', [
             'token' => $token,
