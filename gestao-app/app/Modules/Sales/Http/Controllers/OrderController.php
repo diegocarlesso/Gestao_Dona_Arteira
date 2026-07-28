@@ -94,6 +94,15 @@ class OrderController extends Controller
                 'status_label' => $order->status->label(),
                 'rascunho' => $order->status->rascunho(),
                 'cancelavel' => $order->status->cancelavel(),
+                // Etapas do fulfillment: cada uma só avança da anterior.
+                'pode_separar' => $order->status === OrderStatus::Confirmed,
+                'pode_embalar' => $order->status === OrderStatus::Separando,
+                'pode_expedir' => $order->status === OrderStatus::Embalado,
+                'pode_entregar' => $order->status === OrderStatus::Expedido,
+                'tracking_code' => $order->tracking_code,
+                'carrier' => $order->carrier,
+                'shipped_at' => $order->shipped_at?->toIso8601String(),
+                'delivered_at' => $order->delivered_at?->toIso8601String(),
                 'canal' => $order->channel->label(),
                 'notes' => $order->notes,
                 'subtotal' => $order->subtotal,
@@ -124,6 +133,7 @@ class OrderController extends Controller
             ],
             'podeConfirmar' => request()->user()?->can('confirm', $order) ?? false,
             'podeCancelar' => request()->user()?->can('cancel', $order) ?? false,
+            'podeExpedir' => request()->user()?->can('fulfill', $order) ?? false,
         ]);
     }
 

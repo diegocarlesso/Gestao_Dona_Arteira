@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { Check, Search, Trash2, X } from 'lucide-react';
+import { Check, CheckCheck, Package, PackageCheck, Search, Trash2, Truck, X } from 'lucide-react';
 import { useState } from 'react';
 
 type ItemPedido = {
@@ -29,6 +29,14 @@ interface Props {
         status_label: string;
         rascunho: boolean;
         cancelavel: boolean;
+        pode_separar: boolean;
+        pode_embalar: boolean;
+        pode_expedir: boolean;
+        pode_entregar: boolean;
+        tracking_code: string | null;
+        carrier: string | null;
+        shipped_at: string | null;
+        delivered_at: string | null;
         canal: string;
         notes: string | null;
         subtotal: string;
@@ -39,6 +47,7 @@ interface Props {
     };
     podeConfirmar: boolean;
     podeCancelar: boolean;
+    podeExpedir: boolean;
 }
 
 const emReais = (valor: string | null) =>
@@ -50,13 +59,15 @@ async function buscar<T>(url: string, q: string): Promise<T[]> {
     return r.ok ? r.json() : [];
 }
 
-export default function PedidoEdit({ pedido, podeConfirmar, podeCancelar }: Props) {
+export default function PedidoEdit({ pedido, podeConfirmar, podeCancelar, podeExpedir }: Props) {
     const { errors } = usePage().props;
     const acao = useForm({});
 
     const [cliente, setCliente] = useState(pedido.cliente);
     const [itens, setItens] = useState<ItemPedido[]>(pedido.itens);
     const [notes, setNotes] = useState(pedido.notes ?? '');
+    const [trackingCode, setTrackingCode] = useState('');
+    const [carrier, setCarrier] = useState('');
 
     const [buscaProduto, setBuscaProduto] = useState('');
     const [resultados, setResultados] = useState<ProdutoBusca[]>([]);
@@ -100,6 +111,22 @@ export default function PedidoEdit({ pedido, podeConfirmar, podeCancelar }: Prop
         router.post(`/pedidos/${pedido.public_id}/cancelar`, { motivo }, { preserveScroll: true });
     };
 
+    // Separar, embalar e entregar são transições simples. Expedir tem seção
+    // própria (rastreio) porque baixa o estoque de verdade.
+    const avancar = (etapa: string, pergunta: string) => {
+        if (!confirm(pergunta)) return;
+        acao.post(`/pedidos/${pedido.public_id}/${etapa}`, { preserveScroll: true });
+    };
+
+    const expedir = () => {
+        if (!confirm('Expedir o pedido?\n\nIsso baixa o estoque reservado — a peça sai. Desfazer exige devolução.')) return;
+        router.post(
+            `/pedidos/${pedido.public_id}/expedir`,
+            { tracking_code: trackingCode || null, carrier: carrier || null },
+            { preserveScroll: true },
+        );
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Pedido #${pedido.number}`} />
@@ -109,7 +136,15 @@ export default function PedidoEdit({ pedido, podeConfirmar, podeCancelar }: Prop
                     <div>
                         <h1 className="flex items-center gap-2 text-xl font-semibold">
                             Pedido #{pedido.number}
-                            <Badge variant={pedido.status === 'confirmed' ? 'default' : pedido.status === 'cancelled' ? 'secondary' : 'outline'}>
+                            <Badge
+                                variant={
+                                    ['confirmed', 'expedido', 'entregue'].includes(pedido.status)
+                                        ? 'default'
+                                        : pedido.status === 'cancelled'
+                                          ? 'secondary'
+                                          : 'outline'
+                                }
+                            >
                                 {pedido.status_label}
                             </Badge>
                         </h1>
@@ -128,6 +163,24 @@ export default function PedidoEdit({ pedido, podeConfirmar, podeCancelar }: Prop
                                 Confirmar (reservar)
                             </Button>
                         )}
+                        {pedido.pode_separar && podeExpedir && (
+                            <Button variant="outline" onClick={() => avancar('separar', 'Iniciar a separação deste pedido?')}>
+                                <Package className="size-4" />
+                                Iniciar separação
+                            </Button>
+                        )}
+                        {pedido.pode_embalar && podeExpedir && (
+                            <Button variant="outline" onClick={() => avancar('embalar', 'Marcar como embalado?')}>
+                                <PackageCheck className="size-4" />
+                                Embalado
+                            </Button>
+                        )}
+                        {pedido.pode_entregar && podeExpedir && (
+                            <Button variant="outline" onClick={() => avancar('entregar', 'Marcar como entregue?')}>
+                                <CheckCheck className="size-4" />
+                                Entregue
+                            </Button>
+                        )}
                         {pedido.cancelavel && podeCancelar && (
                             <Button variant="ghost" onClick={cancelar}>
                                 <X className="size-4" />
@@ -139,6 +192,7 @@ export default function PedidoEdit({ pedido, podeConfirmar, podeCancelar }: Prop
 
                 {errors.confirmacao && <p className="text-destructive text-sm">{errors.confirmacao}</p>}
                 {errors.cancelamento && <p className="text-destructive text-sm">{errors.cancelamento}</p>}
+                {errors.fulfillment && <p className="text-destructive text-sm">{errors.fulfillment}</p>}
                 {errors.pedido && <p className="text-destructive text-sm">{errors.pedido}</p>}
 
                 {/* Cliente */}
@@ -307,6 +361,66 @@ export default function PedidoEdit({ pedido, podeConfirmar, podeCancelar }: Prop
                         </div>
                     </div>
                 </section>
+
+                {pedido.pode_expedir && podeExpedir && (
+                    <section className="flex flex-col gap-3 rounded-md border p-4">
+                        <h2 className="font-medium">Expedição</h2>
+                        <p className="text-muted-foreground text-sm">
+                            Expedir baixa o estoque reservado — a peça sai de verdade. Informe o rastreio, se houver.
+                        </p>
+                        <div className="flex flex-wrap gap-3">
+                            <div className="min-w-[12rem] flex-1">
+                                <Label htmlFor="tracking">Código de rastreio</Label>
+                                <Input
+                                    id="tracking"
+                                    placeholder="ex.: BR123456789BR"
+                                    value={trackingCode}
+                                    onChange={(e) => setTrackingCode(e.target.value)}
+                                />
+                            </div>
+                            <div className="min-w-[12rem] flex-1">
+                                <Label htmlFor="carrier">Transportadora</Label>
+                                <Input id="carrier" placeholder="ex.: Correios" value={carrier} onChange={(e) => setCarrier(e.target.value)} />
+                            </div>
+                        </div>
+                        <div>
+                            <Button onClick={expedir}>
+                                <Truck className="size-4" />
+                                Expedir (baixar estoque)
+                            </Button>
+                        </div>
+                    </section>
+                )}
+
+                {pedido.shipped_at && (
+                    <section className="rounded-md border p-4">
+                        <h2 className="mb-2 font-medium">Expedição</h2>
+                        <dl className="text-muted-foreground grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                            <div>
+                                <dt className="text-xs">Expedido em</dt>
+                                <dd>{new Date(pedido.shipped_at).toLocaleString('pt-BR')}</dd>
+                            </div>
+                            {pedido.carrier && (
+                                <div>
+                                    <dt className="text-xs">Transportadora</dt>
+                                    <dd>{pedido.carrier}</dd>
+                                </div>
+                            )}
+                            {pedido.tracking_code && (
+                                <div>
+                                    <dt className="text-xs">Rastreio</dt>
+                                    <dd className="font-mono">{pedido.tracking_code}</dd>
+                                </div>
+                            )}
+                            {pedido.delivered_at && (
+                                <div>
+                                    <dt className="text-xs">Entregue em</dt>
+                                    <dd>{new Date(pedido.delivered_at).toLocaleString('pt-BR')}</dd>
+                                </div>
+                            )}
+                        </dl>
+                    </section>
+                )}
 
                 {pedido.historico.length > 0 && (
                     <section className="rounded-md border p-4">
