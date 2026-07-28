@@ -8,6 +8,7 @@ use App\Modules\Integrations\WooCommerce\Console\ApproveWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\ExtractWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\LoadWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\TriageWooCommand;
+use App\Modules\Integrations\WooCommerce\Console\ValidateWooCommand;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -27,6 +28,7 @@ class IntegrationsServiceProvider extends ServiceProvider
                 TriageWooCommand::class,
                 ApproveWooCommand::class,
                 LoadWooCommand::class,
+                ValidateWooCommand::class,
             ]);
         }
     }

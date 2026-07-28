@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Services;
 
+use App\Modules\Catalog\DTO\ProductSnapshot;
 use App\Modules\Catalog\DTO\ProductSummary;
+use App\Modules\Catalog\Enums\PriceList;
 use App\Modules\Catalog\Models\Product;
 
 /**
@@ -96,6 +98,32 @@ class ProductLookupService
     public function idsAtivos(): array
     {
         return Product::query()->active()->orderBy('id')->pluck('id')->all();
+    }
+
+    /**
+     * O estado atual do produto para a conferência da migração (F5).
+     *
+     * Existe para que a validação (no módulo Integrations) compare a carga
+     * com a origem **sem** ler `Catalog\Models` nem a tabela `products`
+     * (ADR-0020): ela pergunta ao Catálogo os valores de hoje e cruza com
+     * o que o staging tinha.
+     */
+    public function snapshot(int $id): ?ProductSnapshot
+    {
+        $produto = Product::query()->with('category:id,name')->find($id);
+
+        if ($produto === null) {
+            return null;
+        }
+
+        return new ProductSnapshot(
+            sku: $produto->sku,
+            name: $produto->name,
+            color: $produto->color,
+            weightG: $produto->weight_g,
+            retailPrice: $produto->precoVigente(PriceList::Retail)?->price,
+            categoryName: $produto->category?->name,
+        );
     }
 
     private function resumoDe(Product $produto): ProductSummary

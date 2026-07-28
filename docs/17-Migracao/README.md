@@ -265,8 +265,37 @@ disponível na origem.
 ### F4 — Carga (planejamento original)
 Ordem por dependência: categorias → produtos+imagens(refs)+preços → clientes+endereços → pedidos históricos (com snapshot de preço original; itens de produto extinto apontam para produto `archived`) → financeiro histórico **não** é migrado (somente pedidos; saldo financeiro abre zerado no Gate 04 — decisão registrada).
 
-### F5 — Validação
-Contagens batem (origem × stg × destino) · amostra de 30 produtos/20 clientes/20 pedidos conferida manualmente · Σ totais de pedidos por ano batem com relatório Woo (tolerância de centavos documentada) · zero rejeições não-triadas.
+### F5 — Validação ✅ *ferramenta pronta em 2026-07-27*
+
+`php artisan erp:migrate:validate [--amostra=30]`. Confere o catálogo
+contra a origem em duas frentes e **sai com erro** se algo divergir, para
+não passar batido:
+
+1. **Contagens** — aprovados na triagem × mapeados no catálogo. Têm de
+   ser iguais.
+2. **Amostra estável, campo a campo** — nome, preço de varejo, peso, cor
+   e categoria. O esperado é **re-derivado da origem por uma
+   implementação independente** da carga: se a validação chamasse os
+   mesmos métodos de `LoadWooCatalog`, um bug de conversão passaria nos
+   dois lados e a conferência daria verde sobre erro. Cada linha traz o
+   `woo #id` para conferência a olho no site.
+
+A amostra é **determinística** (espaçada por SKU): rodar de novo devolve
+os mesmos produtos — conferência assinada não depende de sorteio.
+
+> **Cobertura da amostra:** o comando confere o que a carga transformou
+> (kg→g, preço, cor, categoria canônica). A conferência de **clientes** e
+> **pedidos** (30/20/20 do plano original) fica para quando esses forem
+> migrados — hoje só o catálogo entrou. Σ de pedidos por ano idem.
+
+**O que falta para fechar a F5:** rodar em produção e o dono **assinar** o
+resultado (é o último critério de saída do Gate 01). A fidelidade da
+extração já foi conferida na F2 (contagens bateram com o inventário linha
+a linha); esta é a conferência humana por cima.
+
+*Critérios originais:* contagens batem (origem × stg × destino) · amostra
+conferida manualmente · Σ totais de pedidos por ano batem com relatório
+Woo · zero rejeições não-triadas.
 
 ### F6 — Cutover → [plano detalhado](01-plano-de-cutover.md)
 Inclui **inventário físico completo** para o estoque inicial (nem legado nem Woo são confiáveis — pasta 09) e ativação da sincronização (pasta 16).
