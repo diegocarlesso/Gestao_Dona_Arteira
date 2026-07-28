@@ -288,10 +288,24 @@ os mesmos produtos — conferência assinada não depende de sorteio.
 > **pedidos** (30/20/20 do plano original) fica para quando esses forem
 > migrados — hoje só o catálogo entrou. Σ de pedidos por ano idem.
 
-**O que falta para fechar a F5:** rodar em produção e o dono **assinar** o
-resultado (é o último critério de saída do Gate 01). A fidelidade da
-extração já foi conferida na F2 (contagens bateram com o inventário linha
-a linha); esta é a conferência humana por cima.
+#### ✅ F5 executada e assinada — 2026-07-28, produção
+
+```
+aprovados na triagem ... 754
+mapeados no catálogo ... 754   → contagens batem
+Amostra estável de 30 produtos, conferida campo a campo:
+  30 ✓  ·  0 divergências
+```
+
+**Assinada pelo dono (Diego) em 2026-07-28.** A amostra determinística
+cobriu os três casos que a triagem criou — produto simples, variação de
+kit (`DA-0426 … — KIT COMPLETO`, `DA-0526 … — BUDA SIDARTA`, nome composto
+como manda a F3) e anúncio "várias cores" (`DA-0251`) — e nenhum divergiu
+da origem. É o **último critério de saída do Gate 01**: dados migrados
+validados e assinados.
+
+A fidelidade da extração já fora conferida na F2 (contagens bateram com o
+inventário linha a linha); esta foi a conferência humana por cima.
 
 *Critérios originais:* contagens batem (origem × stg × destino) · amostra
 conferida manualmente · Σ totais de pedidos por ano batem com relatório

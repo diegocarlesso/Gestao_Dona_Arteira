@@ -11,10 +11,12 @@ ERP para **pintura artesanal e venda** de peças decorativas em gesso. Idioma do
 > A secagem é uma etapa **pós-recebimento** (quarentena da peça úmida),
 > não pós-fundição. Ver o aviso no topo desses documentos.
 
-## Estado atual (2026-07-27)
+## Estado atual (2026-07-28)
 
-**Gate 00 concluído. Gate 01 quase fechado** — só falta a validação F5 da
-migração assinada pelo dono. Implementado, testado e em produção:
+**Gate 00 e Gate 01 concluídos.** A F5 da migração foi executada em
+produção e **assinada pelo dono em 2026-07-28** (754 = 754, amostra de 30
+sem divergências) — último critério de saída do Gate 01. Tag `gate-01`.
+Implementado, testado e em produção:
 
 | Módulo | Estado |
 |---|---|
