@@ -21,6 +21,7 @@ use App\Modules\Sales\Enums\OrderStatus;
 use App\Modules\Sales\Models\Customer;
 use App\Modules\Sales\Models\Order;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Testing\TestResponse;
 
 /*
 |--------------------------------------------------------------------------
@@ -108,7 +109,7 @@ function itemWoo(int $wooProductId, int $qty, string $price, int $variationId = 
  *
  * @param  array<string, mixed>  $payload
  */
-function postWebhook(array $payload, ?string $secret = 'segredo_teste', string $topic = 'order.created'): \Illuminate\Testing\TestResponse
+function postWebhook(array $payload, ?string $secret = 'segredo_teste', string $topic = 'order.created'): TestResponse
 {
     $corpo = json_encode($payload, JSON_UNESCAPED_UNICODE) ?: '';
 
