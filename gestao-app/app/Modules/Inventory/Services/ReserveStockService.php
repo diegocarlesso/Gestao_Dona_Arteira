@@ -8,6 +8,7 @@ use App\Modules\Inventory\Enums\MovementType;
 use App\Modules\Inventory\Enums\ReservationStatus;
 use App\Modules\Inventory\Exceptions\ReservaInvalida;
 use App\Modules\Inventory\Models\InventoryBalance;
+use App\Modules\Inventory\Models\Location;
 use App\Modules\Inventory\Models\StockReservation;
 use Illuminate\Support\Facades\DB;
 
@@ -29,18 +30,25 @@ class ReserveStockService
     public function __construct(private readonly RecordMovementService $movimentos) {}
 
     /**
-     * Reserva `qty` do produto num local para uma origem (o pedido).
+     * Reserva `qty` do produto para uma origem (o pedido).
+     *
+     * `locationId` é opcional: sem ele, cai no local padrão. Vendas chama
+     * sem local — não é papel dela conhecer `Location` (ADR-0020), e
+     * enquanto há um ateliê só, escolher local a cada reserva seria
+     * perguntar o óbvio.
      *
      * @throws ReservaInvalida
      */
     public function reservar(
         int $productId,
-        int $locationId,
         string $qty,
+        ?int $locationId = null,
         ?string $referenceType = null,
         ?int $referenceId = null,
         ?int $createdBy = null,
     ): StockReservation {
+        $locationId ??= $this->localPadrao();
+
         return DB::transaction(function () use ($productId, $locationId, $qty, $referenceType, $referenceId, $createdBy): StockReservation {
             $saldo = $this->saldoTravado($productId, $locationId);
 
@@ -78,6 +86,30 @@ class ReserveStockService
     public function liberar(StockReservation $reserva): void
     {
         $this->encerrar($reserva, ReservationStatus::Released);
+    }
+
+    /**
+     * Libera todas as reservas ativas de uma origem (o pedido cancelado).
+     *
+     * Existe para Vendas não precisar consultar `StockReservation` — o
+     * ADR-0020 mantém o model do Estoque dentro do Estoque; Vendas diz "o
+     * pedido 42 caiu, solte o que ele segurava" e o Estoque cuida do resto.
+     *
+     * @return int quantas reservas foram liberadas
+     */
+    public function liberarPorReferencia(string $referenceType, int $referenceId): int
+    {
+        $reservas = StockReservation::query()
+            ->ativas()
+            ->where('reference_type', $referenceType)
+            ->where('reference_id', $referenceId)
+            ->get();
+
+        foreach ($reservas as $reserva) {
+            $this->liberar($reserva);
+        }
+
+        return $reservas->count();
     }
 
     /**
@@ -126,6 +158,20 @@ class ReserveStockService
 
             $reserva->forceFill(['status' => $novoStatus])->save();
         });
+    }
+
+    /**
+     * @throws ReservaInvalida
+     */
+    private function localPadrao(): int
+    {
+        $local = Location::padrao();
+
+        if ($local === null) {
+            throw ReservaInvalida::semLocalPadrao();
+        }
+
+        return $local->id;
     }
 
     /**

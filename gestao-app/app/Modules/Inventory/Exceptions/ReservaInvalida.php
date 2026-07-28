@@ -18,6 +18,11 @@ class ReservaInvalida extends DomainException
         );
     }
 
+    public static function semLocalPadrao(): self
+    {
+        return new self('Não há local de estoque padrão para reservar. Rode o seeder do Ateliê.');
+    }
+
     public static function jaEncerrada(string $status): self
     {
         // Reserva consumida ou liberada não volta atrás: a peça já foi

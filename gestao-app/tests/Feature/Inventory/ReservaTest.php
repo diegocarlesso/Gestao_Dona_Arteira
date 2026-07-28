@@ -43,7 +43,7 @@ function reserva(): ReserveStockService
 it('reserva reduz o disponível sem tocar no físico', function () {
     [$p, $l] = comSaldo('10');
 
-    reserva()->reservar($p->id, $l->id, '4');
+    reserva()->reservar($p->id, '4', $l->id);
 
     $saldo = InventoryBalance::query()->where('product_id', $p->id)->first();
 
@@ -56,20 +56,20 @@ it('reserva reduz o disponível sem tocar no físico', function () {
 it('recusa reservar além do disponível — o oversell', function () {
     [$p, $l] = comSaldo('3');
 
-    expect(fn () => reserva()->reservar($p->id, $l->id, '4'))
+    expect(fn () => reserva()->reservar($p->id, '4', $l->id))
         ->toThrow(ReservaInvalida::class);
 });
 
 it('conta o já reservado ao medir o disponível', function () {
     [$p, $l] = comSaldo('10');
 
-    reserva()->reservar($p->id, $l->id, '7');
+    reserva()->reservar($p->id, '7', $l->id);
 
     // Sobram 3 disponíveis; pedir 4 tem de falhar mesmo com 10 físicos.
-    expect(fn () => reserva()->reservar($p->id, $l->id, '4'))
+    expect(fn () => reserva()->reservar($p->id, '4', $l->id))
         ->toThrow(ReservaInvalida::class);
 
-    reserva()->reservar($p->id, $l->id, '3');
+    reserva()->reservar($p->id, '3', $l->id);
 
     expect(InventoryBalance::query()->where('product_id', $p->id)->value('qty_reserved'))->toBe('10.000');
 });
@@ -77,7 +77,7 @@ it('conta o já reservado ao medir o disponível', function () {
 it('não gera movimento no ledger ao reservar — a peça não saiu', function () {
     [$p, $l] = comSaldo('10');
 
-    reserva()->reservar($p->id, $l->id, '4');
+    reserva()->reservar($p->id, '4', $l->id);
 
     // Só o movimento que criou o saldo; a reserva não é movimento.
     expect(InventoryMovement::query()->where('product_id', $p->id)->count())->toBe(1);
@@ -87,7 +87,7 @@ it('não gera movimento no ledger ao reservar — a peça não saiu', function (
 
 it('liberar devolve ao disponível e não mexe no físico', function () {
     [$p, $l] = comSaldo('10');
-    $r = reserva()->reservar($p->id, $l->id, '4');
+    $r = reserva()->reservar($p->id, '4', $l->id);
 
     reserva()->liberar($r);
 
@@ -102,7 +102,7 @@ it('liberar devolve ao disponível e não mexe no físico', function () {
 
 it('consumir baixa o físico pelo ledger e zera a reserva', function () {
     [$p, $l] = comSaldo('10');
-    $r = reserva()->reservar($p->id, $l->id, '4');
+    $r = reserva()->reservar($p->id, '4', $l->id);
 
     reserva()->consumir($r);
 
@@ -118,7 +118,7 @@ it('consumir baixa o físico pelo ledger e zera a reserva', function () {
 
 it('o disponível não muda entre reservar e consumir', function () {
     [$p, $l] = comSaldo('10');
-    $r = reserva()->reservar($p->id, $l->id, '4');
+    $r = reserva()->reservar($p->id, '4', $l->id);
 
     $antes = InventoryBalance::query()->where('product_id', $p->id)->first()->disponivel();
     reserva()->consumir($r);
@@ -133,7 +133,7 @@ it('o disponível não muda entre reservar e consumir', function () {
 
 it('não deixa liberar nem consumir duas vezes', function () {
     [$p, $l] = comSaldo('10');
-    $r = reserva()->reservar($p->id, $l->id, '4');
+    $r = reserva()->reservar($p->id, '4', $l->id);
     reserva()->liberar($r);
 
     expect(fn () => reserva()->liberar($r->fresh()))->toThrow(ReservaInvalida::class)
@@ -143,7 +143,7 @@ it('não deixa liberar nem consumir duas vezes', function () {
 it('guarda a origem da reserva para liberar/consumir por pedido', function () {
     [$p, $l] = comSaldo('10');
 
-    $r = reserva()->reservar($p->id, $l->id, '4', 'order', 42);
+    $r = reserva()->reservar($p->id, '4', $l->id, 'order', 42);
 
     expect(StockReservation::query()->ativas()->where('reference_type', 'order')->where('reference_id', 42)->exists())
         ->toBeTrue();

@@ -57,9 +57,27 @@ O que entra em cada corte, e o porquê da ordem:
 | Corte | Entrega | Estado |
 |---|---|---|
 | 1. Reserva de estoque | `ReserveStockService` (BR-203) — pré-requisito do pedido | ✅ 2026-07-28 |
-| 2. Pedido | rascunho → confirmado (reserva) → cancelado (libera); item com preço de varejo congelado (BR-302) | ⏳ próximo |
-| 3. Fulfillment | separação → expedição → `consumir` reserva (baixa) | ⏳ |
+| 2. Pedido | rascunho → confirmado (reserva) → cancelado (libera); item com preço de varejo congelado (BR-302) | ✅ 2026-07-28 |
+| 3. Fulfillment | separação → expedição → `consumir` reserva (baixa) | ⏳ próximo |
 | 4. Sync Woo | pedido do site entra, status/rastreio saem | ⏳ |
+
+> ✅ **Corte 2 (pedido) em 2026-07-28.** `Order` + `OrderItem` +
+> `order_status_history`, máquina `draft → confirmed → cancelled`.
+> Confirmar reserva o estoque de **todos** os itens ou de nenhum — se um
+> não cabe no disponível, a transação volta inteira e o pedido segue
+> rascunho (meia-reserva prometeria parte de um pedido que não se cumpre).
+> Cancelar libera o que foi reservado. Preço de item congela ao adicionar
+> (BR-302); o nome do produto na tela vem por Service do Catálogo, não
+> snapshot (ADR-0020). Cliente é opcional (balcão "Consumidor").
+>
+> **A confirmação exige estoque, e a contagem física ainda não aconteceu**
+> — então em produção os pedidos abrem como rascunho mas só confirmam
+> depois do inventário inicial (cutover). O mecanismo está correto e
+> testado; a operação o exercita quando houver saldo.
+>
+> **Falta no pedido:** desconto com alçada (BR-305), encomenda sem estoque
+> (BR-307, depende de Produção remodelada), e a expedição que consome a
+> reserva (corte 3, onde entra a NF-e do Gate 05).
 
 **Adiado no Gate 02, com motivo:**
 - **Preço de atacado** — a regra (BR-301) é entrevista obrigatória **e** a

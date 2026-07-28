@@ -126,6 +126,33 @@ class ProductLookupService
         );
     }
 
+    /**
+     * Produtos que casam com o termo, **com o preço de varejo vigente** —
+     * para o autocomplete de item do pedido (Vendas). Quem sabe buscar e
+     * quem sabe o preço é o Catálogo (ADR-0020); Vendas só exibe.
+     *
+     * @return list<array{public_id: string, sku: string, name: string, color: string|null, retail_price: string|null}>
+     */
+    public function buscarParaVenda(string $termo, int $limite = 15): array
+    {
+        return Product::query()
+            ->active()
+            ->where(fn ($q) => $q->where('name', 'like', "%{$termo}%")
+                ->orWhere('sku', 'like', "%{$termo}%")
+                ->orWhere('color', 'like', "%{$termo}%"))
+            ->orderBy('name')
+            ->limit($limite)
+            ->get(['id', 'public_id', 'sku', 'name', 'color'])
+            ->map(fn (Product $p): array => [
+                'public_id' => $p->public_id,
+                'sku' => $p->sku,
+                'name' => $p->name,
+                'color' => $p->color,
+                'retail_price' => $p->precoVigente(PriceList::Retail)?->price,
+            ])
+            ->all();
+    }
+
     private function resumoDe(Product $produto): ProductSummary
     {
         return new ProductSummary(
