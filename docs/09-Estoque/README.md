@@ -57,10 +57,22 @@ Ser a fonte única e auditável da posição de estoque de **tudo** (matéria-pr
 >   sobre o mesmo saldo congelado, e a segunda desfaria a primeira sem
 >   que ninguém percebesse.
 >
-> **Ainda não existe:** reserva (BR-203, depende de Vendas), publicação no
-> site (BR-204, depende de Integrações), custo médio alimentado por
-> compra/produção (BR-206 — o cálculo existe e é testado, mas nenhum
-> módulo ainda envia custo) e o job de reconciliação noturno.
+> ✅ **Reserva implementada — 2026-07-28** (BR-203/BR-204, início do Gate
+> 02). `ReserveStockService` é a via única de `qty_reserved`: `reservar`
+> (confirmar pedido), `liberar` (cancelar), `consumir` (expedir). Reserva
+> **não é movimento** — a peça não saiu, só está prometida; só o `consumir`
+> gera `sale_shipment` no ledger. Reserva-se o **disponível** (on_hand −
+> reserved), nunca além: é o antídoto do oversell.
+>
+> A tabela usa **referência polimórfica** (`reference_type`/`reference_id`),
+> não `order_id` — o modelo da pasta 04 desenhou `order_id`, mas o ADR-0020
+> proíbe o Estoque referenciar a tabela de Vendas. Corrigido igual ao
+> ledger já faz.
+>
+> **Ainda não existe:** publicação no site (BR-204 → Woo, depende de
+> Integrações), custo médio alimentado por compra/produção (BR-206 — o
+> cálculo existe e é testado, mas nenhum módulo ainda envia custo) e o job
+> de reconciliação noturno.
 >
 > **Três decisões que a implementação obrigou a tomar:**
 >

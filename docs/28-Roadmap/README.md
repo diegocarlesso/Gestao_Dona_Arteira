@@ -28,10 +28,11 @@ Toda a documentação desta pasta `docs/`, agentes, skills, ADRs. **Saída:** de
 **Entrega:** projeto Laravel + Inertia + React estruturado ([ADR-0019](../27-ADR/ADR-0019-inertia-substitui-spa.md), pastas 05/06), CI/CD e ambientes (23), auth+RBAC (18/19), auditoria (26), catálogo, clientes, estoque com ledger (09), health check, **migração executada até a fase 5** (17).
 **Critérios de saída:** ambiente validado com veredito registrado · dados migrados validados e assinados pelo dono · CI verde bloqueante · estoque operável manualmente no ERP · staging funcionando.
 
-## Gate 02 — Vendas + Sincronização WooCommerce
+## Gate 02 — Vendas + Sincronização WooCommerce 🔄 *aberto em 2026-07-28*
 
 **Entrega:** pedidos multicanal (10), integração Woo bidirecional (15/16), **cutover executado** (17), painel de integrações, dashboards mínimos, e-mail transacional.
 **Critérios de saída:** 14 dias de operação assistida com divergência zero não explicada · pedido do site ao rastreio sem tocar no wp-admin · equipe treinada operando pedidos no ERP.
+**Decisão de sequência (2026-07-28):** o dono escolheu o fluxo *reserva-e-envia-depois* como primeiro; ordem dos cortes e o que fica adiado em [10/§2.1](../10-Vendas/README.md). Corte 1 (reserva de estoque, BR-203) entregue.
 
 ## Gate 03 — Produção + Compras
 

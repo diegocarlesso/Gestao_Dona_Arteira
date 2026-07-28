@@ -45,6 +45,31 @@ Unificar pedidos de **todos os canais** (balcão/atacado/encomenda no ERP + WooC
 > Construí-la agora entregaria um controle que sempre diz "pode".
 - **Não faz:** mexer em saldo (pede reserva/baixa ao Estoque), emitir NF-e (chama Fiscal), cobrar (Financeiro), falar com Woo (Integrações reage a eventos).
 
+## 2.1 Corte do Gate 02 (decidido em 2026-07-28)
+
+O dono escolheu construir primeiro o **pedido para separar/enviar depois**
+— o fluxo do site e da encomenda, que **reserva** o estoque na confirmação
+e baixa só na expedição. (As outras opções eram balcão pague-e-leve, que
+baixaria direto sem reserva, e os dois juntos.)
+
+O que entra em cada corte, e o porquê da ordem:
+
+| Corte | Entrega | Estado |
+|---|---|---|
+| 1. Reserva de estoque | `ReserveStockService` (BR-203) — pré-requisito do pedido | ✅ 2026-07-28 |
+| 2. Pedido | rascunho → confirmado (reserva) → cancelado (libera); item com preço de varejo congelado (BR-302) | ⏳ próximo |
+| 3. Fulfillment | separação → expedição → `consumir` reserva (baixa) | ⏳ |
+| 4. Sync Woo | pedido do site entra, status/rastreio saem | ⏳ |
+
+**Adiado no Gate 02, com motivo:**
+- **Preço de atacado** — a regra (BR-301) é entrevista obrigatória **e** a
+  lista de atacado nunca foi registrada; o corte 2 usa só varejo.
+- **Encomenda (make-to-order, BR-307)** — depende de Produção, em
+  remodelagem (ADR-0023/0024).
+- **NF-e antes de expedir (BR-309)** — Gate 05; o corte 3 expede sem o
+  gate fiscal por ora, documentado.
+- **Pagamento / financeiro** — Gate 04.
+
 ## 3. Máquina de estados do pedido (BR-303)
 
 ```mermaid
