@@ -1,6 +1,6 @@
 # Escopo e Não-Escopo
 
-> **Status:** Aprovado · **Última atualização:** 2026-07-03 · **Responsável:** business-analyst
+> **Status:** Aprovado · **Última atualização:** 2026-07-27 · **Responsável:** business-analyst
 
 ## 1. Objetivo
 
@@ -17,7 +17,7 @@ Delimitar com precisão o que o ERP faz e — igualmente importante — o que el
 | Usuários, papéis e permissões (RBAC) | 1 | Deny-by-default |
 | Vendas multicanal (balcão/atacado/encomenda + pedidos do site) | 2 | Máquina de estados única |
 | Sincronização bidirecional WooCommerce (produtos, estoque, pedidos, clientes) | 2 | Via API/webhooks, nunca banco |
-| Produção artesanal (OPs, etapas, moldes, perdas, consumo de MP) | 3 | Diferencial do ERP |
+| Produção artesanal (OPs de pintura, etapas, perdas, consumo de tinta/verniz) | 3 | Diferencial do ERP |
 | Compras e recebimento de matéria-prima | 3 | Alimenta custo médio |
 | Financeiro (contas a pagar/receber, fluxo de caixa, categorias) | 4 | Gerencial, não contábil |
 | NF-e modelo 55 com certificado A1 (emissão, cancelamento, CC-e, guarda) | 5 | Homologação primeiro |

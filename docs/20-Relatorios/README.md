@@ -29,8 +29,8 @@ Catálogo canônico dos relatórios do ERP e padrões de construção: todo rela
 | Giro de estoque | o que está parado? | Estoque+Vendas | 6 |
 | Perdas por etapa/motivo | onde estamos quebrando peças? | Produção | 3 |
 | Produtividade por etapa/pessoa | gargalos do ateliê? | Produção | 6 |
-| Consumo de MP por período | quanto gesso/tinta usamos? | Produção+Estoque | 3 |
-| Vida útil de moldes | quais moldes vão vencer? | Produção | 3 |
+| Consumo de MP por período | quanto de peça crua e tinta/verniz consumimos? | Produção+Estoque | 3 |
+| Taxa de quebra por fornecedor/lote | qual fornecedor entrega peça que quebra? | Compras/Estoque | 3 |
 | Contas a receber/pagar com aging | quem nos deve / a quem devemos? | Financeiro | 4 |
 | Fluxo de caixa realizado × projetado | vamos fechar o mês? | Financeiro | 4 |
 | DRE gerencial simplificada | resultado do mês por categoria | Financeiro | 6 |

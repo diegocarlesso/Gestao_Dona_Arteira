@@ -5,7 +5,7 @@
 
 ## 1. Objetivo
 
-Ser a fonte única e auditável da posição de estoque de **tudo** (matéria-prima, WIP, produto acabado, embalagem, revenda — BR-207), em todos os locais, alimentando venda multicanal sem oversell e custo médio confiável.
+Ser a fonte única e auditável da posição de estoque de **tudo** (peça crua, peça acabada, matéria-prima, WIP, embalagem, revenda — BR-207), em todos os locais, alimentando venda multicanal sem oversell e custo médio confiável.
 
 ## 2. Responsabilidades
 
@@ -129,6 +129,18 @@ publicado no Woo = disponível − buffer_do_produto   (BR-204)
 - Pedido Woo: o webhook cria o pedido no ERP já reservando — a janela de risco de oversell fica limitada à latência da fila (< 2 min, NFR) mais o buffer.
 - Encomenda (sem saldo): não reserva; gera demanda de produção (BR-307) e reserva automaticamente quando a OP entrega.
 
+### Quarentena de secagem (peça crua) — [ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)
+
+A peça crua chega do fornecedor úmida e não pode ser pintada até secar. Ela é
+recebida numa **localização de tipo `quarantine`** ("Quarentena/Secagem"):
+conta no saldo físico, mas **não é disponível para produção** (BR-109) nem é
+publicada no canal. A **liberação da secagem** é um `transfer` da quarentena
+para o Ateliê (default `received_at + drying_days`; manual ou por data — BR-404),
+a partir do qual a peça crua fica disponível para a OP de pintura. Nada disso
+muda o ledger: é localização + transferência já existentes. Quebra na
+quarentena é `loss` referenciando o recebimento (o **lote** para a taxa de
+quebra por fornecedor, BR-405).
+
 ## 5. Contagem e ajuste (BR-205)
 
 Contagem cíclica por categoria ou geral: congela-se a lista, conta-se fisicamente, sistema mostra divergências, **aprovador ≠ contador** aprova, ajustes viram movimentos auditados com motivo. O estoque inicial do ERP nasce de uma contagem física completa no cutover (pasta 17) — nem o `in_stock` do legado nem o do Woo são confiáveis por construção.
@@ -136,6 +148,8 @@ Contagem cíclica por categoria ou geral: congela-se a lista, conta-se fisicamen
 ## 6. Custeio — média móvel (BR-206)
 
 Entradas (compra/produção) recalculam `avg_cost`; saídas usam o custo médio corrente. Escolha justificada: simples, aceito fiscalmente para gerencial, adequado a produção contínua de itens idênticos. PEPS/lote só se surgir exigência real (evolução).
+
+Como o `avg_cost` é por **produto×local**, a **liberação da secagem** (transfer Quarentena→Ateliê — [ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) precisa carregar o custo médio da origem no `transfer_in`; senão a peça crua chega ao Ateliê a **custo zero** e a OP a consome a zero, furando o custeio (BR-108). Cobrir por teste no Gate 03.
 
 ## 7. Dependências
 
@@ -159,5 +173,5 @@ Consomem este módulo: Produção, Vendas, Compras, Integrações (sync Woo), Re
 ## 10. Evoluções futuras
 
 - Múltiplos locais físicos reais (loja/feira/consignação) — o modelo já suporta.
-- Rastreabilidade por lote de produção (se cliente atacado exigir) — adicionar `batch_id` ao movimento.
+- Rastreabilidade por lote ao longo da vida da peça (se atacado/recall exigir) — adicionar dimensão `batch` ao movimento (gatilho do [ADR-0008](../27-ADR/ADR-0008-ledger-estoque.md); a quebra por lote de **recebimento** já sai sem isso, via [ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)).
 - Curva ABC automática para priorizar contagens cíclicas (fase 6).

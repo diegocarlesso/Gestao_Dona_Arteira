@@ -11,10 +11,9 @@ erDiagram
     PRODUCTS }o--|| PRODUCT_CATEGORIES : pertence
     PRODUCTS }o--o| PACKAGES : "embalagem padrão"
     PRODUCTS ||--o{ BOM_ITEMS : "ficha técnica"
-    BOM_ITEMS }o--|| PRODUCTS : "consome MP"
-    PRODUCTION_ORDERS }o--|| PRODUCTS : produz
+    BOM_ITEMS }o--|| PRODUCTS : "peça crua + tinta"
+    PRODUCTION_ORDERS }o--|| PRODUCTS : "pinta (produz acabado)"
     PRODUCTION_ORDERS ||--o{ PRODUCTION_STAGES : "etapas"
-    PRODUCTION_ORDERS }o--o| MOLDS : usa
     INVENTORY_MOVEMENTS }o--|| PRODUCTS : movimenta
     INVENTORY_BALANCES }o--|| PRODUCTS : "saldo de"
     ORDERS }o--|| CUSTOMERS : de
@@ -33,13 +32,12 @@ erDiagram
 
 | Tabela | Campos essenciais | Notas |
 |---|---|---|
-| `products` | public_id, **sku UNIQUE**, name, slug, description, `kind` (finished_good/raw_material/packaging/resale/supply), unit (UN/KG/L…), status (active/archived), peso e dimensões, dados fiscais (`ncm`, `cest`, `origin`, `gtin` nullable="SEM GTIN"), `default_package_id`, `min_stock`, `drying_days` (lead de secagem), flags de canal (`sell_on_woo`) | Unifica peças, MP, embalagem e revenda — um só estoque (BR-207). Peças do legado: `kind=finished_good` |
+| `products` | public_id, **sku UNIQUE**, name, slug, description, `kind` (finished_good/**raw_piece**/raw_material/packaging/resale/supply), unit (UN/KG/L…), status (active/archived), peso e dimensões, dados fiscais (`ncm`, `cest`, `origin`, `gtin` nullable="SEM GTIN"), `default_package_id`, `min_stock`, `drying_days` (lead de secagem), flags de canal (`sell_on_woo`) | Unifica peça acabada, **peça crua**, MP, embalagem e revenda — um só estoque (BR-207). `raw_piece` = peça comprada crua, substrato da pintura ([ADR-0023](../27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md)); é componente da ficha técnica do acabado, não vendável. Peças do legado (já pintadas): `kind=finished_good` |
 | `product_categories` | parent_id (árvore), name, slug | Espelha árvore do Woo na migração (BR-007) |
 | `product_images` | product_id, path/url, position, `source` (woo/erp) | Estratégia de mídia: ADR-0017 |
 | `product_prices` | product_id, `price_list` (retail/wholesale), price DECIMAL(15,2), valid_from | Histórico de preço; par varejo/atacado do legado (BR-003) |
 | `packages` | name, dimensões, peso | Catálogo de embalagens (BR-004) |
-| `bom_items` (ficha técnica) | product_id (peça), component_id (MP/embalagem), qty DECIMAL(15,3), `waste_pct` | Base do consumo teórico e custo (BR-103/108) |
-| `molds` | code, name, product_id?, `expected_life_uses`, `uses_count`, status | Vida útil de molde (BR-105) |
+| `bom_items` (ficha técnica) | product_id (peça acabada), component_id (**peça crua** + tinta/verniz + embalagem), qty DECIMAL(15,3), `waste_pct` | Base do consumo teórico e custo (BR-103/108). O componente de moldagem some; entra a peça crua substrato + insumos de pintura ([ADR-0023](../27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md)) |
 
 ## Parceiros
 
@@ -54,7 +52,7 @@ erDiagram
 
 | Tabela | Campos essenciais | Notas |
 |---|---|---|
-| `locations` | name (Ateliê, Depósito, Loja…), type | Mesmo com 1 local, modelar desde já |
+| `locations` | name (Ateliê, Depósito, Loja, **Quarentena/Secagem**…), `type` (inclui `quarantine`) | Mesmo com 1 local, modelar desde já. O `type=quarantine` guarda a peça crua úmida recebida; produção e sync do canal **ignoram** esse tipo ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) — a liberação da secagem é um `transfer` para o Ateliê |
 | `inventory_movements` | product_id, location_id, `qty` (com sinal) DECIMAL(15,3), `type` (purchase_receipt, production_output, production_input, sale_shipment, adjustment_in/out, transfer_in/out, loss, return_in), `unit_cost`, `reference` (polimórfico: OP, pedido, compra, contagem), occurred_at, created_by | **Imutável, append-only** (BR-202). Estorno = contra-movimento |
 | `inventory_balances` | product_id + location_id UNIQUE, `qty_on_hand`, `qty_reserved`, `avg_cost` | Atualizada na mesma transação do movimento; reconciliável por Σ movimentos |
 | `stock_reservations` | product_id, order_id, qty, status (active/consumed/released) | BR-203 |
@@ -64,10 +62,10 @@ erDiagram
 
 | Tabela | Campos essenciais | Notas |
 |---|---|---|
-| `production_orders` | number, product_id, qty_planned, qty_produced, qty_lost, status (draft/released/in_progress/done/cancelled), origem (stock/order), order_id?, mold_id?, datas | BR-101 |
-| `production_order_stages` | production_order_id, `stage` (casting/drying/painting/finishing/qc), status, started_at, finished_at, assigned_to, notes | Sequência configurável por produto (BR-102) |
-| `production_consumptions` | production_order_id, component_id, qty, movement_id | Consumo real ↔ movimento de estoque (BR-103) |
-| `production_losses` | production_order_id, stage, qty, reason (breakage/paint_defect/qc_reject/other), notes | BR-104; alimenta relatório de perdas |
+| `production_orders` | number, product_id (peça **acabada**), qty_planned, qty_produced, qty_lost, status (draft/released/in_progress/done/cancelled), origem (stock/order), order_id?, datas | BR-101. **Sem `mold_id`** — não há fundição ([ADR-0023](../27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md)) |
+| `production_order_stages` | production_order_id, `stage` (**painting/finishing/qc**), status, started_at, finished_at, assigned_to, `minutes_spent`, notes | Sequência configurável (BR-102). Etapas de **pintura + acabamento + CQ**; `minutes_spent` da pintura alimenta a mão de obra do custeio (BR-108). A secagem saiu daqui → é quarentena de recebimento ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) |
+| `production_consumptions` | production_order_id, component_id (peça crua, tinta, verniz), qty, movement_id | Consumo real ↔ movimento de estoque (BR-103): `production_input` da peça crua + insumos |
+| `production_losses` | production_order_id, stage (painting/finishing/qc), qty, reason (breakage/paint_defect/qc_reject/other), notes | BR-104; alimenta relatório de perdas. Quebra **antes** da OP (recebimento/secagem) é `loss` de estoque, não daqui ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) |
 
 ## Vendas
 
@@ -81,7 +79,7 @@ erDiagram
 
 ## Compras
 
-`purchase_orders` (supplier, status, datas), `purchase_order_items` (product_id, qty, unit_cost), `goods_receipts` + `goods_receipt_items` (qty recebida, divergência, movement_id) — BR-401/403.
+`purchase_orders` (supplier, status, datas), `purchase_order_items` (product_id, qty, unit_cost), `goods_receipts` + `goods_receipt_items` (qty recebida, divergência, movement_id, `received_at`, `expected_release_at` = received_at + drying_days, `released_at` real) — BR-401/403. O recebimento de **peça crua** entra na localização `quarantine`; a **liberação da secagem** é um `transfer` para o Ateliê, referenciando o recebimento, que é o **lote** para a taxa de quebra por fornecedor ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)).
 
 ## Financeiro
 
