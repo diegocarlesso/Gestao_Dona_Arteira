@@ -66,18 +66,59 @@ class IntegrationMapping extends Model
             ->value('remote_id');
     }
 
-    public static function registrar(string $tipo, int $localId, string|int $remoteId): void
+    public static function registrar(string $tipo, int $localId, string|int $remoteId, ?string $checksum = null): void
     {
+        // Filtra o checksum nulo para não sobrescrever uma âncora já gravada
+        // com nada: só pedido passa checksum (congelado na importação —
+        // ADR-0025); produto/cliente registram sem, e não devem perdê-lo.
+        $valores = array_filter(
+            [
+                'local_id' => $localId,
+                'checksum' => $checksum,
+                'last_synced_at' => now(),
+            ],
+            static fn ($valor) => $valor !== null,
+        );
+
         static::query()->updateOrCreate(
             [
                 'remote_system' => self::SISTEMA_WOO,
                 'entity_type' => $tipo,
                 'remote_id' => (string) $remoteId,
             ],
-            [
-                'local_id' => $localId,
-                'last_synced_at' => now(),
-            ],
+            $valores,
         );
+    }
+
+    /**
+     * A âncora de checksum de um registro mapeado — o que a reconciliação
+     * compara com o valor corrente do Woo (ADR-0025). Nula = sem linha de
+     * base congelada (mapeamento pré-recurso ou entidade sem âncora).
+     */
+    public static function checksumDe(string $tipo, string|int $remoteId): ?string
+    {
+        return static::query()
+            ->where('remote_system', self::SISTEMA_WOO)
+            ->where('entity_type', $tipo)
+            ->where('remote_id', (string) $remoteId)
+            ->value('checksum');
+    }
+
+    /**
+     * Redefine a âncora de checksum sem tocar no restante do mapeamento — o
+     * que o `resolver` do painel faz ao aceitar o novo valor como linha de
+     * base, e o backfill ao adotar o corrente (ADR-0025). Não muta o pedido
+     * do ERP (BR-304): só a impressão que a reconciliação usa.
+     */
+    public static function rebaselinar(string $tipo, string|int $remoteId, string $checksum): void
+    {
+        static::query()
+            ->where('remote_system', self::SISTEMA_WOO)
+            ->where('entity_type', $tipo)
+            ->where('remote_id', (string) $remoteId)
+            ->update([
+                'checksum' => $checksum,
+                'last_synced_at' => now(),
+            ]);
     }
 }

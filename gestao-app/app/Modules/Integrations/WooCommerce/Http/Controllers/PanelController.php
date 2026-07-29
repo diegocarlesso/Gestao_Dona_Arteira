@@ -6,9 +6,13 @@ namespace App\Modules\Integrations\WooCommerce\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Integrations\WooCommerce\Jobs\ProcessWooOrder;
+use App\Modules\Integrations\WooCommerce\Models\IntegrationMapping;
+use App\Modules\Integrations\WooCommerce\Models\WooReconciliationFinding;
+use App\Modules\Integrations\WooCommerce\Models\WooReconciliationRun;
 use App\Modules\Integrations\WooCommerce\Models\WooWebhookEvent;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -59,7 +63,68 @@ class PanelController extends Controller
                 'reprocessavel' => $e->reprocessavel() && ($request->user()?->can('reprocess', $e) ?? false),
             ]),
             'filtro' => $filtroValido ? $filtro : 'todos',
+            'achados' => $this->achados($request),
+            'ultimaReconciliacao' => $this->ultimaReconciliacao(),
         ]);
+    }
+
+    /**
+     * As divergências de valor abertas (ADR-0025) — a seção de reconciliação
+     * do painel. Distinta dos eventos: um achado tem ciclo próprio
+     * (detectado→resolvido) e recorrência.
+     *
+     * @return array{abertos: int, recorrentes: int, lista: list<array<string, mixed>>}
+     */
+    private function achados(Request $request): array
+    {
+        $usuario = $request->user();
+
+        return [
+            'abertos' => WooReconciliationFinding::query()->abertas()->count(),
+            'recorrentes' => WooReconciliationFinding::query()->abertas()->where('occurrences', '>', 1)->count(),
+            'lista' => WooReconciliationFinding::query()
+                ->abertas()
+                ->orderByDesc('occurrences')
+                ->orderByDesc('last_detected_at')
+                ->limit(50)
+                ->get()
+                ->map(fn (WooReconciliationFinding $f): array => [
+                    'id' => $f->id,
+                    'remote_id' => $f->remote_id,
+                    'detail' => $f->detail,
+                    'occurrences' => $f->occurrences,
+                    'recorrente' => $f->recorrente(),
+                    'last_detected_at' => $f->last_detected_at->toIso8601String(),
+                    'resolvivel' => $usuario?->can('resolve', $f) ?? false,
+                ])
+                ->all(),
+        ];
+    }
+
+    /**
+     * Resumo da última rodada + o heartbeat: se passou de ~26h, a rede de
+     * segurança parou (cron silencioso, P-15). Nula = nunca rodou.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function ultimaReconciliacao(): ?array
+    {
+        $run = WooReconciliationRun::ultima();
+
+        if ($run === null) {
+            return null;
+        }
+
+        return [
+            'started_at' => $run->started_at->toIso8601String(),
+            'finished_at' => $run->finished_at?->toIso8601String(),
+            'situacao' => $run->situacao(),
+            'atrasada' => $run->atrasada(),
+            'orders_checked' => $run->orders_checked,
+            'orders_missing_imported' => $run->orders_missing_imported,
+            'orders_divergent' => $run->orders_divergent,
+            'findings_resolved' => $run->findings_resolved,
+        ];
     }
 
     public function reprocessar(WooWebhookEvent $event): RedirectResponse
@@ -75,5 +140,40 @@ class PanelController extends Controller
         ProcessWooOrder::dispatch($event->id);
 
         return back()->with('sucesso', "Evento #{$event->id} reenfileirado para reprocessar.");
+    }
+
+    /**
+     * Resolve uma divergência de valor: a operação aceita o novo total do
+     * site como linha de base (ADR-0025).
+     *
+     * Re-baseliza a âncora (`integration_mappings.checksum`) para o valor
+     * corrente, para o achado não reabrir toda noite — **sem** mexer no
+     * pedido do ERP, que continua congelado (BR-304). Quem discorda do total
+     * novo corrige no site: ao voltar ao valor congelado, a reconciliação
+     * auto-resolve sozinha, sem passar por aqui.
+     */
+    public function resolver(Request $request, WooReconciliationFinding $finding): RedirectResponse
+    {
+        $this->authorize('resolve', $finding);
+
+        if ($finding->resolved_at !== null) {
+            return back()->with('sucesso', "Divergência do pedido #{$finding->remote_id} já estava resolvida.");
+        }
+
+        $userId = (int) $request->user()?->id;
+        $remote = $finding->remote_checksum;
+
+        DB::transaction(function () use ($finding, $userId, $remote): void {
+            $finding->resolverManual(
+                $userId,
+                'Aceito no painel — novo total do site adotado como linha de base (o pedido do ERP não muda, BR-304).',
+            );
+
+            if ($remote !== null) {
+                IntegrationMapping::rebaselinar($finding->entity_type, $finding->remote_id, $remote);
+            }
+        });
+
+        return back()->with('sucesso', "Divergência do pedido #{$finding->remote_id} resolvida.");
     }
 }

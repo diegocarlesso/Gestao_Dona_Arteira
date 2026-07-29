@@ -8,11 +8,14 @@ use App\Modules\Integrations\WooCommerce\Console\ApproveWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\ExtractWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\LoadWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\PullWooOrdersCommand;
+use App\Modules\Integrations\WooCommerce\Console\ReconcileWooOrdersCommand;
 use App\Modules\Integrations\WooCommerce\Console\TriageWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\ValidateWooCommand;
 use App\Modules\Integrations\WooCommerce\Listeners\CancelarNoWoo;
 use App\Modules\Integrations\WooCommerce\Listeners\EnviarExpedicaoAoWoo;
+use App\Modules\Integrations\WooCommerce\Models\WooReconciliationFinding;
 use App\Modules\Integrations\WooCommerce\Models\WooWebhookEvent;
+use App\Modules\Integrations\WooCommerce\Policies\WooReconciliationFindingPolicy;
 use App\Modules\Integrations\WooCommerce\Policies\WooWebhookEventPolicy;
 use App\Modules\Sales\Events\OrderCancelled;
 use App\Modules\Sales\Events\OrderShipped;
@@ -39,6 +42,7 @@ class IntegrationsServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../Routes/web.php');
 
         Gate::policy(WooWebhookEvent::class, WooWebhookEventPolicy::class);
+        Gate::policy(WooReconciliationFinding::class, WooReconciliationFindingPolicy::class);
 
         // Saída ERP→Woo: expedição devolve status + rastreio; cancelamento
         // devolve `cancelled` (sync-pedidos §7). Registrado aqui, no módulo
@@ -54,6 +58,7 @@ class IntegrationsServiceProvider extends ServiceProvider
                 LoadWooCommand::class,
                 ValidateWooCommand::class,
                 PullWooOrdersCommand::class,
+                ReconcileWooOrdersCommand::class,
             ]);
         }
     }

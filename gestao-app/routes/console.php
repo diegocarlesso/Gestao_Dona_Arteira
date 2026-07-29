@@ -63,3 +63,17 @@ Schedule::call(function (): void {
 Schedule::call(function (): void {
     Artisan::call('queue:prune-failed --hours=336');
 })->name('fila-limpeza')->weekly();
+
+/*
+| Reconciliação diária de pedidos Woo→ERP — ADR-0025, docs/16 §5.
+|
+| A rede de segurança: pega o pedido que o webhook perdeu e denuncia o total
+| editado no wp-admin. Na madrugada (docs/16 §2 pede horário de baixa), pelo
+| `Schedule::call` de novo — `Schedule::command` está fora de cogitação por
+| causa do `proc_open` bloqueado (P-15). Inerte enquanto o Woo está desligado:
+| o próprio comando confere `isEnabled()` e sai sem criar rodada. O
+| `withoutOverlapping` evita duas rodadas se uma noite passar dos 55 s.
+*/
+Schedule::call(function (): void {
+    Artisan::call('erp:woo:reconcile-orders');
+})->name('woo-reconciliacao')->dailyAt('03:30')->withoutOverlapping();

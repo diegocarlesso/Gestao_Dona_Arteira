@@ -20,4 +20,6 @@ Route::middleware(['web', 'auth', 'conta.ativa', 'senha.trocada', '2fa.confirmad
     Route::get('integracoes', [PanelController::class, 'index'])->name('integrations.panel');
     Route::post('integracoes/eventos/{event}/reprocessar', [PanelController::class, 'reprocessar'])
         ->name('integrations.reprocessar');
+    Route::post('integracoes/divergencias/{finding}/resolver', [PanelController::class, 'resolver'])
+        ->name('integrations.resolver');
 });

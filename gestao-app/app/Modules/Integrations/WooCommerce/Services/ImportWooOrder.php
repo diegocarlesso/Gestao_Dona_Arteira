@@ -130,7 +130,11 @@ class ImportWooOrder
                 notaInicial: $this->pendenciaInicial($status, $naoMapeados),
             );
 
-            IntegrationMapping::registrar('order', $resultado->orderId, $wooId);
+            // Congela a âncora de checksum (o total) no mapeamento — a linha
+            // de base que a reconciliação diária compara depois (ADR-0025).
+            // Só na criação; caminhos de duplicado/cancelamento não a
+            // reescrevem (BR-304).
+            IntegrationMapping::registrar('order', $resultado->orderId, $wooId, OrderChecksum::of($order));
 
             if ($resultado->confirmed) {
                 return ResultadoDaImportacao::importado($resultado->orderId);

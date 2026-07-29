@@ -1,6 +1,6 @@
 # 16 — Integração WooCommerce
 
-> **Status:** Em revisão · **Última atualização:** 2026-07-03 · **Responsável:** woocommerce-specialist
+> **Status:** Em revisão · **Última atualização:** 2026-07-29 · **Responsável:** woocommerce-specialist
 > **Regras:** BR-204, BR-304, BR-701…BR-705 · **Fase:** Gate 02 · **Documentos:** [Mapeamento de campos](01-mapeamento-de-campos.md)
 > Segue o framework da [pasta 15](../15-Integracoes/README.md); migração inicial é assunto da [pasta 17](../17-Migracao/README.md).
 
@@ -93,7 +93,41 @@ cancelamento).
 
 ## 5. Reconciliação (rede de segurança)
 
-Job diário (madrugada): compara por checksum produtos/estoques/últimos 7 dias de pedidos entre ERP e Woo → corrige divergência conforme tabela de conflito → relatório no painel de integrações; divergência recorrente = investigação (bug ou alguém editando no wp-admin — BR-702).
+Job diário na madrugada — a última peça do framework de integração, ao lado
+do webhook e da puxada (ADR-0007). Compara o que o site tem com o que o ERP
+importou e **reporta divergência no painel** de integrações. Não é KPI de
+negócio (não passa pela pasta 21): é a rede que pega o que os gatilhos em
+tempo real deixaram passar, e o detector de quem editou no wp-admin (BR-702).
+
+**Escopo atual: só pedidos.** A versão original desta seção previa
+reconciliar também produtos e estoque por checksum. As duas ficaram de fora
+por ora: dependem de publicação ERP→Woo que ainda não existe
+(`sync-produtos`/`sync-estoque` não implementados) e, no caso do estoque, de
+um saldo confiável que só virá com a contagem pós-ativação — a produção é
+majoritariamente sob demanda e hoje não há controle de estoque real (ver
+[17](../17-Migracao/README.md)). Reconciliar contra um lado que o ERP não
+publica seria comparar com o vazio. Ambas voltam ao escopo quando as
+sincronizações de saída existirem e o ERP tiver saldo real.
+
+Duas classes de divergência de pedido, na janela dos últimos 7 dias:
+
+- **Pedido ausente no ERP** — o site tem, o ERP não (webhook perdido: site
+  fora do ar, deploy). Woo é a origem do fato do pedido (BR-703), então a
+  reconciliação **importa** pelo mesmo `ImportWooOrder` da puxada — a
+  correção e o registro no painel saem de graça (vira um evento `order.pulled`,
+  idempotente por id).
+- **Divergência de valor** — pedido **já importado** cujo **total** mudou no
+  Woo depois da importação (alguém editando no wp-admin — BR-702; e BR-304
+  congela itens/valores no lado do ERP). Não se auto-corrige: é **alerta de
+  investigação**. Divergência recorrente no mesmo pedido = investigar (bug de
+  sync ou edição manual no site). O checksum é sobre o **total**, não o
+  status: status é coownado (o ERP empurra expedição/cancelamento de volta ao
+  site), então um delta de status é comportamento legítimo, não edição
+  indevida — e o cancelamento do site já é refletido pela puxada.
+
+A forma de persistir os achados e apresentá-los no painel — e o uso da
+coluna `integration_mappings.checksum` como âncora do total congelado —
+está no [ADR-0025](../27-ADR/ADR-0025-reconciliacao-pedidos-woo.md).
 
 ## 6. Dependências
 
