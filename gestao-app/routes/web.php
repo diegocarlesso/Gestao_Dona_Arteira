@@ -25,9 +25,7 @@ Route::redirect('/', '/dashboard')->name('home');
 // e só era barrado ao tentar qualquer outra coisa. A obrigatoriedade
 // valia em todo lugar menos na porta de entrada.
 Route::middleware(['auth', 'conta.ativa', 'senha.trocada', '2fa.confirmado'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 });
 
 require __DIR__.'/settings.php';

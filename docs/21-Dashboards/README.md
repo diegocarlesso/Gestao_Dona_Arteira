@@ -47,3 +47,15 @@ Toda visualização usa estas definições — divergência entre telas é bug.
 ## 6. Evoluções futuras
 
 - Metas mensais configuráveis com farol (fase 6) · TV do ateliê com painel de produção (fase 6) · comparativos ano a ano (após 12 meses de dados).
+
+## 7. Mínimo do Gate 02 (Dashboard Home)
+
+Este é o recorte inicial para entregar valor rápido focado em Vendas e Operação (Fulfillment):
+
+- **Vendas:** Venda do dia e do mês por canal (balcão/atacado/site), nº de pedidos e ticket médio.
+  - *Regra (Glossário):* Σ pedidos confirmados no período, cancelados excluídos.
+- **Funil de pedidos por status:** Rascunho → Confirmado → Em separação → Embalado → Expedido → Entregue (cancelados monitorados à parte).
+- **Fila de fulfillment:** Quantos a separar / a embalar / a expedir. Cada número deve levar à lista filtrada.
+- **Saúde da sync:** Pendências + rejeitados + resultado da última reconciliação, com link para `/integracoes`.
+- **Visão por papel:** `admin` vê o painel completo; `sales`/`fulfillment` veem a fila de fulfillment em grande destaque.
+- **Arquitetura (Padrão):** Endpoint agregado dedicado (Query Object), sem disparo de N queries (evitando N+1), com cache em Redis/banco de 60 segundos, retornando JSON otimizado para dataviz.
