@@ -1,29 +1,23 @@
 # 30 — Domínio da Dona Arteira
 
-> **Status:** Rascunho — **este documento se completa com entrevistas** · **Última atualização:** 2026-07-03 · **Responsável:** business-analyst
+> **Status:** Rascunho — **este documento se completa com entrevistas** · **Última atualização:** 2026-07-27 · **Responsável:** business-analyst
 > Aqui vive o conhecimento do NEGÓCIO (não do software). O que está confirmado vem das instruções do projeto e do sistema legado; o restante está explicitamente marcado como a descobrir.
 
-> 🔴 **CORREÇÃO 2026-07-27 — premissa central errada.** O dono confirmou
-> que a Dona Arteira **NÃO funde as peças**. Compra-as **prontas, mas
-> cruas** (sem pintura, nem sempre secas) de fornecedores; a "produção" é
-> **pintura + acabamento**. Não há fundição, não há moldes, não há
-> consumo de gesso para moldar. O texto abaixo (fundição em moldes) está
-> **errado** e será reescrito num remodelamento dedicado de Produção e
-> Compras. Processo real: **compra → recebimento (peça úmida) →
-> secagem/quarentena → pintura → acabamento → CQ → acabado → venda →
-> expedição → NF-e → financeiro**.
+> ✅ **Corrigido em 2026-07-27** — este documento já reflete a premissa
+> correta (a Dona Arteira **pinta**, não funde). Ver
+> [ADR-0023](../27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md)
+> (produção é pintura) e [ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)
+> (quarentena de secagem no recebimento).
 
 ## 1. O negócio (confirmado)
 
 A Dona Arteira **pinta artesanalmente e comercializa** peças decorativas
-em gesso. Compra as peças **prontas mas cruas** e as **pinta à mão**.
-Processo real: compra de peça crua → recebimento (peça úmida) →
-secagem/quarentena → **pintura manual** → acabamento → controle de
-qualidade → estoque → venda → separação → embalagem → expedição → NF-e →
-financeiro.
-
-> O parágrafo original dizia "fabrica artesanalmente… fundição em moldes".
-> Falso — ver a correção acima.
+em gesso. Compra as peças **prontas mas cruas** (sem pintura, e nem sempre
+secas) e as **pinta à mão**. Processo real: compra de peça crua →
+recebimento (peça úmida) → **quarentena de secagem** → liberação →
+**pintura manual** → acabamento → controle de qualidade → estoque → venda →
+separação → embalagem → expedição → NF-e → financeiro. Não há fundição,
+moldes nem consumo de gesso para moldar ([ADR-0023](../27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md)).
 
 Canais de venda hoje:
 - **E-commerce** próprio em WordPress/WooCommerce (produtos, clientes, pedidos, imagens, estoque e histórico — patrimônio de dados a migrar).
@@ -40,23 +34,23 @@ Evidências do legado relevantes para o negócio:
 
 | Característica | Consequência no ERP |
 |---|---|
-| Gesso é frágil | perdas por quebra em produção, manuseio e transporte são evento normal → registro de perdas em todo o fluxo (BR-104) + embalagem cuidadosa (checklist) |
-| Pintura manual | peças "iguais" variam; tempo de pintura é gargalo; produtividade por pessoa interessa |
+| Gesso é frágil | perdas por quebra em recebimento/secagem, pintura, manuseio e transporte são evento normal → registro de perdas em todo o fluxo (recebimento/secagem: BR-405; produção: BR-104) + embalagem cuidadosa (checklist) |
+| Pintura manual | peças "iguais" variam; tempo de pintura é gargalo; produtividade por pessoa interessa; minutos de bancada entram no custo (BR-108) |
 | Secagem depende do clima | lead time variável → datas prometidas com folga; `drying_days` por peça é estimativa, não contrato |
-| Moldes se desgastam | vida útil controlada; molde novo é investimento (categoria financeira própria) |
+| Peça crua chega úmida do fornecedor | entra em **quarentena de secagem** no recebimento; indisponível para pintar até a **liberação** (BR-404, [ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) |
 | Produção em lotes pequenos | OPs de poucas dezenas; UX de apontamento deve ser leve |
 | Sazonalidade provável (datas comemorativas) | picos de venda → buffer de estoque no site, proibição de cutover em nov/dez, planejamento de produção antecipado |
 
 ## 3. Roteiro de descoberta (entrevistas obrigatórias antes dos Gates 02–03)
 
-### Produção (com quem produz)
-1. Quais as etapas reais e sua ordem? Alguma peça pula etapas (ex.: vendida crua)?
-2. Quantos dias de secagem por tipo/tamanho de peça? Varia com estação?
-3. Quem faz o quê (fundição/pintura/acabamento)? Quantas pessoas?
-4. % típico de quebra por etapa? Onde dói mais?
-5. Moldes: quantos existem? São identificados/numerados? Quantos usos aguentam? Quem os fabrica (própria/terceiro)?
-6. Receita (ficha técnica): existe anotada? kg de gesso por peça? tintas?
-7. Produz-se para estoque, sob encomenda, ou misto? Como decidem o que produzir na semana?
+### Produção — pintura (com quem pinta)
+1. Quais as etapas reais e sua ordem (pintura → acabamento → CQ)? Alguma peça pula etapas?
+2. Quantos dias de secagem por tipo/tamanho de peça? Varia com a estação? **Como sabem que a peça secou e pode ser liberada para pintura** (BR-404)?
+3. Quem pinta o quê? Quantas pessoas pintam? Há especialização por cor/técnica?
+4. % típico de quebra por etapa (recebimento/secagem, pintura, acabamento, CQ)? Onde dói mais?
+5. Tempo médio de pintura por peça/cor (minutos de bancada)? Medem isso hoje? — insumo do custeio (BR-108).
+6. Receita de pintura (ficha técnica): existe anotada? Quais tintas/vernizes e quanto por peça/cor?
+7. Pinta-se para estoque, sob encomenda, ou misto? Como decidem o que pintar na semana?
 8. O que anotam hoje (caderno/planilha)? — migrar o hábito, não impor um novo.
 
 ### Vendas

@@ -1,13 +1,13 @@
 # 98 — Perguntas para o Negócio
 
-> **Status:** Em revisão · **Última atualização:** 2026-07-06 · **Responsável:** business-analyst
+> **Status:** Em revisão · **Última atualização:** 2026-07-27 · **Responsável:** business-analyst
 > Dúvidas que **não puderam ser inferidas com segurança** a partir do dump ou da documentação. Cada uma explica **por que a resposta importa para a arquitetura do ERP**. Respostas viram BRs validadas (pasta 01) e parametrizações.
 
 ## Produção
 
 **P-PROD-01 · Composição dos kits/trios (BOM).** Quais peças e **quantidades** compõem cada kit/trio? O site só tem a lista textual (`pa_peca-kit-1`). *Por quê:* 30% do catálogo é composto e lidera vendas; sem BOM não há como planejar produção, custear nem reservar componentes ([04](04-atributos.md)/[13](13-oportunidades.md)).
 
-**P-PROD-02 · Etapas reais e exceções.** As etapas do glossário (Fundição→Secagem→Pintura→Acabamento→CQ) batem com a realidade? Alguma peça pula etapas (vendida crua)? *Por quê:* define a máquina de estados da OP ([BR-102](../01-Regras-de-Negocio/01-registro-de-regras.md)).
+**P-PROD-02 · Etapas reais e exceções.** As etapas (Pintura→Acabamento→CQ) batem com a realidade? Alguma peça pula etapas? A secagem **não é etapa de produção** — é quarentena de recebimento da peça crua úmida ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)). *Por quê:* define a máquina de estados da OP de pintura ([BR-102](../01-Regras-de-Negocio/01-registro-de-regras.md)).
 
 **P-PROD-03 · Revenda vs. fabricação própria.** Incensos (vareta/cone) e itens de **MDF** são comprados prontos? Que % do catálogo é revenda? *Por quê:* `kind` do produto, fluxo de compras e NCM fiscal diferem para revenda.
 

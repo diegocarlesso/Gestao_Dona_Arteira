@@ -1,6 +1,6 @@
 # Registro de Regras de Negócio
 
-> **Status:** Em revisão · **Última atualização:** 2026-07-03 · **Responsável:** business-analyst
+> **Status:** Em revisão · **Última atualização:** 2026-07-27 · **Responsável:** business-analyst
 > Legenda de status: 💡 Hipótese · ✅ Validada · 🔧 Implementada · ❌ Revogada
 
 Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data). Regras extraídas do sistema legado indicam origem `legado`.
@@ -23,14 +23,15 @@ Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data)
 
 | ID | Regra | Origem | Status |
 |---|---|---|---|
-| BR-101 | Toda produção ocorre via Ordem de Produção (OP); não existe entrada de produto acabado sem OP (exceto ajuste de inventário auditado) | decisão nova | 💡 |
-| BR-102 | A OP percorre etapas fixas: Fundição → Secagem → Pintura → Acabamento → Controle de Qualidade; etapas podem ser puladas apenas por configuração da peça (ex.: peça vendida crua, sem pintura) | entrevista pendente | 💡 |
-| BR-103 | Consumo de matéria-prima (gesso, tinta, verniz) é apontado na OP e baixa estoque de MP via movimento | decisão nova | 💡 |
-| BR-104 | Perdas (quebras) são registradas por etapa com motivo; peça reprovada no CQ vira perda ou retrabalho | entrevista pendente | 💡 |
-| BR-105 | Fundição consome usos do molde; molde tem vida útil estimada e alerta de reposição | entrevista pendente | 💡 confirmar se controlam moldes hoje |
-| BR-106 | Secagem tem lead time mínimo por peça (dias); peças em secagem são WIP indisponível para venda | entrevista pendente | 💡 |
-| BR-107 | Só peças aprovadas no CQ entram no estoque de produto acabado | decisão nova | 💡 |
-| BR-108 | Custo de produção = MP consumida (custo médio) + custos configuráveis (mão de obra/overhead por rateio simples); fase 3 usa custo padrão revisado periodicamente | decisão nova | 💡 |
+| BR-101 | Toda produção (pintura) ocorre via Ordem de Produção (OP); não existe entrada de peça acabada sem OP (exceto ajuste de inventário auditado) | decisão nova ([ADR-0023](../27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md)) | 💡 |
+| BR-102 | A OP percorre etapas: **Pintura → Acabamento → Controle de Qualidade**, configuráveis por peça. Não há fundição nem secagem como etapa de produção — a secagem é quarentena de recebimento (BR-404) | decisão nova ([ADR-0023](../27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md)) | 💡 |
+| BR-103 | Consumo de **peça crua + tinta/verniz** é apontado na OP e baixa estoque via movimento `production_input` | decisão nova ([ADR-0023](../27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md)) | 💡 |
+| BR-104 | Perdas (quebras) são registradas por etapa — **pintura/acabamento/CQ** — com motivo; peça reprovada no CQ vira perda ou retrabalho. Quebra **antes** da OP (recebimento/secagem) é perda de estoque (BR-405), não de produção | entrevista pendente | 💡 |
+| BR-105 | ~~Fundição consome usos do molde; molde tem vida útil estimada e alerta de reposição~~ — **não há moldes nem fundição** ([ADR-0023](../27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md)) | entrevista pendente | ❌ Revogada (2026-07-27) |
+| BR-106 | ~~Secagem tem lead time mínimo por peça (dias); peças em secagem são WIP indisponível para venda~~ — secagem **não é etapa de produção**; virou quarentena de recebimento (BR-109/BR-404) ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) | entrevista pendente | ❌ Revogada como regra de produção (2026-07-27) |
+| BR-107 | Só peças aprovadas no CQ entram no estoque de peça acabada | decisão nova | 💡 |
+| BR-108 | Custo da peça acabada por **custeio ABC**: peça crua (custo médio) + insumos (tinta/verniz) + **mão de obra de pintura (minutos de bancada × custo/hora)** + overhead rateado; fase 3 pode usar custo/hora padrão configurável e evoluir para apontamento de tempo por peça/lote | decisão nova ([ADR-0023](../27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md)) | 💡 |
+| BR-109 | OP de pintura só consome peça crua **seca e liberada** (localização Ateliê); peça crua em `quarantine` é indisponível para produção | decisão nova ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) | 💡 |
 
 ## BR-2xx — Estoque
 
@@ -42,7 +43,7 @@ Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data)
 | BR-204 | Estoque publicado no WooCommerce = disponível (físico − reservado) − buffer de segurança configurável por produto | decisão nova | 💡 definir buffer padrão |
 | BR-205 | Ajuste de inventário exige contagem registrada, motivo e aprovação de quem NÃO fez a contagem (segregação) | decisão nova | 💡 |
 | BR-206 | Custeio por média móvel: cada entrada por compra/produção recalcula o custo médio do item | decisão nova | 💡 validar com contador |
-| BR-207 | Estoque é segmentado por tipo: matéria-prima, em processo (WIP), produto acabado, embalagem, revenda | decisão nova | 💡 |
+| BR-207 | Estoque é segmentado por tipo: **peça crua**, **peça acabada**, matéria-prima, em processo (WIP — OPs abertas), embalagem, revenda | decisão nova | 💡 |
 
 ## BR-3xx — Vendas
 
@@ -62,9 +63,11 @@ Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data)
 
 | ID | Regra | Origem | Status |
 |---|---|---|---|
-| BR-401 | Entrada de MP em estoque só via recebimento de pedido de compra (com conferência de quantidade) ou ajuste auditado | decisão nova | 💡 |
+| BR-401 | Entrada de **peça crua, MP, insumo ou revenda** em estoque só via recebimento de pedido de compra (com conferência de quantidade) ou ajuste auditado; peça crua entra em **quarentena** (BR-404) | decisão nova | 💡 |
 | BR-402 | Recebimento atualiza custo médio do item e gera conta a pagar | decisão nova | 💡 |
 | BR-403 | Divergência entre pedido e recebimento (falta/sobra/avaria) é registrada e não bloqueia entrada parcial | decisão nova | 💡 |
+| BR-404 | Recebimento de peça crua entra na localização `quarantine`; não fica liberada para pintar até a liberação da secagem (default `received_at + drying_days`; manual — padrão — ou por data) | decisão nova ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) | 💡 |
+| BR-405 | Cada recebimento é um lote (fornecedor + data); a taxa de quebra por fornecedor/lote é medida pelas perdas (`loss`) que referenciam o recebimento | decisão nova ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) | 💡 |
 
 ## BR-5xx — Financeiro
 

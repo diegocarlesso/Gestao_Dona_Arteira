@@ -12,7 +12,7 @@ Definir os padrões de engenharia do backend: estrutura de pastas modular, papel
 ```text
 app/
 ├── Modules/
-│   ├── Catalog/        # produtos, categorias, preços, embalagens, moldes
+│   ├── Catalog/        # produtos, categorias, preços, embalagens
 │   ├── Production/     # OPs, etapas, perdas, consumo
 │   ├── Inventory/      # movimentos, saldos, reservas, contagens
 │   ├── Sales/          # pedidos, expedição, clientes*

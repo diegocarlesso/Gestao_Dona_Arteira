@@ -17,7 +17,7 @@ Aplicamos **DDD estratégico completo** (contextos, linguagem ubíqua, mapa de c
 ```mermaid
 flowchart TB
     subgraph nucleo["Núcleo (core domain)"]
-        PROD["🏺 Produção<br/>OPs, etapas, moldes, perdas"]
+        PROD["🎨 Produção<br/>OPs de pintura, etapas, perdas"]
         EST["📦 Estoque<br/>ledger, reservas, custeio"]
     end
     subgraph suporte["Suporte"]
@@ -42,7 +42,7 @@ flowchart TB
     INT -. "ACL: Woo, SEFAZ, Melhor Envio" .-> VEN & CAT & EST & FIS
 ```
 
-**Núcleo do negócio é Produção + Estoque**: é o que nenhum sistema de prateleira modela bem para gesso artesanal (moldes, secagem, quebra, pintura manual). Vendas/Financeiro/Fiscal são importantes, mas convencionais.
+**Núcleo do negócio é Produção + Estoque**: é o que nenhum sistema de prateleira modela bem para gesso artesanal (pintura manual, secagem/quarentena da peça crua, quebra em qualquer etapa, custeio com mão de obra de bancada). Vendas/Financeiro/Fiscal são importantes, mas convencionais.
 
 ### Relações entre contextos
 
@@ -54,9 +54,8 @@ flowchart TB
 | Agregado (raiz) | Contexto | Invariantes principais |
 |---|---|---|
 | `Product` (peça) | Catálogo | SKU único e imutável (BR-002); dados fiscais completos antes de emitir NF-e (BR-606) |
-| `ProductionOrder` (OP) | Produção | Etapas na ordem configurada (BR-102); qty_produzida + perdas ≤ qty_planejada; só CQ aprovado gera entrada em PA (BR-107) |
-| `Mold` (molde) | Produção | Usos ≤ vida útil (alerta, não bloqueio) (BR-105) |
-| `InventoryItem` (saldo por produto×local) | Estoque | Saldo ≥ 0 (BR-201); saldo = Σ movimentos (BR-202); disponível = físico − reservado |
+| `ProductionOrder` (OP de pintura) | Produção | Consome peça crua seca + insumos (tinta/verniz) → produz peça acabada; etapas painting→finishing→qc (BR-102); qty_produzida + perdas ≤ qty_planejada; só CQ aprovado gera entrada em PA (BR-107) |
+| `InventoryItem` (saldo por produto×local) | Estoque | Saldo ≥ 0 (BR-201); saldo = Σ movimentos (BR-202); disponível = físico − reservado; peça crua em `quarantine` não é disponível para pintar (BR-109) |
 | `Order` (pedido) | Vendas | Transições válidas da máquina de estados (BR-303); preço congelado por item (BR-302); reserva ↔ status coerentes (BR-203) |
 | `PurchaseOrder` | Compras | Recebido ≤ pedido + tolerância; divergências registradas (BR-403) |
 | `Receivable`/`Payable` (título) | Financeiro | Σ baixas ≤ valor; estorno por contrapartida (BR-504) |
@@ -67,7 +66,7 @@ Regra prática: **transação = fronteira do agregado**. Operações que tocam d
 
 ## 5. Linguagem ubíqua
 
-O vocabulário oficial vive no [Glossário](../29-Glossario/README.md). Termos de código derivam dele: `Piece` foi mantido do legado? **Não** — no ERP o termo é `Product` (alinhado ao Woo), com `kind = finished_good | raw_material | packaging | resale | supply`; "peça" permanece na UI em pt-BR. Mapeamentos completos por contexto no doc de banco (pasta 04).
+O vocabulário oficial vive no [Glossário](../29-Glossario/README.md). Termos de código derivam dele: `Piece` foi mantido do legado? **Não** — no ERP o termo é `Product` (alinhado ao Woo), com `kind = finished_good | raw_piece | raw_material | packaging | resale | supply`; "peça" permanece na UI em pt-BR. Mapeamentos completos por contexto no doc de banco (pasta 04).
 
 ## 6. Dependências
 
