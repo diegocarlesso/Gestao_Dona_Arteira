@@ -12,9 +12,12 @@ use App\Modules\Integrations\WooCommerce\Console\TriageWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\ValidateWooCommand;
 use App\Modules\Integrations\WooCommerce\Listeners\CancelarNoWoo;
 use App\Modules\Integrations\WooCommerce\Listeners\EnviarExpedicaoAoWoo;
+use App\Modules\Integrations\WooCommerce\Models\WooWebhookEvent;
+use App\Modules\Integrations\WooCommerce\Policies\WooWebhookEventPolicy;
 use App\Modules\Sales\Events\OrderCancelled;
 use App\Modules\Sales\Events\OrderShipped;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -31,6 +34,11 @@ class IntegrationsServiceProvider extends ServiceProvider
         // Webhooks entram por aqui (docs/16 §4). Fora do grupo `web`: sem
         // CSRF nem sessão, autenticados pela assinatura HMAC (BR-701).
         $this->loadRoutesFrom(__DIR__.'/../Routes/webhooks.php');
+
+        // Painel operacional (autenticado), docs/16 §5.
+        $this->loadRoutesFrom(__DIR__.'/../Routes/web.php');
+
+        Gate::policy(WooWebhookEvent::class, WooWebhookEventPolicy::class);
 
         // Saída ERP→Woo: expedição devolve status + rastreio; cancelamento
         // devolve `cancelled` (sync-pedidos §7). Registrado aqui, no módulo

@@ -4,7 +4,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { usePermissions } from '@/lib/permissions';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { Boxes, LayoutGrid, Package, ShoppingCart, Users } from 'lucide-react';
+import { Boxes, LayoutGrid, Package, Plug, ShoppingCart, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 
 type ItemDoMenu = NavItem & { permissao?: string; children?: ItemDoMenu[] };
@@ -65,6 +65,12 @@ const ITENS: ItemDoMenu[] = [
                 permissao: 'sales.view',
             },
         ],
+    },
+    {
+        title: 'Integrações',
+        url: '/integracoes',
+        icon: Plug,
+        permissao: 'integrations.manage',
     },
     {
         title: 'Usuários',
