@@ -44,7 +44,7 @@ class EnviarEmailPedidoConfirmado
             $produto = $resumos[$item->product_id] ?? null;
 
             return [
-                'nome' => $produto?->name ?? "Produto #{$item->product_id}",
+                'nome' => $produto === null ? "Produto #{$item->product_id}" : $produto->name,
                 'qtd' => self::formatarQuantidade($item->qty),
                 'preco' => Money::of($item->unit_price, 'BRL')->formatTo('pt_BR'),
             ];
