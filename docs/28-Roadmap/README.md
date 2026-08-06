@@ -39,6 +39,7 @@ Toda a documentação desta pasta `docs/`, agentes, skills, ADRs. **Saída:** de
 **Entrega:** OPs de pintura com etapas/perdas (08), recebimento com quarentena de secagem (11), custeio com mão de obra, fichas técnicas, custo médio, sugestão de reposição, encomendas ligadas a OPs.
 **Critérios de saída:** 100% da produção passando por OP há 30 dias · fichas técnicas dos 50 produtos mais vendidos · custo médio conferido pelo dono.
 **Pré-requisito:** entrevistas da pasta 30 concluídas e BRs 1xx validadas.
+**Desenho do módulo:** Produção nasce com um ponto de extensão único (estratégia de produção plugável — [ADR-0026](../27-ADR/ADR-0026-producao-como-estrategia-plugavel.md)), do qual "pintura sobre peça crua comprada" ([ADR-0023](../27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md)) é a única implementação necessária hoje. Não muda o pré-requisito acima nem generaliza o resto do sistema.
 
 ## Gate 04 — Financeiro
 
