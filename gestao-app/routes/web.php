@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 /*
 | A raiz leva direto ao sistema. Era a página de boas-vindas do starter
@@ -25,7 +25,7 @@ Route::redirect('/', '/dashboard')->name('home');
 // e só era barrado ao tentar qualquer outra coisa. A obrigatoriedade
 // valia em todo lugar menos na porta de entrada.
 Route::middleware(['auth', 'conta.ativa', 'senha.trocada', '2fa.confirmado'])->group(function () {
-    Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 });
 
 require __DIR__.'/settings.php';
