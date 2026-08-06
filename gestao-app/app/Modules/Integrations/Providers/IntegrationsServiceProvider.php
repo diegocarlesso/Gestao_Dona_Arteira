@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Integrations\Providers;
 
+use App\Modules\Integrations\Email\Listeners\EnviarEmailPedidoConfirmado;
+use App\Modules\Integrations\Email\Listeners\EnviarEmailPedidoEnviado;
 use App\Modules\Integrations\WooCommerce\Console\ApproveWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\ExtractWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\LoadWooCommand;
@@ -15,6 +17,7 @@ use App\Modules\Integrations\WooCommerce\Listeners\EnviarExpedicaoAoWoo;
 use App\Modules\Integrations\WooCommerce\Models\WooWebhookEvent;
 use App\Modules\Integrations\WooCommerce\Policies\WooWebhookEventPolicy;
 use App\Modules\Sales\Events\OrderCancelled;
+use App\Modules\Sales\Events\OrderConfirmed;
 use App\Modules\Sales\Events\OrderShipped;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -45,6 +48,11 @@ class IntegrationsServiceProvider extends ServiceProvider
         // que reage — Vendas não sabe que o Woo escuta (ADR-0020).
         Event::listen(OrderShipped::class, EnviarExpedicaoAoWoo::class);
         Event::listen(OrderCancelled::class, CancelarNoWoo::class);
+
+        // E-mail transacional (docs/15, BR-310): confirmação e rastreio.
+        // Mesmo princípio — Vendas não sabe que existe e-mail.
+        Event::listen(OrderConfirmed::class, EnviarEmailPedidoConfirmado::class);
+        Event::listen(OrderShipped::class, EnviarEmailPedidoEnviado::class);
 
         if ($this->app->runningInConsole()) {
             $this->commands([
