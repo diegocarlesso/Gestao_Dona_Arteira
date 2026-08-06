@@ -29,6 +29,9 @@ class GetDashboardMetricsQuery
         });
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function getVendasMetrics(): array
     {
         $hoje = Carbon::today();
@@ -86,6 +89,9 @@ class GetDashboardMetricsQuery
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function getFunilMetrics(): array
     {
         $statusCounts = Order::query()
@@ -105,6 +111,9 @@ class GetDashboardMetricsQuery
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function getFulfillmentMetrics(): array
     {
         $statusCounts = Order::query()
@@ -130,6 +139,9 @@ class GetDashboardMetricsQuery
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function getSyncMetrics(): array
     {
         // Saúde da sync: pendências + rejeitados + resultado da última reconciliação
@@ -151,7 +163,7 @@ class GetDashboardMetricsQuery
             'rejeitados' => $eventos->rejeitados ?? 0,
             'ultima_reconciliacao' => $ultimaReconciliacao ? [
                 'status' => $ultimaReconciliacao->status,
-                'data' => $ultimaReconciliacao->started_at?->format('d/m/Y H:i'),
+                'data' => $ultimaReconciliacao->started_at->format('d/m/Y H:i'),
                 'falhas' => $ultimaReconciliacao->failed,
             ] : null,
         ];
