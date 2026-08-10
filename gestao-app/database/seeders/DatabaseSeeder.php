@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use Database\Seeders\Finance\FinanceCategorySeeder;
 use Database\Seeders\Identity\AdminInicialSeeder;
 use Database\Seeders\Identity\RolePermissionSeeder;
 use Database\Seeders\Inventory\LocalPadraoSeeder;
@@ -24,6 +25,7 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             AdminInicialSeeder::class,
             LocalPadraoSeeder::class,
+            FinanceCategorySeeder::class,
         ]);
     }
 }

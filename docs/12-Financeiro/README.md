@@ -1,8 +1,17 @@
 # 12 — Financeiro
 
-> **Status:** Em revisão · **Última atualização:** 2026-07-03 · **Responsável:** financial-specialist
+> **Status:** Em revisão · **Última atualização:** 2026-08-10 · **Responsável:** financial-specialist
 > **Regras:** BR-501…BR-512 · **Fase:** Gate 04
 > **Documentos:** [Cobrança (boleto e PIX com vencimento)](01-cobranca-e-boletos.md) — ⚠️ escopo aguardando decisão do dono ([ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md))
+
+> ⚠️ **Fatia mínima adiantada para P0 (decisão da diretoria, 2026-08-10).**
+> O módulo de Compras (pasta 11, Fase 1) precisa gerar conta a pagar
+> (BR-501/502) antes do Gate 04 começar de fato. Nasce agora só o
+> necessário: título a pagar (`Payable`) e uma categoria simples (BR-503,
+> sem o plano de contas completo de §4). **Não** entram nesta fatia: baixa
+> (mesmo que BR-502 já a descreva), contas financeiras, fluxo de caixa,
+> cobrança (boleto/PIX) — tudo isso continua Gate 04 completo, no momento
+> planejado.
 
 ## 1. Objetivo
 

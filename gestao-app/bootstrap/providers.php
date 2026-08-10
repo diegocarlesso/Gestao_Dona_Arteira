@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Catalog\Providers\CatalogServiceProvider;
+use App\Modules\Finance\Providers\FinanceServiceProvider;
 use App\Modules\Identity\Providers\IdentityServiceProvider;
 use App\Modules\Integrations\Providers\IntegrationsServiceProvider;
 use App\Modules\Inventory\Providers\InventoryServiceProvider;
@@ -20,6 +21,9 @@ return [
     // Estoque depois do Catálogo: o movimento aponta para produto, e não
     // o contrário (pasta 09 §7).
     InventoryServiceProvider::class,
+    // Financeiro antes de Vendas e Compras: os dois geram título por
+    // dentro do Service dele, nunca o contrário.
+    FinanceServiceProvider::class,
     SalesServiceProvider::class,
     IntegrationsServiceProvider::class,
 ];
