@@ -14,6 +14,7 @@ use App\Modules\Fiscal\Jobs\EmitNfeForOrder;
 use App\Modules\Fiscal\Models\FiscalSeries;
 use App\Modules\Fiscal\Models\Invoice;
 use App\Modules\Fiscal\Models\TaxProfile;
+use App\Modules\Fiscal\Services\BuildInvoiceFromOrder;
 use App\Modules\Fiscal\Services\Gateways\NullNfeGateway;
 use App\Modules\Inventory\Enums\MovementType;
 use App\Modules\Inventory\Models\Location;
@@ -156,7 +157,7 @@ describe('montagem da nota', function () {
         $perfil = perfilDeVendaLocal();
 
         (new EmitNfeForOrder($pedido->id))->handle(
-            app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class),
+            app(BuildInvoiceFromOrder::class),
             app(NfeGatewayInterface::class),
         );
 
@@ -174,7 +175,7 @@ describe('montagem da nota', function () {
         $pedido = pedidoDoSiteConfirmado();
 
         (new EmitNfeForOrder($pedido->id))->handle(
-            app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class),
+            app(BuildInvoiceFromOrder::class),
             app(NfeGatewayInterface::class),
         );
 
@@ -200,7 +201,7 @@ describe('montagem da nota', function () {
         $pedido = pedidoDoSiteConfirmado(produto: $produto);
 
         (new EmitNfeForOrder($pedido->id))->handle(
-            app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class),
+            app(BuildInvoiceFromOrder::class),
             app(NfeGatewayInterface::class),
         );
 
@@ -222,7 +223,7 @@ describe('montagem da nota', function () {
         $pedido = pedidoDoSiteConfirmado(cliente: $cliente);
 
         (new EmitNfeForOrder($pedido->id))->handle(
-            app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class),
+            app(BuildInvoiceFromOrder::class),
             app(NfeGatewayInterface::class),
         );
 
@@ -238,7 +239,7 @@ describe('montagem da nota', function () {
         $pedido = pedidoDoSiteConfirmado(cliente: clienteFaturavel('SP'));
 
         (new EmitNfeForOrder($pedido->id))->handle(
-            app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class),
+            app(BuildInvoiceFromOrder::class),
             app(NfeGatewayInterface::class),
         );
 
@@ -252,7 +253,7 @@ describe('montagem da nota', function () {
         $pedido = pedidoDoSiteConfirmado();
 
         (new EmitNfeForOrder($pedido->id))->handle(
-            app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class),
+            app(BuildInvoiceFromOrder::class),
             app(NfeGatewayInterface::class),
         );
 
@@ -273,7 +274,7 @@ describe('numeração', function () {
             $pedido = pedidoDoSiteConfirmado(cliente: clienteFaturavel(), produto: $produto);
 
             (new EmitNfeForOrder($pedido->id))->handle(
-                app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class),
+                app(BuildInvoiceFromOrder::class),
                 app(NfeGatewayInterface::class),
             );
 
@@ -289,8 +290,8 @@ describe('numeração', function () {
         $pedido = pedidoDoSiteConfirmado();
         $job = new EmitNfeForOrder($pedido->id);
 
-        $job->handle(app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class), app(NfeGatewayInterface::class));
-        $job->handle(app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class), app(NfeGatewayInterface::class));
+        $job->handle(app(BuildInvoiceFromOrder::class), app(NfeGatewayInterface::class));
+        $job->handle(app(BuildInvoiceFromOrder::class), app(NfeGatewayInterface::class));
 
         expect(Invoice::query()->where('order_id', $pedido->id)->count())->toBe(1)
             ->and(Invoice::query()->where('order_id', $pedido->id)->firstOrFail()->number)->toBe(1)
@@ -306,7 +307,7 @@ describe('numeração', function () {
         $pedido = pedidoDoSiteConfirmado();
 
         (new EmitNfeForOrder($pedido->id))->handle(
-            app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class),
+            app(BuildInvoiceFromOrder::class),
             app(NfeGatewayInterface::class),
         );
 
@@ -326,7 +327,7 @@ describe('transmissão', function () {
         $pedido = pedidoDoSiteConfirmado();
 
         (new EmitNfeForOrder($pedido->id))->handle(
-            app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class),
+            app(BuildInvoiceFromOrder::class),
             app(NfeGatewayInterface::class),
         );
 
@@ -352,7 +353,7 @@ describe('transmissão', function () {
         app()->bind(NfeGatewayInterface::class, GatewayQueAutoriza::class);
 
         (new EmitNfeForOrder($pedido->id))->handle(
-            app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class),
+            app(BuildInvoiceFromOrder::class),
             app(NfeGatewayInterface::class),
         );
 
@@ -376,7 +377,7 @@ describe('transmissão', function () {
         app()->bind(NfeGatewayInterface::class, GatewayQueRejeita::class);
 
         (new EmitNfeForOrder($pedido->id))->handle(
-            app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class),
+            app(BuildInvoiceFromOrder::class),
             app(NfeGatewayInterface::class),
         );
 
@@ -396,12 +397,12 @@ describe('transmissão', function () {
 
         app()->bind(NfeGatewayInterface::class, GatewayQueAutoriza::class);
         $job = new EmitNfeForOrder($pedido->id);
-        $job->handle(app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class), app(NfeGatewayInterface::class));
+        $job->handle(app(BuildInvoiceFromOrder::class), app(NfeGatewayInterface::class));
 
         // Segunda passada com um gateway que rejeitaria: se a nota fosse
         // retransmitida, o status mudaria — e nota autorizada é imutável.
         app()->bind(NfeGatewayInterface::class, GatewayQueRejeita::class);
-        $job->handle(app(App\Modules\Fiscal\Services\BuildInvoiceFromOrder::class), app(NfeGatewayInterface::class));
+        $job->handle(app(BuildInvoiceFromOrder::class), app(NfeGatewayInterface::class));
 
         expect(Invoice::query()->where('order_id', $pedido->id)->firstOrFail()->status)
             ->toBe(InvoiceStatus::Authorized);

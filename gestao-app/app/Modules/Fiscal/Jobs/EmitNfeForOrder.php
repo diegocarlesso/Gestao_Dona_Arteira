@@ -48,7 +48,6 @@ class EmitNfeForOrder implements ShouldQueue
     use Dispatchable;
     use InteractsWithQueue;
     use Queueable;
-
     use SerializesModels;
 
     /** Cinco tentativas — mesmo perfil do `ProcessWooOrder`. */
