@@ -25,6 +25,14 @@ use Illuminate\Support\Facades\DB;
  * A reserva sai do **local padrão**. Multi-local é evolução (pasta 09
  * §10); enquanto há um ateliê só, escolher local a cada item seria
  * perguntar o óbvio.
+ *
+ * **`config('sales.require_stock_reservation')` desligado**: confirma sem
+ * reservar nada (decisão da diretoria, 2026-08-10 — validar o fluxo de
+ * pedidos antes de existir contagem física real). O pedido sai
+ * `Confirmed` normalmente, `FulfillmentService::expedir()` só encontra
+ * zero reserva ativa para consumir e segue (já tolera isso). Voltar a
+ * flag para `true` antes do cutover — sem ela, BR-204 (disponível
+ * publicado no site) e a proteção contra oversell não têm o que proteger.
  */
 class ConfirmOrderService
 {
@@ -47,18 +55,20 @@ class ConfirmOrderService
         }
 
         return DB::transaction(function () use ($pedido, $itens, $confirmadoPor): Order {
-            foreach ($itens as $item) {
-                // Sem local: a reserva resolve o padrão por dentro do
-                // Estoque (ADR-0020 — Vendas não conhece `Location`). Lança
-                // ReservaInvalida se faltar disponível, derrubando a
-                // transação inteira — o pedido não confirma pela metade.
-                $this->reservas->reservar(
-                    productId: $item->product_id,
-                    qty: $item->qty,
-                    referenceType: 'order',
-                    referenceId: $pedido->id,
-                    createdBy: $confirmadoPor,
-                );
+            if (config('sales.require_stock_reservation', true)) {
+                foreach ($itens as $item) {
+                    // Sem local: a reserva resolve o padrão por dentro do
+                    // Estoque (ADR-0020 — Vendas não conhece `Location`). Lança
+                    // ReservaInvalida se faltar disponível, derrubando a
+                    // transação inteira — o pedido não confirma pela metade.
+                    $this->reservas->reservar(
+                        productId: $item->product_id,
+                        qty: $item->qty,
+                        referenceType: 'order',
+                        referenceId: $pedido->id,
+                        createdBy: $confirmadoPor,
+                    );
+                }
             }
 
             $this->transicionar($pedido, OrderStatus::Confirmed, $confirmadoPor);

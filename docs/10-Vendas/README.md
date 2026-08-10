@@ -92,6 +92,15 @@ O que entra em cada corte, e o porquê da ordem:
 > depois do inventário inicial (cutover). O mecanismo está correto e
 > testado; a operação o exercita quando houver saldo.
 >
+> ⚠️ **`sales.require_stock_reservation` (decisão da diretoria,
+> 2026-08-10).** Flag em `config/sales.php`
+> (`SALES_REQUIRE_STOCK_RESERVATION`, default `true` — a regra vale).
+> Desligada, `ConfirmOrderService` confirma sem reservar nada, para
+> validar o fluxo de pedidos em produção antes de existir contagem
+> física real. **Precisa voltar para `true` antes do cutover com o
+> cliente** — desligada, BR-204 (disponível publicado no site) e a
+> proteção contra oversell não têm o que proteger.
+>
 > **Falta no pedido:** desconto com alçada (BR-305), encomenda sem estoque
 > (BR-307, depende de Produção remodelada), e a expedição que consome a
 > reserva (corte 3, onde entra a NF-e do Gate 05).

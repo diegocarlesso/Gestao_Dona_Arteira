@@ -140,6 +140,19 @@ it('não reserva nada quando um item não cabe no disponível', function () {
         ->and(InventoryBalance::query()->where('product_id', $ok->id)->value('qty_reserved'))->toBe('0.000');
 });
 
+it('com sales.require_stock_reservation desligado, confirma sem reservar mesmo sem saldo', function () {
+    config(['sales.require_stock_reservation' => false]);
+
+    $semSaldo = produtoVendavel('50.00', '0');
+    $pedido = abrirPedido([['product' => $semSaldo->public_id, 'qty' => '5']]);
+
+    app(ConfirmOrderService::class)->handle($pedido);
+
+    expect($pedido->fresh()->status)->toBe(OrderStatus::Confirmed)
+        ->and(StockReservation::query()->ativas()->count())->toBe(0)
+        ->and(InventoryBalance::query()->where('product_id', $semSaldo->id)->value('qty_reserved') ?? '0.000')->toBe('0.000');
+});
+
 it('não confirma pedido sem itens', function () {
     $pedido = app(SaveOrderService::class)->handle(null, [], []);
 
