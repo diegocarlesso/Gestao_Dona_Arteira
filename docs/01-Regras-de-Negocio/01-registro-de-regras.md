@@ -1,6 +1,6 @@
 # Registro de Regras de Negócio
 
-> **Status:** Em revisão · **Última atualização:** 2026-07-27 · **Responsável:** business-analyst
+> **Status:** Em revisão · **Última atualização:** 2026-08-10 · **Responsável:** business-analyst
 > Legenda de status: 💡 Hipótese · ✅ Validada · 🔧 Implementada · ❌ Revogada
 
 Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data). Regras extraídas do sistema legado indicam origem `legado`.
@@ -64,7 +64,7 @@ Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data)
 | ID | Regra | Origem | Status |
 |---|---|---|---|
 | BR-401 | Entrada de **peça crua, MP, insumo ou revenda** em estoque só via recebimento de pedido de compra (com conferência de quantidade) ou ajuste auditado; peça crua entra em **quarentena** (BR-404) | decisão nova | 💡 |
-| BR-402 | Recebimento atualiza custo médio do item e gera conta a pagar | decisão nova | 💡 |
+| BR-402 | Recebimento atualiza custo médio do item e gera conta a pagar | decisão nova | 💡 **gatilho faseado (decisão da diretoria, 2026-08-10):** na Fase 1 (P0, sem Estoque), quem gera a conta a pagar é o **PC confirmado/lançado** — não há recebimento físico nem custo médio ainda (ver [pasta 11 nota de fase](../11-Compras/README.md#1-objetivo)). O texto original (recebimento → custo médio + conta a pagar) volta a valer na Fase 2, quando o Estoque entrar |
 | BR-403 | Divergência entre pedido e recebimento (falta/sobra/avaria) é registrada e não bloqueia entrada parcial | decisão nova | 💡 |
 | BR-404 | Recebimento de peça crua entra na localização `quarantine`; não fica liberada para pintar até a liberação da secagem (default `received_at + drying_days`; manual — padrão — ou por data) | decisão nova ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) | 💡 |
 | BR-405 | Cada recebimento é um lote (fornecedor + data); a taxa de quebra por fornecedor/lote é medida pelas perdas (`loss`) que referenciam o recebimento | decisão nova ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) | 💡 |

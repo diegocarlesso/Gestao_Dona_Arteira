@@ -1,11 +1,53 @@
 # 11 — Compras
 
-> **Status:** Em revisão · **Última atualização:** 2026-07-27 · **Responsável:** business-analyst (até especialista dedicado)
+> **Status:** Em revisão · **Última atualização:** 2026-08-10 · **Responsável:** business-analyst (até especialista dedicado)
 > **Regras:** BR-401…BR-405 · **Fase:** Gate 03
 
 ## 1. Objetivo
 
 Controlar o abastecimento de **peça crua** (comprada pronta mas sem pintura, e nem sempre seca), insumos de pintura (tintas, vernizes), embalagens e itens de revenda: do pedido ao fornecedor até a entrada em estoque — passando pela **quarentena de secagem** ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) — com custo correto e conta a pagar gerada.
+
+> ⚠️ **Fases de entrega (decisão da diretoria, 2026-08-10).** O escopo P0
+> prioriza fornecedores + pedido de compra + conta a pagar **sem tocar
+> Estoque**. O fluxo completo abaixo (§3) continua sendo o desenho-alvo,
+> mas é entregue em duas fases:
+>
+> - **Fase 1 (agora, P0):** cadastro de fornecedor + Pedido de Compra (PC)
+>   com itens → PC **confirmado/lançado** já gera a conta a pagar
+>   (BR-402). Não há etapa de recebimento físico separada, não há
+>   localização `quarantine`, não há movimento de estoque — é registro
+>   financeiro/documental. Custo médio, divergência de recebimento
+>   (BR-403) e taxa de quebra por lote (BR-405) ficam para a Fase 2.
+> - **Fase 2 (com Estoque, P2):** recebimento com conferência física,
+>   quarentena de secagem e sua liberação (BR-404), custo médio real e
+>   taxa de quebra — como descrito no restante deste documento (§3–§7).
+>
+> Nas seções abaixo, tudo que menciona "recebimento", "quarentena" ou
+> "estoque" é o desenho da **Fase 2** — ainda não implementado.
+>
+> ✅ **A Fase 1 está implementada** em `app/Modules/Purchasing` (telas em
+> `/fornecedores` e `/compras`, permissão `purchasing.manage`). O que
+> existe em código: cadastro de fornecedor (CNPJ/CPF validado e único,
+> prazo de pagamento e de entrega em dias), PC com itens e custo
+> negociado, e a máquina de estados
+> `rascunho → enviado → confirmado`, com `cancelado` saindo dos dois
+> primeiros e trilha em `purchase_order_status_history`. **Confirmar
+> chama `Finance\Services\RegisterPayableService` na mesma transação** e
+> gera um título com vencimento = emissão + prazo do fornecedor (nulo
+> quando o prazo não está cadastrado). Detalhes que a doc não previa e
+> foram decididos na implementação:
+>
+> - **Confirmar direto do rascunho é permitido** (sem passar por
+>   "enviado") — é o PC retroativo simplificado que o §7 pede como
+>   mitigação da compra informal.
+> - **PC confirmado não cancela**: a dívida já existe e sumir com ela
+>   exigiria o estorno do Financeiro (BR-504, Gate 04). Cancelar vale só
+>   em rascunho/enviado.
+> - **"Enviado" é só registro**: não há disparo automático de e-mail nem
+>   de WhatsApp neste corte; o envio continua na mão de quem compra.
+> - **PC sempre tem ao menos um item somando mais que zero** — título de
+>   R$ 0,00 é recusado pelo Financeiro (BR-501), e a recusa tem de
+>   aparecer em quem monta a compra, não na conta a pagar.
 
 ## 2. Responsabilidades
 
