@@ -23,11 +23,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # `soap`, `zip`, `simplexml` e `openssl` entram por causa do
+      # `nfephp-org/sped-nfe`: ele os declara como `ext-*` no composer.json,
+      # e sem eles o `composer install` deste job reprova antes de instalar
+      # qualquer coisa. Mesma lista do job de testes e da produção
+      # (docs/23-Deploy/01, verificada nos dois SAPIs em 2026-08-10).
       - name: Setup PHP 8.4
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: mbstring, bcmath, intl, pdo_mysql, dom, xml, curl, tokenizer
+          extensions: mbstring, bcmath, intl, pdo_mysql, dom, xml, simplexml, curl, soap, zip, openssl, tokenizer
           tools: composer:v2
           coverage: none
 

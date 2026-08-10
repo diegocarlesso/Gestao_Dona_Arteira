@@ -25,18 +25,27 @@ class FiscalServiceProvider extends ServiceProvider
         // ⚠️ **Este é o bind que muda quando a emissão real entrar.**
         //
         // `NullNfeGateway` registra e numera a nota mas não transmite nada —
-        // devolve `pending` com o motivo. Trocar por `SpedNfeGateway::class`
-        // é o próximo incremento, e depende de três coisas que **não** foram
-        // feitas nesta passada:
+        // devolve `pending` com o motivo. `SpedNfeGateway::class` **já
+        // existe** e monta, assina e transmite; o que ele ainda não teve é
+        // uma nota autorizada de verdade do outro lado.
         //
-        //   1. `composer require nfephp-org/sped-nfe`;
-        //   2. pré-flight das extensões PHP no Hostinger (openssl, soap,
-        //      curl, dom — docs/14 §6), verificado *executando* no servidor:
-        //      o painel da hospedagem aceita configuração sem aplicá-la;
-        //   3. certificado A1 de teste instalado fora do webroot, cifrado
-        //      (pasta 25), com `NFE_CERT_PATH`/`NFE_CERT_PASSWORD`.
+        // Feito (2026-08-10):
+        //   1. `nfephp-org/sped-nfe` instalado (^5.2);
+        //   2. pré-flight das extensões no Hostinger, verificado
+        //      *executando* nos dois SAPIs (docs/14 §8) — o painel da
+        //      hospedagem aceita configuração sem aplicá-la;
+        //   3. montagem do XML coberta por teste contra o XSD oficial, e
+        //      assinatura exercitada com certificado autoassinado.
         //
-        // Só isto muda de lugar. O domínio — job, listener, montagem,
+        // Falta, e é por isso que o bind continua no Null:
+        //   1. certificado A1 real, fora do webroot, cifrado (pasta 25);
+        //   2. `NFE_EMITENTE_*`, `NFE_PIS_CST` e `NFE_COFINS_CST` — vazios
+        //      até a doc 13 sair de bloqueada no contador;
+        //   3. código IBGE do município no cadastro de endereços de Vendas
+        //      (`enderDest/cMun` é obrigatório e ninguém o guarda hoje);
+        //   4. a bateria em homologação que a BR-605 exige.
+        //
+        // Só esta linha muda de lugar. O domínio — job, listener, montagem,
         // numeração, eventos — continua igual, que é o motivo de a interface
         // existir (ADR-0009/ADR-0015).
         $this->app->bind(NfeGatewayInterface::class, NullNfeGateway::class);

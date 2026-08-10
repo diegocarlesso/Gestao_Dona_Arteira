@@ -34,11 +34,13 @@ use Throwable;
  *
  * **Duas famílias de falha, tratadas de formas opostas:**
  *
- * - *Pendência de cadastro* (`EmissaoInvalida`, `PerfilFiscalAusente`) —
- *   NCM faltando, perfil fiscal não cadastrado, cliente sem documento.
- *   Tentar de novo não resolve: só um humano preenchendo o cadastro
- *   resolve. Registra a pendência na nota (visível no painel) e **encerra
- *   sem relançar** — cinco tentativas idênticas só encheriam o log.
+ * - *Pendência de cadastro ou de configuração* (`EmissaoInvalida`,
+ *   `PerfilFiscalAusente`) — NCM faltando, perfil fiscal não cadastrado,
+ *   cliente sem documento; e, do lado do gateway real, CNPJ do emitente ou
+ *   certificado ausentes no `.env`. Tentar de novo não resolve: só um
+ *   humano preenchendo resolve. Registra a pendência na nota (visível no
+ *   painel) e **encerra sem relançar** — cinco tentativas idênticas só
+ *   encheriam o log. Vale para as duas etapas, montagem e transmissão.
  * - *Falha de infraestrutura* (`Throwable`) — rede, certificado, SEFAZ
  *   instável. Registra e **relança**, para a fila tentar de novo com espera
  *   crescente.
@@ -90,6 +92,22 @@ class EmitNfeForOrder implements ShouldQueue
 
         try {
             $resultado = $gateway->transmitir($nota);
+        } catch (EmissaoInvalida|PerfilFiscalAusente $e) {
+            // A mesma família de falha do bloco acima, só que descoberta
+            // mais tarde: o gateway real só percebe que falta o CNPJ do
+            // emitente, o CST de PIS ou o certificado na hora de montar o
+            // XML. Continua sendo pendência de configuração — registra e
+            // encerra, **sem** relançar. Cinco tentativas não preenchem um
+            // `.env` vazio, e a nota mantém o número que já reservou.
+            $montagem->registrarPendencia($this->orderId, $e->getMessage());
+
+            Log::warning('NF-e não pôde ser transmitida — pendência de configuração.', [
+                'order_id' => $this->orderId,
+                'invoice_id' => $nota->id,
+                'motivo' => $e->getMessage(),
+            ]);
+
+            return;
         } catch (Throwable $e) {
             // Falha de infraestrutura: o número permanece reservado na nota
             // e a fila tenta de novo (docs/14 §3 — timeout não queima

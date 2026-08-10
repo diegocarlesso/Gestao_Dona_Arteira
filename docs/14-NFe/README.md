@@ -1,6 +1,6 @@
 # 14 — NF-e (Emissão Eletrônica)
 
-> **Status:** Em revisão · **Última atualização:** 2026-07-03 · **Responsável:** nfe-specialist
+> **Status:** Em revisão · **Última atualização:** 2026-08-10 · **Responsável:** nfe-specialist
 > **Regras:** BR-601…BR-606 · **Fase:** Gate 05 · **ADR:** [0009 (sped-nfe vs API gerenciada)](../27-ADR/ADR-0009-emissao-nfe.md)
 
 ## 1. Objetivo
@@ -35,6 +35,33 @@ flowchart TD
     H --> M[E-mail cliente: XML+DANFE<br/>cópia mensal p/ contador]
 ```
 
+### 3.1 O que já existe em código (2026-08-10)
+
+| Etapa do fluxo | Onde | Estado |
+|---|---|---|
+| Pré-validação + numeração | `Fiscal\Services\BuildInvoiceFromOrder` | ✅ em produção (inerte) |
+| Montagem do XML 4.00 | `Fiscal\Services\Gateways\MontarXmlNfe` | ✅ testado contra o XSD oficial |
+| Certificado A1 + `Tools` | `Fiscal\Services\Gateways\CanalSefaz` | ✅ escrito; assinatura verificada com certificado autoassinado |
+| Assinatura + transmissão + retorno | `Fiscal\Services\Gateways\SpedNfeGateway` | ⚠️ escrito, **não verificado** (sem A1 real) |
+| DANFE, eventos, contingência, guarda em lote | — | ❌ não iniciados |
+
+**O bind ativo continua sendo `NullNfeGateway`** (`FiscalServiceProvider`).
+Trocar por `SpedNfeGateway` é uma linha, e só depois da bateria em
+homologação que a BR-605 exige.
+
+Três coisas impedem a primeira emissão de verdade, nenhuma delas de código:
+
+1. **Certificado A1** — `NFE_CERT_PATH`/`NFE_CERT_PASSWORD` (pasta 25).
+2. **Dados do emitente e CST de PIS/COFINS** — `NFE_EMITENTE_*`,
+   `NFE_PIS_CST`, `NFE_COFINS_CST`, todos vazios até a doc 13 sair de
+   bloqueada. A emissão recusa nomeando a variável que falta; não chuta.
+3. **Código IBGE do município do destinatário** — `enderDest/cMun` é
+   obrigatório no layout e `customer_addresses` **não guarda esse campo**.
+   O contrato já o prevê (`Sales\DTO\OrderInvoiceAddress::$cityCode`), mas
+   chega sempre nulo. É pendência do cadastro de Vendas (docs/10), e a
+   emissão para com mensagem própria em vez de aproximar pelo nome da
+   cidade — nota autorizada com município errado ninguém percebe.
+
 Pontos críticos:
 
 - **Numeração** (BR-602): `fiscal_series.next_number` com `SELECT ... FOR UPDATE`; rejeição **não** queima número (reemite com o mesmo); número abandonado → inutilização na SEFAZ.
@@ -56,8 +83,8 @@ XML autorizado + eventos: storage da aplicação com backup diário + cópia men
 |---|---|
 | 13-Fiscal | perfis tributários validados pelo contador |
 | Certificado A1 válido | assinatura |
-| `nfephp-org/sped-nfe` | biblioteca de emissão (ADR-0009) |
-| Extensões PHP: openssl, soap, curl, dom | verificar no ambiente ANTES do Gate 05 (ADR-0016) |
+| `nfephp-org/sped-nfe` | biblioteca de emissão (ADR-0009). ✅ **Instalada em 2026-08-10** (`^5.2`, v5.2.8) — sem conflito com a árvore existente; entram junto `sped-common`, `sped-gtin` e `justinrainbow/json-schema` |
+| Extensões PHP: openssl, soap, curl, dom | ✅ verificadas nos dois SAPIs em 2026-08-10 (ver §8). `ext-soap` é exigida pelo `composer.json` da lib; o job `lint` do CI passou a instalá-la junto com `zip` para o `composer install` não reprovar |
 | Vendas | dados do pedido; expedição espera autorização (BR-309) |
 
 ## 7. Boas práticas

@@ -62,6 +62,7 @@ class BuildOrderInvoiceSnapshot
             // formatar para depois limpar do outro lado da fronteira seria
             // trabalho para desfazer trabalho.
             customerDocument: $cliente?->doc,
+            customerStateRegistration: $cliente?->state_registration,
             customerEmail: $cliente?->email,
             shippingAddress: $this->enderecoDe($cliente),
             items: array_map(
@@ -124,6 +125,10 @@ class BuildOrderInvoiceSnapshot
             complement: $endereco->complement,
             district: $endereco->district,
             city: $endereco->city,
+            // Ainda não há de onde tirar: `customer_addresses` não guarda o
+            // código IBGE do município. A NF-e exige (`enderDest/cMun`), e
+            // quem trata a falta é o Fiscal — aqui só se declara o fato.
+            cityCode: null,
             state: $endereco->state,
         );
     }

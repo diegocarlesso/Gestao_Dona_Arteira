@@ -38,6 +38,9 @@ final readonly class OrderInvoiceSnapshot
          * para PF/PJ do perfil fiscal é do módulo Fiscal. */
         public ?string $customerType,
         public ?string $customerDocument,
+        /** Inscrição estadual: é ela que diz se o PJ é contribuinte de
+         * ICMS (`indIEDest` no XML). Nula para PF e para PJ isento. */
+        public ?string $customerStateRegistration,
         public ?string $customerEmail,
         public ?OrderInvoiceAddress $shippingAddress,
         public array $items,
