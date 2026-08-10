@@ -8,6 +8,7 @@ use App\Modules\Fiscal\Providers\FiscalServiceProvider;
 use App\Modules\Identity\Providers\IdentityServiceProvider;
 use App\Modules\Integrations\Providers\IntegrationsServiceProvider;
 use App\Modules\Inventory\Providers\InventoryServiceProvider;
+use App\Modules\Purchasing\Providers\PurchasingServiceProvider;
 use App\Modules\Sales\Providers\SalesServiceProvider;
 use App\Providers\AppServiceProvider;
 
@@ -25,6 +26,7 @@ return [
     // Financeiro antes de Vendas e Compras: os dois geram título por
     // dentro do Service dele, nunca o contrário.
     FinanceServiceProvider::class,
+    PurchasingServiceProvider::class,
     SalesServiceProvider::class,
     // Fiscal depois de Vendas: ouve `OrderConfirmed` para emitir a NF-e
     // (ADR-0025) — mesma posição relativa que Integrações já ocupa.
