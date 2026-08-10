@@ -26,9 +26,14 @@ use Illuminate\Support\Facades\DB;
  * `on_hand` no ledger, via `ReserveStockService`) e dispara `OrderShipped`.
  * Vendas não conhece `StockReservation` (ADR-0020) — pede pela origem.
  *
- * **Sem NF-e e sem Melhor Envio neste corte.** A NF-e antes de expedir
- * (BR-309) é o Gate 05; a etiqueta/frete é a fase 6. Aqui o rastreio e a
- * transportadora entram informados à mão.
+ * **A NF-e agora trava a expedição** (BR-309, ADR-0025 §3): o pedido que
+ * exige documento fiscal não passa de Embalado a Expedido enquanto a nota
+ * não estiver autorizada. Vendas lê isso de `Order.nfe_status` — coluna do
+ * próprio módulo, escrita pelo listener que ouve o Fiscal —, nunca da
+ * tabela de notas (ADR-0020).
+ *
+ * **Sem Melhor Envio neste corte**: a etiqueta/frete é a fase 6. Aqui o
+ * rastreio e a transportadora entram informados à mão.
  */
 class FulfillmentService
 {
@@ -75,6 +80,7 @@ class FulfillmentService
     public function expedir(Order $pedido, ?string $trackingCode = null, ?string $carrier = null, ?int $por = null): Order
     {
         $this->exigirStatus($pedido, OrderStatus::Embalado, OrderStatus::Expedido);
+        $this->exigirNotaFiscal($pedido);
 
         return DB::transaction(function () use ($pedido, $trackingCode, $carrier, $por): Order {
             // O Estoque baixa o que este pedido segurava — cada reserva ativa
@@ -111,6 +117,35 @@ class FulfillmentService
 
             return $pedido;
         });
+    }
+
+    /**
+     * O gate BR-309 — mercadoria não circula sem documento fiscal.
+     *
+     * Só exige de quem exige (`exigeNotaFiscal()`): pedido de balcão tem
+     * `nfe_status` nulo para sempre e continua expedindo normalmente. Era a
+     * preocupação registrada no ADR-0025 ("nenhum pedido preso sem poder
+     * expedir por falta de nota retroativa") — os pedidos já em fluxo no
+     * momento do deploy não travam, porque nenhum deles é do canal que
+     * agora exige nota... exceto os do site, que é justamente onde o
+     * bloqueio deve valer.
+     *
+     * Verificado **antes** da transação: nada a desfazer, e o erro chega
+     * limpo à tela.
+     *
+     * @throws PedidoInvalido
+     */
+    private function exigirNotaFiscal(Order $pedido): void
+    {
+        if (! $pedido->exigeNotaFiscal()) {
+            return;
+        }
+
+        if ($pedido->temNotaAutorizada()) {
+            return;
+        }
+
+        throw PedidoInvalido::semNotaFiscalAutorizada($pedido->number, $pedido->nfe_status);
     }
 
     /**

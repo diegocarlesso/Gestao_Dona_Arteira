@@ -54,6 +54,25 @@ class ProductFactory extends Factory
         ]);
     }
 
+    /**
+     * Com o cadastro fiscal completo — o que a NF-e exige (BR-606).
+     *
+     * **Não** é o default de propósito: o catálogo real veio do Woo sem
+     * NCM nenhum (pasta 32), e um factory que preenchesse por padrão
+     * esconderia dos testes o estado em que os 754 produtos migrados
+     * realmente estão. Quem testa emissão pede explicitamente.
+     *
+     * NCM 6809.90.00 é a hipótese 💡 da doc 13 para obras de gesso —
+     * fixture, não decisão fiscal. Origem 0 = nacional.
+     */
+    public function comDadosFiscais(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'ncm' => '68099000',
+            'origin' => '0',
+        ]);
+    }
+
     /** Sem peso — o caso que quebra a cotação de frete na venda. */
     public function semPeso(): static
     {

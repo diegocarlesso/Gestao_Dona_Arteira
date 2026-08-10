@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Services;
 
+use App\Modules\Catalog\DTO\ProductFiscalData;
 use App\Modules\Catalog\DTO\ProductSnapshot;
 use App\Modules\Catalog\DTO\ProductSummary;
 use App\Modules\Catalog\Enums\PriceList;
@@ -124,6 +125,40 @@ class ProductLookupService
             retailPrice: $produto->precoVigente(PriceList::Retail)?->price,
             categoryName: $produto->category?->name,
         );
+    }
+
+    /**
+     * Os dados fiscais de vários produtos, indexados por id — BR-606.
+     *
+     * Existe pelo mesmo motivo dos `resumos()`: o faturamento tem
+     * `product_id` na linha do pedido e precisa do NCM para montar o XML,
+     * mas não pode ler `Catalog\Models` (ADR-0020). Em lote porque uma nota
+     * tem várias linhas e uma consulta por item seria o N+1 escondido atrás
+     * da fronteira.
+     *
+     * @param  list<int>  $ids
+     * @return array<int, ProductFiscalData>
+     */
+    public function dadosFiscais(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        return Product::query()
+            ->whereIn('id', $ids)
+            ->get(['id', 'sku', 'name', 'unit', 'ncm', 'cest', 'origin', 'gtin'])
+            ->mapWithKeys(fn (Product $p): array => [$p->id => new ProductFiscalData(
+                id: $p->id,
+                sku: $p->sku,
+                name: $p->name,
+                unit: $p->unit,
+                ncm: $p->ncm,
+                cest: $p->cest,
+                origin: $p->origin,
+                gtin: $p->gtin,
+            )])
+            ->all();
     }
 
     /**

@@ -102,7 +102,8 @@ O que entra em cada corte, e o porquê da ordem:
 - **Encomenda (make-to-order, BR-307)** — depende de Produção, em
   remodelagem (ADR-0023/0024).
 - **NF-e antes de expedir (BR-309)** — Gate 05; o corte 3 expede sem o
-  gate fiscal por ora, documentado.
+  gate fiscal por ora, documentado. Gatilho e gate desenhados em
+  [ADR-0025](../27-ADR/ADR-0025-emissao-automatica-nfe.md).
 - **Pagamento / financeiro** — Gate 04.
 
 ## 3. Máquina de estados do pedido (BR-303)
@@ -148,7 +149,7 @@ Item sem saldo pode ser vendido como encomenda com `promised_date` (legado já f
 |---|---|
 | Estoque | reservas e baixas |
 | Catálogo | produtos, preços, embalagens |
-| Fiscal | NF-e antes de expedir (BR-309) |
+| Fiscal | NF-e antes de expedir (BR-309) — [ADR-0025](../27-ADR/ADR-0025-emissao-automatica-nfe.md) |
 | Financeiro | títulos ao faturar (BR-501) |
 | Integrações | pedidos Woo entram, status/rastreio saem |
 

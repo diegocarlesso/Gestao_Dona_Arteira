@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Catalog\Providers\CatalogServiceProvider;
 use App\Modules\Finance\Providers\FinanceServiceProvider;
+use App\Modules\Fiscal\Providers\FiscalServiceProvider;
 use App\Modules\Identity\Providers\IdentityServiceProvider;
 use App\Modules\Integrations\Providers\IntegrationsServiceProvider;
 use App\Modules\Inventory\Providers\InventoryServiceProvider;
@@ -25,5 +26,8 @@ return [
     // dentro do Service dele, nunca o contrário.
     FinanceServiceProvider::class,
     SalesServiceProvider::class,
+    // Fiscal depois de Vendas: ouve `OrderConfirmed` para emitir a NF-e
+    // (ADR-0025) — mesma posição relativa que Integrações já ocupa.
+    FiscalServiceProvider::class,
     IntegrationsServiceProvider::class,
 ];

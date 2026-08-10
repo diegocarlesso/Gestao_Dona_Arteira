@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\Sales\Providers;
 
+use App\Modules\Fiscal\Events\InvoiceAuthorized;
+use App\Modules\Fiscal\Events\InvoiceRejected;
+use App\Modules\Sales\Listeners\MarcarNotaFiscalAutorizada;
 use App\Modules\Sales\Models\Customer;
 use App\Modules\Sales\Models\Order;
 use App\Modules\Sales\Policies\CustomerPolicy;
 use App\Modules\Sales\Policies\OrderPolicy;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,5 +30,10 @@ class SalesServiceProvider extends ServiceProvider
 
         Gate::policy(Customer::class, CustomerPolicy::class);
         Gate::policy(Order::class, OrderPolicy::class);
+
+        // Situação fiscal do pedido (BR-309, ADR-0025 §3). Registrado aqui,
+        // no módulo que **ouve** — o Fiscal anuncia sem saber quem escuta.
+        Event::listen(InvoiceAuthorized::class, MarcarNotaFiscalAutorizada::class);
+        Event::listen(InvoiceRejected::class, MarcarNotaFiscalAutorizada::class);
     }
 }

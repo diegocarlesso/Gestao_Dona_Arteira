@@ -46,6 +46,8 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property string|null $carrier
  * @property Carbon|null $cancelled_at
  * @property string|null $cancel_reason
+ * @property string|null $nfe_status
+ * @property Carbon|null $invoice_authorized_at
  * @property int|null $created_by
  */
 class Order extends Model implements Auditable
@@ -77,6 +79,8 @@ class Order extends Model implements Auditable
         'carrier',
         'cancelled_at',
         'cancel_reason',
+        'nfe_status',
+        'invoice_authorized_at',
         'created_by',
     ];
 
@@ -92,7 +96,36 @@ class Order extends Model implements Auditable
             'shipped_at' => 'datetime',
             'delivered_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'invoice_authorized_at' => 'datetime',
         ];
+    }
+
+    /**
+     * A nota fiscal deste pedido já está autorizada? — BR-309.
+     *
+     * String literal e não enum: o vocabulário é do módulo Fiscal
+     * (`InvoiceStatus`), e importá-lo aqui furaria a fronteira do ADR-0020
+     * justamente para economizar seis caracteres. O acoplamento fica no
+     * valor combinado, que é o que atravessa o evento.
+     */
+    public function temNotaAutorizada(): bool
+    {
+        return $this->nfe_status === 'authorized';
+    }
+
+    /**
+     * Este pedido exige NF-e antes de sair? — BR-309/BR-601.
+     *
+     * Só o canal do site neste corte, o mesmo filtro do gatilho de emissão
+     * (ADR-0025 §2). Não é que a venda de balcão dispense nota: é que a
+     * BR-601 ainda é hipótese bloqueada no contador, e travar a expedição do
+     * balcão por uma regra não validada pararia a operação por causa de uma
+     * suposição. Quando a regra for confirmada, muda-se este método — e o
+     * filtro do listener — juntos.
+     */
+    public function exigeNotaFiscal(): bool
+    {
+        return $this->channel === OrderChannel::WooCommerce;
     }
 
     protected static function booted(): void

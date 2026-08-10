@@ -53,6 +53,10 @@
         <!-- Integração desligada por padrão: teste que precisa dela liga
              explicitamente (ligarWoo/config set), para nenhum push vazar. -->
         <env name="WOO_ENABLED" value="false"/>
+        <!-- A suíte nunca emite NF-e por acidente: quem testa emissão liga
+             a flag no próprio teste (ADR-0025 §4). -->
+        <env name="NFE_ENABLED" value="false"/>
+        <env name="NFE_ENVIRONMENT" value="homologacao"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
     </php>

@@ -14,6 +14,11 @@ Emitir, gerir e guardar NF-e modelo 55 com certificado A1: do pedido faturado ao
 
 ## 3. Fluxo de emissão
 
+> Gatilho automático (pedido confirmado do site → emissão), organização do
+> módulo (`Fiscal` único, perfis + emissão) e o gate de produção (flag
+> homologação/produção até validação do contador) estão desenhados no
+> [ADR-0025](../27-ADR/ADR-0025-emissao-automatica-nfe.md).
+
 ```mermaid
 flowchart TD
     A[Pedido pronto p/ faturar] --> B[Pré-validação:<br/>cliente com doc BR-001, endereço,<br/>produtos com dados fiscais BR-606]

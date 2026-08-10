@@ -447,8 +447,13 @@ describe('cancelamento vindo do site', function () {
         $import->handle(pedidoWoo(2103, [itemWoo(501, 1, '100.00')], ['total' => '100.00']));
         $orderId = IntegrationMapping::localDe('order', 2103);
 
-        // Leva o pedido até expedido.
+        // Leva o pedido até expedido. Pedido do site exige NF-e autorizada
+        // para expedir (BR-309, ADR-0025) — este teste é sobre o
+        // cancelamento tardio, não sobre o fiscal, então a nota entra como
+        // já autorizada em vez de o teste emitir uma.
         $pedido = Order::query()->findOrFail($orderId);
+        $pedido->forceFill(['nfe_status' => 'authorized', 'invoice_authorized_at' => now()])->save();
+
         $f = app(FulfillmentService::class);
         $f->iniciarSeparacao($pedido);
         $f->embalar($pedido);

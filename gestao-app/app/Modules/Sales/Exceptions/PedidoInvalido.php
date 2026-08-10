@@ -33,4 +33,24 @@ class PedidoInvalido extends DomainException
     {
         return new self("Pedido {$de} não pode ir para {$para}.");
     }
+
+    public static function semNotaFiscalAutorizada(int $numero, ?string $situacao): self
+    {
+        // BR-309: a mercadoria não circula sem documento fiscal. A trava
+        // vive no Service, e não na tela, porque expedir também acontece
+        // por rota, por comando e (um dia) pelo coletor da expedição —
+        // e a mesma regra tem de valer nos três.
+        $estado = match ($situacao) {
+            null => 'a nota ainda não foi emitida',
+            'pending' => 'a nota está pendente de transmissão',
+            'rejected' => 'a nota foi rejeitada pela SEFAZ',
+            'cancelled' => 'a nota foi cancelada',
+            default => "a nota está em `{$situacao}`",
+        };
+
+        return new self(
+            "O pedido #{$numero} não pode ser expedido sem NF-e autorizada — {$estado}. "
+            .'Resolva a pendência no painel fiscal antes de despachar (BR-309).'
+        );
+    }
 }
