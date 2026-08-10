@@ -1,20 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { 
-    TrendingUp, 
-    ShoppingCart, 
-    PackageSearch, 
-    Package, 
-    Truck, 
-    Activity, 
-    AlertCircle, 
-    Clock, 
-    CheckCircle2,
-    DollarSign,
-    Box,
-    RefreshCw
-} from 'lucide-react';
+import { Activity, AlertCircle, Box, Package, PackageSearch, RefreshCw, ShoppingCart, TrendingUp, Truck } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -52,24 +39,24 @@ export default function Dashboard({ metrics, auth }: DashboardProps) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Painel" />
-            <div className="flex h-full flex-1 flex-col gap-6 p-6 bg-neutral-50/50 dark:bg-neutral-900/50">
-                
+            <div className="flex h-full flex-1 flex-col gap-6 bg-neutral-50/50 p-6 dark:bg-neutral-900/50">
                 {/* Header Section */}
-                <div className="flex items-center justify-between mb-2">
+                <div className="mb-2 flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
                             Olá, {auth.user.name.split(' ')[0]}
                         </h1>
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                            Aqui está o resumo da operação de hoje.
-                        </p>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">Aqui está o resumo da operação de hoje.</p>
                     </div>
                 </div>
 
                 {/* Fulfillment Queue (Highlighted for Operacional) */}
                 <div className="grid gap-6 md:grid-cols-3">
-                    <Link href="/sales/orders?status=confirmed" className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-200 transition-all hover:shadow-md hover:ring-blue-500 dark:bg-neutral-900 dark:ring-neutral-800 dark:hover:ring-blue-500">
-                        <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-blue-50/50 transition-transform group-hover:scale-150 dark:bg-blue-500/10" />
+                    <Link
+                        href="/sales/orders?status=confirmed"
+                        className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-200 transition-all hover:shadow-md hover:ring-blue-500 dark:bg-neutral-900 dark:ring-neutral-800 dark:hover:ring-blue-500"
+                    >
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-blue-50/50 transition-transform group-hover:scale-150 dark:bg-blue-500/10" />
                         <div className="relative flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">A Separar</p>
@@ -81,8 +68,11 @@ export default function Dashboard({ metrics, auth }: DashboardProps) {
                         </div>
                     </Link>
 
-                    <Link href="/sales/orders?status=separando" className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-200 transition-all hover:shadow-md hover:ring-amber-500 dark:bg-neutral-900 dark:ring-neutral-800 dark:hover:ring-amber-500">
-                        <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-amber-50/50 transition-transform group-hover:scale-150 dark:bg-amber-500/10" />
+                    <Link
+                        href="/sales/orders?status=separando"
+                        className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-200 transition-all hover:shadow-md hover:ring-amber-500 dark:bg-neutral-900 dark:ring-neutral-800 dark:hover:ring-amber-500"
+                    >
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-amber-50/50 transition-transform group-hover:scale-150 dark:bg-amber-500/10" />
                         <div className="relative flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">A Embalar</p>
@@ -94,8 +84,11 @@ export default function Dashboard({ metrics, auth }: DashboardProps) {
                         </div>
                     </Link>
 
-                    <Link href="/sales/orders?status=embalado" className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-200 transition-all hover:shadow-md hover:ring-green-500 dark:bg-neutral-900 dark:ring-neutral-800 dark:hover:ring-green-500">
-                        <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-green-50/50 transition-transform group-hover:scale-150 dark:bg-green-500/10" />
+                    <Link
+                        href="/sales/orders?status=embalado"
+                        className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-200 transition-all hover:shadow-md hover:ring-green-500 dark:bg-neutral-900 dark:ring-neutral-800 dark:hover:ring-green-500"
+                    >
+                        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-green-50/50 transition-transform group-hover:scale-150 dark:bg-green-500/10" />
                         <div className="relative flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">A Expedir</p>
@@ -112,7 +105,7 @@ export default function Dashboard({ metrics, auth }: DashboardProps) {
                 {(!isOperacional || isAdmin) && (
                     <div className="grid gap-6 lg:grid-cols-7">
                         {/* Vendas */}
-                        <div className="lg:col-span-4 rounded-2xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+                        <div className="rounded-2xl border border-neutral-200 bg-white p-6 lg:col-span-4 dark:border-neutral-800 dark:bg-neutral-900">
                             <h2 className="mb-6 flex items-center text-lg font-semibold text-neutral-900 dark:text-white">
                                 <TrendingUp className="mr-2 h-5 w-5 text-indigo-500" /> Vendas do Período
                             </h2>
@@ -120,7 +113,9 @@ export default function Dashboard({ metrics, auth }: DashboardProps) {
                                 <div className="space-y-4 rounded-xl bg-neutral-50 p-5 dark:bg-neutral-800/50">
                                     <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Hoje</p>
                                     <div>
-                                        <p className="text-3xl font-bold text-neutral-900 dark:text-white">{formatCurrency(metrics.vendas.dia.total)}</p>
+                                        <p className="text-3xl font-bold text-neutral-900 dark:text-white">
+                                            {formatCurrency(metrics.vendas.dia.total)}
+                                        </p>
                                         <div className="mt-2 flex items-center text-sm text-neutral-500 dark:text-neutral-400">
                                             <ShoppingCart className="mr-1.5 h-4 w-4" />
                                             {metrics.vendas.dia.pedidos} pedidos (TM: {formatCurrency(metrics.vendas.dia.ticket_medio)})
@@ -130,7 +125,9 @@ export default function Dashboard({ metrics, auth }: DashboardProps) {
                                 <div className="space-y-4 rounded-xl bg-neutral-50 p-5 dark:bg-neutral-800/50">
                                     <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Este Mês</p>
                                     <div>
-                                        <p className="text-3xl font-bold text-neutral-900 dark:text-white">{formatCurrency(metrics.vendas.mes.total)}</p>
+                                        <p className="text-3xl font-bold text-neutral-900 dark:text-white">
+                                            {formatCurrency(metrics.vendas.mes.total)}
+                                        </p>
                                         <div className="mt-2 flex items-center text-sm text-neutral-500 dark:text-neutral-400">
                                             <ShoppingCart className="mr-1.5 h-4 w-4" />
                                             {metrics.vendas.mes.pedidos} pedidos (TM: {formatCurrency(metrics.vendas.mes.ticket_medio)})
@@ -141,12 +138,15 @@ export default function Dashboard({ metrics, auth }: DashboardProps) {
                         </div>
 
                         {/* Saúde da Sync */}
-                        <div className="lg:col-span-3 rounded-2xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
-                            <div className="flex items-center justify-between mb-6">
+                        <div className="rounded-2xl border border-neutral-200 bg-white p-6 lg:col-span-3 dark:border-neutral-800 dark:bg-neutral-900">
+                            <div className="mb-6 flex items-center justify-between">
                                 <h2 className="flex items-center text-lg font-semibold text-neutral-900 dark:text-white">
                                     <Activity className="mr-2 h-5 w-5 text-teal-500" /> Saúde das Integrações
                                 </h2>
-                                <Link href="/integrations" className="text-sm font-medium text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300">
+                                <Link
+                                    href="/integrations"
+                                    className="text-sm font-medium text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300"
+                                >
                                     Ver todas →
                                 </Link>
                             </div>
@@ -178,11 +178,11 @@ export default function Dashboard({ metrics, auth }: DashboardProps) {
                                 </div>
 
                                 {metrics.sync.ultima_reconciliacao && (
-                                    <div className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 mt-2">
+                                    <div className="mt-2 flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
                                         <RefreshCw className="h-4 w-4" />
                                         <span>Última reconciliação em {metrics.sync.ultima_reconciliacao.data}</span>
                                         {metrics.sync.ultima_reconciliacao.falhas > 0 && (
-                                            <span className="text-rose-500 ml-auto">({metrics.sync.ultima_reconciliacao.falhas} falhas)</span>
+                                            <span className="ml-auto text-rose-500">({metrics.sync.ultima_reconciliacao.falhas} falhas)</span>
                                         )}
                                     </div>
                                 )}

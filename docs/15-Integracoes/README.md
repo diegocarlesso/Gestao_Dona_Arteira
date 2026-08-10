@@ -1,6 +1,6 @@
 # 15 — Integrações (Framework)
 
-> **Status:** Aprovado · **Última atualização:** 2026-07-03 · **Responsável:** integration-specialist
+> **Status:** Aprovado · **Última atualização:** 2026-08-06 · **Responsável:** integration-specialist
 > **Regras:** BR-701…BR-705 · **ADR:** [0007 (sync assíncrona)](../27-ADR/ADR-0007-sync-assincrona.md) · **Template:** [_templates/TEMPLATE-INTEGRACAO.md](../_templates/TEMPLATE-INTEGRACAO.md)
 
 ## 1. Objetivo
@@ -44,7 +44,7 @@ Reprocessável: payload bruto guardado 30 dias permite reprocessar após bug fix
 |---|---|---|---|---|
 | WooCommerce | bidirecional | 2 | Alta | [pasta 16](../16-WooCommerce/README.md) |
 | SEFAZ (NF-e) | ERP→SEFAZ | 5 | Alta | [pasta 14](../14-NFe/README.md) |
-| E-mail (SMTP) | saída | 2 | Média | transacional: pedido, rastreio, NF-e |
+| E-mail (SMTP) | saída | 2 | Média | [E-mail transacional](01-email-transacional.md) — confirmação e rastreio; NF-e fica para o Gate 05 |
 | Melhor Envio | bidirecional (etiqueta/rastreio) | 6 | Média | template a preencher no Gate 06 |
 | Transportadoras diretas | saída | 6+ | Baixa | idem |
 | WhatsApp (Meta Cloud API) | saída (notificações) | 7 | Baixa | idem |

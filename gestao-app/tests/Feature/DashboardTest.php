@@ -1,8 +1,8 @@
 <?php
 
 use App\Modules\Identity\Models\User;
-use App\Modules\Sales\Enums\OrderStatus;
 use App\Modules\Sales\Enums\OrderChannel;
+use App\Modules\Sales\Enums\OrderStatus;
 use App\Modules\Sales\Models\Order;
 use App\Queries\GetDashboardMetricsQuery;
 use Illuminate\Support\Facades\Cache;
@@ -49,7 +49,7 @@ it('calcula vendas corretamente seguindo o glossario', function () {
         'created_at' => now(),
     ]);
 
-    $query = new GetDashboardMetricsQuery();
+    $query = new GetDashboardMetricsQuery;
     $metrics = $query->execute();
 
     // Vendas do dia
@@ -71,7 +71,7 @@ it('calcula o funil de pedidos e fulfillment corretamente', function () {
     Order::factory()->count(1)->create(['status' => OrderStatus::Embalado]);
     Order::factory()->count(4)->create(['status' => OrderStatus::Cancelled]);
 
-    $query = new GetDashboardMetricsQuery();
+    $query = new GetDashboardMetricsQuery;
     $metrics = $query->execute();
 
     expect($metrics['funil'][OrderStatus::Confirmed->value])->toBe(2)
