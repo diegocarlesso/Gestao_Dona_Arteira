@@ -71,7 +71,7 @@ XML autorizado + eventos: storage da aplicação com backup diário + cópia men
 
 | Risco | Prob. | Impacto | Mitigação |
 |---|---|---|---|
-| Shared hosting sem extensão/CPU para assinar+transmitir | Média | Crítico | Validar ambiente antes do Gate 05; ADR-0016 (VPS) resolve na raiz |
+| Shared hosting sem extensão/CPU para assinar+transmitir | ✅ **Validado em 2026-08-10**: `openssl`, `soap`, `curl`, `dom`, `simplexml`, `zip`, `mbstring`, `bcmath`, `gd` presentes nos dois SAPIs (CLI **e** LiteSpeed/web — checados separadamente, é onde o P-16 mordeu antes). CPU sob carga real de assinatura+transmissão ainda não testada | — | ADR-0016 (VPS) continua a mitigação se a carga real não couber |
 | NTs da reforma tributária exigirem atualização rápida da lib | Alta | Alto | Acompanhar releases sped-nfe; plano B = API fiscal gerenciada (ADR-0009, gatilhos definidos) |
 | Perda de XML | Baixa | Crítico (multa) | Guarda redundante + teste de restore trimestral |
 | Certificado vencer sem aviso | Média | Crítico | Alertas automatizados 30/15/7 dias |
