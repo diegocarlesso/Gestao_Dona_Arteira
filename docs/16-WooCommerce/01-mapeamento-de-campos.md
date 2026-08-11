@@ -49,6 +49,7 @@ De-para canônico usado pelos Adapters e pelo importador da migração (pasta 17
 | endereço de entrega/cobrança (`order_addresses`) | `shipping` / `billing` (do **pedido**, não do cliente) | ✅ **implementado em 2026-08-11**: gravado por pedido, não pelo cadastro do cliente — a entrega às vezes não é no endereço do próprio comprador (presente). Mesma tradução de campos que já roda para o cliente (`_billing_number`/`_billing_neighborhood` etc.), aplicada ao bloco do pedido. `BuildOrderInvoiceSnapshot` (Fiscal) usa este endereço para a NF-e antes de cair no endereço padrão do cliente |
 | comentário do cliente (`orders.customer_note`) | `customer_note` | ✅ **implementado em 2026-08-11** |
 | forma de entrega (`orders.shipping_method`) | `shipping_lines[0].method_title` | ✅ **implementado em 2026-08-11** — texto livre do Woo (ex.: "Loggi Express (Melhor Envio)"), não normalizado; o valor continua em `orders.shipping` |
+| `orders.created_at` / `orders.delivered_at` (histórico) | `date_created_gmt` / `date_completed_gmt` (recuo para a variante sem `_gmt`) | ✅ **corrigido em 2026-08-11** — sem isso o Eloquent carimbava `created_at` com o instante da importação: uma puxada histórica fazia todo pedido antigo parecer vendido no dia da carga, e o dashboard (que soma vendas por `created_at`) contava tudo como vendas do mês corrente. Vale para webhook e puxada, não só para `--historico` |
 
 ## Status de pedido (de-para)
 
