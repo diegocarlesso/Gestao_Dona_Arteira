@@ -10,6 +10,7 @@ use App\Modules\Sales\Services\CancelChannelOrderService;
 use App\Modules\Sales\Services\RegisterChannelOrderService;
 use App\Modules\Sales\Services\ResolveCustomerService;
 use App\Modules\Sales\Services\SaveOrderAddressesService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -142,6 +143,8 @@ class ImportWooOrder
                 customerNote: $this->customerNoteDe($order),
                 shippingMethod: $this->shippingMethodDe($order),
                 entregueSemBaixa: $entregueSemBaixa,
+                orderedAt: $this->dataDe($order, 'date_created'),
+                entregueEm: $entregueSemBaixa ? ($this->dataDe($order, 'date_completed') ?? $this->dataDe($order, 'date_created')) : null,
             );
 
             IntegrationMapping::registrar('order', $resultado->orderId, $wooId);
@@ -421,6 +424,40 @@ class ImportWooOrder
         $metodo = trim((string) ($primeira['method_title'] ?? ''));
 
         return $metodo === '' ? null : $metodo;
+    }
+
+    /**
+     * A data real do pedido no Woo (`date_created`) ou da sua conclusão
+     * (`date_completed`) — BR-703/BR-707.
+     *
+     * Sem isso, `RegisterChannelOrderService` deixaria o Eloquent carimbar
+     * `created_at` com o instante da importação: um pedido de anos atrás
+     * pareceria vendido hoje, e o dashboard (que soma vendas por
+     * `created_at`) contaria a puxada histórica inteira como se fosse do
+     * mês corrente. Usa sempre a variante `_gmt` (o Woo manda as duas, e
+     * essa já vem em UTC — a sem sufixo é o fuso local do site, ambíguo
+     * sem saber qual é); cai para a variante sem sufixo só se a `_gmt`
+     * vier ausente ou vazia. Devolve `null` quando nenhuma das duas existe
+     * (nunca acontece na prática, mas o retorno nulo do
+     * `RegisterChannelOrderService` já sabe manter o comportamento padrão
+     * do Eloquent nesse caso).
+     *
+     * @param  array<string, mixed>  $order
+     * @param  'date_created'|'date_completed'  $campo
+     */
+    private function dataDe(array $order, string $campo): ?Carbon
+    {
+        $valor = $order["{$campo}_gmt"] ?? $order[$campo] ?? null;
+
+        if (! is_string($valor) || $valor === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($valor, 'UTC')->setTimezone(config('app.timezone'));
+        } catch (\Exception) {
+            return null;
+        }
     }
 
     /**

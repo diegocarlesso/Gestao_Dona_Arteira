@@ -377,6 +377,39 @@ describe('nota do cliente, forma de entrega e endereço — BR-707', function ()
             ->and($enderecos->first()->type)->toBe('billing')
             ->and($enderecos->first()->street)->toBe('Rua das Flores');
     });
+
+    it('grava created_at com a data real do pedido no site, nao com o instante da importacao', function () {
+        produtoWooMapeado(501, '100.00', '5');
+
+        $r = app(ImportWooOrder::class)->handle(
+            pedidoWoo(1105, [itemWoo(501, 1, '100.00')], [
+                'total' => '100.00',
+                'date_created_gmt' => '2025-03-10T14:22:10',
+            ])
+        );
+
+        $pedido = Order::query()->find($r->orderId);
+        expect($pedido->created_at->toDateString())->toBe('2025-03-10');
+    });
+
+    it('--historico: completed grava delivered_at com date_completed do site, nao com now()', function () {
+        produtoWooMapeado(501, '100.00', '5');
+
+        $r = app(ImportWooOrder::class)->handle(
+            pedidoWoo(1106, [itemWoo(501, 1, '100.00')], [
+                'status' => 'completed',
+                'total' => '100.00',
+                'date_created_gmt' => '2025-03-10T14:22:10',
+                'date_completed_gmt' => '2025-03-15T09:00:00',
+            ]),
+            historico: true,
+        );
+
+        $pedido = Order::query()->find($r->orderId);
+        expect($pedido->status)->toBe(OrderStatus::Entregue)
+            ->and($pedido->created_at->toDateString())->toBe('2025-03-10')
+            ->and($pedido->delivered_at->toDateString())->toBe('2025-03-15');
+    });
 });
 
 // ============================================================ webhook

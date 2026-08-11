@@ -9,6 +9,7 @@ use App\Modules\Sales\Enums\OrderChannel;
 use App\Modules\Sales\Enums\OrderStatus;
 use App\Modules\Sales\Exceptions\PedidoInvalido;
 use App\Modules\Sales\Models\Order;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -47,6 +48,13 @@ class RegisterChannelOrderService
      *                                  a peça já saiu antes de o ERP existir. Só se aplica quando
      *                                  `$tentarReservar` é `false` (é sempre o caso: `completed` nunca
      *                                  está em `RESERVAVEIS`); os dois juntos não acontecem na prática.
+     * @param  Carbon|null  $orderedAt  data real do pedido no canal (BR-703/BR-707) — sem isso, o
+     *                                  Eloquent carimba `created_at` com o instante da importação, e
+     *                                  uma puxada histórica faria todo pedido antigo parecer vendido
+     *                                  hoje no dashboard. `null` (pedido de balcão, ou canal sem essa
+     *                                  data) mantém o comportamento padrão do Eloquent.
+     * @param  Carbon|null  $entregueEm  data real da entrega/conclusão no canal, só usada com
+     *                                   `$entregueSemBaixa`; `null` cai para `now()`.
      */
     public function handle(
         OrderChannel $channel,
@@ -61,12 +69,14 @@ class RegisterChannelOrderService
         ?string $customerNote = null,
         ?string $shippingMethod = null,
         bool $entregueSemBaixa = false,
+        ?Carbon $orderedAt = null,
+        ?Carbon $entregueEm = null,
     ): ChannelOrderResult {
         if ($itens === []) {
             throw PedidoInvalido::semItens();
         }
 
-        return DB::transaction(function () use ($channel, $customerId, $channelOrderRef, $itens, $shipping, $discount, $channelTotal, $tentarReservar, $notaInicial, $customerNote, $shippingMethod, $entregueSemBaixa): ChannelOrderResult {
+        return DB::transaction(function () use ($channel, $customerId, $channelOrderRef, $itens, $shipping, $discount, $channelTotal, $tentarReservar, $notaInicial, $customerNote, $shippingMethod, $entregueSemBaixa, $orderedAt, $entregueEm): ChannelOrderResult {
             $pedido = new Order([
                 'number' => $this->proximoNumero(),
                 'channel' => $channel,
@@ -82,6 +92,15 @@ class RegisterChannelOrderService
                 'customer_note' => $customerNote,
                 'shipping_method' => $shippingMethod,
             ]);
+
+            if ($orderedAt !== null) {
+                // Atribuído antes do save(): o Eloquent só carimba
+                // `created_at` sozinho quando o atributo ainda não está
+                // "sujo" — setar aqui é o que faz o pedido nascer com a
+                // data real do canal em vez do instante da importação.
+                $pedido->created_at = $orderedAt;
+            }
+
             $pedido->save();
 
             foreach ($itens as $linha) {
@@ -102,7 +121,7 @@ class RegisterChannelOrderService
                     // não há reserva a fazer (a peça já saiu no site) nem baixa
                     // de ledger a registrar (histórico, não fulfillment real).
                     $pedido->status = OrderStatus::Entregue;
-                    $pedido->delivered_at = now();
+                    $pedido->delivered_at = $entregueEm ?? now();
                     $pedido->save();
                 }
 
