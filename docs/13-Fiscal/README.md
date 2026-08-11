@@ -1,7 +1,7 @@
 # 13 — Fiscal
 
-> **Status:** Rascunho — **BLOQUEADO por validação com contador** · **Última atualização:** 2026-07-03 · **Responsável:** fiscal-specialist
-> **Regras:** BR-601…BR-606 · **Fase:** Gate 05 (regras) — decisões precisam começar antes
+> **Status:** Rascunho — **BLOQUEADO por validação com contador** · **Última atualização:** 2026-08-11 · **Responsável:** fiscal-specialist
+> **Regras:** BR-601…BR-608 · **Fase:** Gate 05 (regras) — decisões precisam começar antes
 > **Documentos:** [Pauta de validação com o contador](01-pauta-validacao-contador.md) ← *enviar ao contador; destrava a dependência externa de maior lead time*
 
 ## 1. Objetivo
@@ -36,6 +36,19 @@ A transição da reforma (CBS/IBS substituindo PIS/COFINS/ICMS/ISS) **começou e
 1. Layout da NF-e ganhará/ganhou campos IBS/CBS — a biblioteca de emissão precisa acompanhar NTs (reforça a avaliação de API fiscal gerenciada no ADR-0009).
 2. Regras do Simples durante a transição devem ser acompanhadas semestralmente com o contador.
 3. `tax_profiles` já deve nascer **versionado por vigência** (`valid_from`/`valid_to`) para absorver mudanças sem reescrita.
+
+> 🔧 **Estrutura implementada em 2026-08-11 (BR-608, ADR-0027)** — `MontarXmlNfe`
+> monta o grupo `IBSCBS` (UB12) por item **quando** `tax_profiles` tiver
+> `ibscbs_cst`/`ibscbs_cclasstrib`/`ibs_uf_aliquota`/`ibs_mun_aliquota`/
+> `cbs_aliquota` preenchidos para o cenário. **Sem essa configuração o grupo
+> é omitido** — e isso não é uma pendência: a LC 214/2025 (art. 348, III,
+> "c") isenta o Simples Nacional da obrigação até 04/01/2027, e a Dona
+> Arteira só emite como Simples Nacional (`MontarXmlNfe` recusa qualquer
+> outro CRT). O prazo de 03/08/2026 que motivou este trabalho é do regime
+> regular (Lucro Real/Presumido), não do nosso. `tax_profiles` continua
+> nascendo vazio nesses 5 campos — populá-los é decisão do contador
+> (perguntas H-05/H-06 da [pauta](01-pauta-validacao-contador.md)), não do
+> código.
 
 ## 5. Dados fiscais no cadastro de produto (BR-606)
 

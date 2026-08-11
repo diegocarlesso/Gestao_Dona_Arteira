@@ -27,7 +27,13 @@ class CanalSefaz
     /** A única versão de layout que a `Tools` conhece hoje. */
     private const VERSAO_LAYOUT = '4.00';
 
-    private const SCHEMAS = 'PL_009_V4';
+    /**
+     * `PL_010_V1.30` — trocado em 2026-08-11 (era `PL_009_V4`), ADR-0027.
+     * O pacote antigo é anterior à reforma tributária e não tem o grupo
+     * IBSCBS no XSD; a troca é aditiva (confirmada rodando a suíte
+     * inteira do Fiscal contra o schema novo).
+     */
+    private const SCHEMAS = 'PL_010_V1.30';
 
     /**
      * Pré-flight barato: o `.pfx` está configurado e legível?

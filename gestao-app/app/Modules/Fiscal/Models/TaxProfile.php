@@ -28,6 +28,11 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property string $customer_type
  * @property string $cfop
  * @property string $csosn
+ * @property string|null $ibscbs_cst
+ * @property string|null $ibscbs_cclasstrib
+ * @property string|null $ibs_uf_aliquota
+ * @property string|null $ibs_mun_aliquota
+ * @property string|null $cbs_aliquota
  * @property string|null $notes
  * @property Carbon $valid_from
  * @property Carbon|null $valid_to
@@ -66,6 +71,11 @@ class TaxProfile extends Model implements Auditable
         'customer_type',
         'cfop',
         'csosn',
+        'ibscbs_cst',
+        'ibscbs_cclasstrib',
+        'ibs_uf_aliquota',
+        'ibs_mun_aliquota',
+        'cbs_aliquota',
         'notes',
         'valid_from',
         'valid_to',
@@ -92,6 +102,23 @@ class TaxProfile extends Model implements Auditable
     public function getRouteKeyName(): string
     {
         return 'public_id';
+    }
+
+    /**
+     * O grupo IBS/CBS (UB12) está pronto para sair na nota — BR-608, ADR-0027.
+     *
+     * Os 5 campos ou nenhum: configuração parcial (CST sem alíquota, por
+     * exemplo) geraria um grupo pela metade, que o XSD reprova do mesmo
+     * jeito que reprovaria a ausência total — só que escondendo o motivo
+     * atrás de um erro de schema em vez de "ainda não configurado".
+     */
+    public function ibscbsConfigurado(): bool
+    {
+        return $this->ibscbs_cst !== null
+            && $this->ibscbs_cclasstrib !== null
+            && $this->ibs_uf_aliquota !== null
+            && $this->ibs_mun_aliquota !== null
+            && $this->cbs_aliquota !== null;
     }
 
     /**

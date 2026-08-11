@@ -111,8 +111,7 @@ class SpedNfeGateway implements NfeGatewayInterface
             pedido: $pedido,
             emitente: $emitente,
             destinatario: $destinatario,
-            cfop: $perfil->cfop,
-            csosn: $perfil->csosn,
+            perfil: $perfil,
             // A natureza da operação é a descrição textual que acompanha o
             // CFOP. Sai do próprio perfil (`venda`, `devolucao`) em vez de
             // uma constante: quando o contador quiser um texto mais

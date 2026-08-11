@@ -8,6 +8,7 @@ use App\Modules\Fiscal\DTO\DestinatarioNfe;
 use App\Modules\Fiscal\DTO\EmitenteNfe;
 use App\Modules\Fiscal\Exceptions\EmissaoInvalida;
 use App\Modules\Fiscal\Models\Invoice;
+use App\Modules\Fiscal\Models\TaxProfile;
 use App\Modules\Sales\DTO\OrderInvoiceItem;
 use App\Modules\Sales\DTO\OrderInvoiceSnapshot;
 use App\Modules\Sales\Enums\OrderChannel;
@@ -41,8 +42,17 @@ class MontarXmlNfe
     /** Identificação do emissor no XML (`verProc`) — não é dado fiscal. */
     private const VERSAO_EMISSOR = 'DonaArteiraERP 1.0';
 
-    /** Layout em uso. `Tools` só conhece esta versão (PL_009_V4). */
+    /** Layout em uso. `Tools` só conhece esta versão. */
     private const VERSAO_LAYOUT = '4.00';
+
+    /**
+     * Mesmo pacote de `CanalSefaz::SCHEMAS` (ADR-0027) — precisam ficar em
+     * sincronia. `Make` só anexa o grupo IBSCBS à árvore quando o schema
+     * informado no construtor é `> 9` (`Make::__construct()`); sem passar
+     * isto aqui, `tagIBSCBS()` monta o elemento mas ele nunca chega ao XML
+     * — silenciosamente, sem erro, porque o grupo é opcional no XSD.
+     */
+    private const SCHEMA_PACKAGE = 'PL_010_V1.30';
 
     private const MODELO_NFE = '55';
 
@@ -66,8 +76,7 @@ class MontarXmlNfe
         OrderInvoiceSnapshot $pedido,
         EmitenteNfe $emitente,
         DestinatarioNfe $destinatario,
-        string $cfop,
-        string $csosn,
+        TaxProfile $perfil,
         string $naturezaDaOperacao,
         int $tpAmb,
     ): string {
@@ -82,7 +91,7 @@ class MontarXmlNfe
         $pisCst = $this->cstConfigurado('fiscal.tributos.pis_cst');
         $cofinsCst = $this->cstConfigurado('fiscal.tributos.cofins_cst');
 
-        $make = new Make;
+        $make = new Make(self::SCHEMA_PACKAGE);
 
         $cUF = UFList::getCodeByUF($emitente->uf);
         $emissao = new DateTimeImmutable('now', new DateTimeZone(TimeZoneByUF::get($emitente->uf)));
@@ -138,7 +147,7 @@ class MontarXmlNfe
 
         $this->emitente($make, $emitente);
         $this->destinatario($make, $destinatario, $tpAmb);
-        $this->itens($make, $pedido, $cfop, $csosn, $pisCst, $cofinsCst);
+        $this->itens($make, $pedido, $perfil, $pisCst, $cofinsCst);
 
         // `total` não é informado: com o método de cálculo padrão (V2) a
         // própria lib soma vProd/vDesc/vFrete dos itens e monta o ICMSTot.
@@ -261,8 +270,7 @@ class MontarXmlNfe
     private function itens(
         Make $make,
         OrderInvoiceSnapshot $pedido,
-        string $cfop,
-        string $csosn,
+        TaxProfile $perfil,
         string $pisCst,
         string $cofinsCst,
     ): void {
@@ -288,7 +296,7 @@ class MontarXmlNfe
                 'xProd' => $item->name,
                 'NCM' => $item->ncm,
                 'CEST' => $item->cest,
-                'CFOP' => $cfop,
+                'CFOP' => $perfil->cfop,
                 'uCom' => $item->unit,
                 'qCom' => $item->qty,
                 'vUnCom' => $item->unitPrice,
@@ -311,7 +319,7 @@ class MontarXmlNfe
             $make->tagICMSSN($this->std([
                 'item' => $numero,
                 'orig' => $item->origin,
-                'CSOSN' => $csosn,
+                'CSOSN' => $perfil->csosn,
             ]));
 
             $make->tagPIS($this->std([
@@ -329,7 +337,53 @@ class MontarXmlNfe
                 'pCOFINS' => '0.00',
                 'vCOFINS' => '0.00',
             ]));
+
+            $this->ibscbs($make, $numero, $bruto, $perfil);
         }
+    }
+
+    /**
+     * O grupo IBS/CBS (UB12) do item — BR-608, ADR-0027.
+     *
+     * Só sai na nota quando os 5 campos do perfil estiverem preenchidos
+     * (`ibscbsConfigurado()`); sem isso, este método não adiciona nada ao
+     * XML. Não é uma pendência: o Simples Nacional (único regime que este
+     * gateway emite) é isento da obrigação até 04/01/2027 — omitir o
+     * grupo hoje é o comportamento correto, não um "ainda não
+     * implementado".
+     */
+    private function ibscbs(Make $make, int $numero, string $vBC, TaxProfile $perfil): void
+    {
+        if (! $perfil->ibscbsConfigurado()) {
+            return;
+        }
+
+        $vIbsUf = $this->valorDoTributo($vBC, (string) $perfil->ibs_uf_aliquota);
+        $vIbsMun = $this->valorDoTributo($vBC, (string) $perfil->ibs_mun_aliquota);
+        $vCbs = $this->valorDoTributo($vBC, (string) $perfil->cbs_aliquota);
+
+        $make->tagIBSCBS($this->std([
+            'item' => $numero,
+            'CST' => $perfil->ibscbs_cst,
+            'cClassTrib' => $perfil->ibscbs_cclasstrib,
+            'vBC' => $vBC,
+            'gIBSUF_pIBSUF' => $perfil->ibs_uf_aliquota,
+            'gIBSUF_vIBSUF' => $vIbsUf,
+            'gIBSMun_pIBSMun' => $perfil->ibs_mun_aliquota,
+            'gIBSMun_vIBSMun' => $vIbsMun,
+            'vIBS' => bcadd($vIbsUf, $vIbsMun, 2),
+            'gCBS_pCBS' => $perfil->cbs_aliquota,
+            'gCBS_vCBS' => $vCbs,
+        ]));
+    }
+
+    /**
+     * `base × alíquota/100`, em bcmath — regra 6 do projeto, sem float.
+     * `$aliquota` é percentual (ex.: "0.1000" = 0,1%).
+     */
+    private function valorDoTributo(string $base, string $aliquota): string
+    {
+        return bcmul($base, bcdiv($aliquota, '100', 6), 2);
     }
 
     /**

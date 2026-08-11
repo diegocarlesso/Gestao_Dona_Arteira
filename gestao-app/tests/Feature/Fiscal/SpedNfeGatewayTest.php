@@ -47,10 +47,13 @@ use NFePHP\Common\Validator;
 |
 */
 
-/** O XSD oficial do layout 4.00, distribuído com a própria biblioteca. */
+/**
+ * O XSD oficial do layout 4.00, distribuído com a própria biblioteca —
+ * `PL_010_V1.30`, o mesmo pacote de `CanalSefaz::SCHEMAS` (ADR-0027).
+ */
 function xsdDaNfe(): string
 {
-    return base_path('vendor/nfephp-org/sped-nfe/schemes/PL_009_V4/nfe_v4.00.xsd');
+    return base_path('vendor/nfephp-org/sped-nfe/schemes/PL_010_V1.30/nfe_v4.00.xsd');
 }
 
 /**
@@ -208,7 +211,7 @@ function notaNumerada(int $numero = 1): Invoice
     ]);
 }
 
-function montarXml(Invoice $nota, OrderInvoiceSnapshot $pedido, int $tpAmb = 2): string
+function montarXml(Invoice $nota, OrderInvoiceSnapshot $pedido, int $tpAmb = 2, ?TaxProfile $perfil = null): string
 {
     return app(MontarXmlNfe::class)->handle(
         nota: $nota,
@@ -218,8 +221,7 @@ function montarXml(Invoice $nota, OrderInvoiceSnapshot $pedido, int $tpAmb = 2):
             $pedido,
             (string) $pedido->shippingAddress?->cityCode,
         ),
-        cfop: '5101',
-        csosn: '102',
+        perfil: $perfil ?? TaxProfile::factory()->make(),
         naturezaDaOperacao: 'VENDA',
         tpAmb: $tpAmb,
     );
@@ -282,6 +284,56 @@ describe('montagem do XML', function () {
             ->and((string) $nfe->infNFe->det->prod->NCM)->toBe('39264000')
             // Sem código de barras no catálogo migrado do Woo (pasta 32).
             ->and((string) $nfe->infNFe->det->prod->cEAN)->toBe('SEM GTIN');
+    });
+
+    // -------------------------------------------------- grupo IBS/CBS (BR-608, ADR-0027)
+
+    it('omite o grupo IBSCBS quando o perfil nao tem os 5 campos configurados', function () {
+        // TaxProfile::factory() já nasce sem os campos de IBS/CBS (nulos
+        // por padrão) — é o estado de hoje, com Simples Nacional isento
+        // até 04/01/2027.
+        $xml = montarXml(notaNumerada(), retratoDoPedido());
+        $nfe = new SimpleXMLElement($xml);
+
+        expect($xml)->not->toContain('<IBSCBS>')
+            ->and(isset($nfe->infNFe->det->imposto->IBSCBS))->toBeFalse();
+    });
+
+    it('monta o grupo IBSCBS quando os 5 campos do perfil estao configurados, e o XML passa no XSD', function () {
+        $arquivo = certificadoAutoassinado();
+
+        $perfil = TaxProfile::factory()->make([
+            'ibscbs_cst' => '000',
+            'ibscbs_cclasstrib' => '000001',
+            'ibs_uf_aliquota' => '0.1000',
+            'ibs_mun_aliquota' => '0.0500',
+            'cbs_aliquota' => '0.9000',
+        ]);
+
+        $xml = montarXml(notaNumerada(), retratoDoPedido(), perfil: $perfil);
+        $assinado = app(CanalSefaz::class)->abrir(EmitenteNfe::doConfig(), 2)->signNFe($xml);
+        $nfe = new SimpleXMLElement($xml);
+        $ibscbs = $nfe->infNFe->det->imposto->IBSCBS;
+
+        expect(Validator::isValid($assinado, xsdDaNfe()))->toBeTrue()
+            ->and((string) $ibscbs->CST)->toBe('000')
+            ->and((string) $ibscbs->cClassTrib)->toBe('000001')
+            // vBC do item é 200.00 (2 × 100.00); 0,1% + 0,05% + 0,9% das
+            // alíquotas de teste sobre essa base — bcmath, sem float.
+            ->and((string) $ibscbs->gIBSCBS->gIBSUF->vIBSUF)->toBe('0.20')
+            ->and((string) $ibscbs->gIBSCBS->gIBSMun->vIBSMun)->toBe('0.10')
+            ->and((string) $ibscbs->gIBSCBS->gCBS->vCBS)->toBe('1.80')
+            ->and((string) $ibscbs->gIBSCBS->vIBS)->toBe('0.30');
+    });
+
+    it('trata configuracao parcial de IBS/CBS como ausente — nunca um grupo pela metade', function () {
+        // Só o CST, sem alíquota nem cClassTrib: exatamente o cadastro
+        // incompleto que `ibscbsConfigurado()` existe para recusar.
+        $perfil = TaxProfile::factory()->make(['ibscbs_cst' => '000']);
+
+        $xml = montarXml(notaNumerada(), retratoDoPedido(), perfil: $perfil);
+
+        expect($xml)->not->toContain('<IBSCBS>');
     });
 
     it('fecha o total da nota com o total do pedido mesmo com frete e desconto', function () {
