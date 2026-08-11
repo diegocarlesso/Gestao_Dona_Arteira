@@ -290,6 +290,12 @@ it('não deixa PC confirmado sem título nem título sem PC: a falha volta os do
     // categoria padrão semeada, o Financeiro recusa (BR-503) — e o PC tem
     // de continuar como estava, em vez de ficar confirmado sem dívida.
     Payable::query()->delete();
+    // Filhas antes das raízes: a árvore de categorias (docs/12 §4) tem FK
+    // de `parent_id` para a própria tabela, e apagar a raiz com filha viva
+    // estoura violação de integridade — não é assim que a doc pede para
+    // limpar em produção, só a forma segura de simular "nenhuma categoria
+    // semeada" neste teste.
+    FinanceCategory::query()->whereNotNull('parent_id')->delete();
     FinanceCategory::query()->delete();
 
     $peca = Product::factory()->create();

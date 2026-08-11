@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Finance\Models;
 
 use App\Modules\Finance\Models\Concerns\HasSettlements;
-use Database\Factories\Finance\PayableFactory;
+use Database\Factories\Finance\ReceivableFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,42 +15,31 @@ use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable;
 
 /**
- * Um título a pagar — BR-501/BR-502, docs/12-Financeiro §3.
+ * Um título a receber — BR-501/BR-502, docs/12-Financeiro §3.
  *
- * Auditado pelo mesmo motivo do `Order`: mexe com dinheiro, e "quem mudou
- * o valor/o vencimento deste título" é pergunta que o dono vai fazer. A
- * trilha de auditoria é também o que sustenta a regra de que estorno se
- * faz por contrapartida e nunca por `DELETE` (BR-504).
- *
- * `amount` é **string**, não float: o cast para float perderia centavos e
- * violaria o ADR-0013. Para aritmética, `bcadd`/`bcsub`/`bccomp` ou o
- * `money()` do `HasSettlements`.
+ * Espelho de `Payable` (ver o comentário de `HasSettlements` para o porquê
+ * de compartilhar a máquina de estados em vez de duplicá-la).
  *
  * @property int $id
  * @property string $public_id
  * @property int $category_id
  * @property string|null $origin_type
  * @property int|null $origin_id
- * @property string $supplier_name
+ * @property string $customer_name
  * @property string $amount
  * @property Carbon|null $due_date
  * @property string $status
  */
-class Payable extends Model implements Auditable
+class Receivable extends Model implements Auditable
 {
     use AuditableTrait;
 
-    /** @use HasFactory<PayableFactory> */
+    /** @use HasFactory<ReceivableFactory> */
     use HasFactory;
 
     use HasSettlements;
 
-    /**
-     * Explícito: o prefixo `finance_` é uma escolha de esquema (as tabelas
-     * do módulo ficam agrupadas no banco), não algo que o Eloquent deduza
-     * do nome da classe — sem isto ele procuraria `payables`.
-     */
-    protected $table = 'finance_payables';
+    protected $table = 'finance_receivables';
 
     /**
      * @var list<string>
@@ -59,7 +48,7 @@ class Payable extends Model implements Auditable
         'category_id',
         'origin_type',
         'origin_id',
-        'supplier_name',
+        'customer_name',
         'amount',
         'due_date',
         'status',

@@ -4,19 +4,37 @@ declare(strict_types=1);
 
 namespace App\Modules\Finance\Providers;
 
+use App\Modules\Finance\Listeners\RegistrarRecebivelAoConfirmarPedido;
+use App\Modules\Finance\Models\Payable;
+use App\Modules\Finance\Models\Receivable;
+use App\Modules\Sales\Events\OrderConfirmed;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 /**
- * Provider do módulo Financeiro.
- *
- * Nasce vazio de propósito. Nesta fatia (nota de escopo da pasta 12) o
- * Financeiro não tem tela, rota nem policy própria: quem mostra o título é
- * o Compras, na tela do pedido de compra. O provider existe desde já
- * porque a pasta 05 §2 pede um por módulo — e porque as rotas, as policies
- * (baixa, estorno) e o binding do gateway de cobrança do Gate 04 têm de
- * ter um lugar óbvio para chegar, em vez de vazarem para o `AppServiceProvider`.
+ * Provider do módulo Financeiro — docs/12, Gate 04.
  */
 class FinanceServiceProvider extends ServiceProvider
 {
-    //
+    public function boot(): void
+    {
+        // `settleable_type` grava `'payable'`/`'receivable'`, não o nome
+        // da classe cru — estável mesmo se `Payable`/`Receivable` forem
+        // renomeados ou movidos um dia (mesmo motivo de todo morphMap).
+        //
+        // `morphMap()`, não `enforceMorphMap()`: a segunda é global e
+        // passaria a exigir alias de **todo** model auditável do app (a
+        // trilha de auditoria também é polimórfica) — quebraria módulos
+        // que nunca pediram isso. `morphMap()` só resolve os dois nomes
+        // que o Financeiro usa, sem mexer no resto.
+        Relation::morphMap([
+            'payable' => Payable::class,
+            'receivable' => Receivable::class,
+        ]);
+
+        // Vendas não sabe que o Financeiro existe (ADR-0020) — quem ouve
+        // registra o listener, mesmo arranjo do Fiscal para o mesmo Event.
+        Event::listen(OrderConfirmed::class, RegistrarRecebivelAoConfirmarPedido::class);
+    }
 }

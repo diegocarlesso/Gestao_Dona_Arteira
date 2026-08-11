@@ -76,10 +76,10 @@ Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data)
 
 | ID | Regra | Origem | Status |
 |---|---|---|---|
-| BR-501 | Faturamento de pedido gera título(s) a receber conforme condição de pagamento; recebimento de compra gera título a pagar | decisão nova | 💡 |
-| BR-502 | Baixa de título registra conta financeira, data e valor; baixa parcial é permitida | decisão nova | 💡 |
-| BR-503 | Todo título tem categoria do plano de contas gerencial (árvore simples) | decisão nova | 💡 definir plano inicial com o dono |
-| BR-504 | Estorno financeiro nunca apaga o título original — gera contrapartida auditada | decisão nova | ✅ princípio de auditoria |
+| BR-501 | Faturamento de pedido gera título(s) a receber conforme condição de pagamento; recebimento de compra gera título a pagar | decisão nova | 🔧 **implementada em 2026-08-11**: `RegistrarRecebivelAoConfirmarPedido` (ouve `OrderConfirmed`) — pedido já pago (`orders.paid_at`) nasce com título já baixado; sem categoria/conta cadastrada, vira aviso no log, nunca desfaz a venda (BR-705) |
+| BR-502 | Baixa de título registra conta financeira, data e valor; baixa parcial é permitida | decisão nova | 🔧 **implementada em 2026-08-11**: `RegisterSettlementService` (`finance_settlements`), serve pagável e recebível; baixa que excede o saldo é recusada (BR-509) |
+| BR-503 | Todo título tem categoria do plano de contas gerencial (árvore simples) | decisão nova | 🔧 **implementada em 2026-08-11**: árvore completa da doc 12 §4 seedada como default editável (`FinanceCategorySeeder`) — categoria errada é `rename` na tela, não risco fiscal como `tax_profiles` |
+| BR-504 | Estorno financeiro nunca apaga o título original — gera contrapartida auditada | decisão nova | 🔧 **implementada em 2026-08-11**: `ReverseSettlementService` cria baixa negativa com `reversal_of_id`, nunca `DELETE` |
 
 ### Cobrança (boleto / PIX com vencimento) — [ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md), [doc 12/01](../12-Financeiro/01-cobranca-e-boletos.md)
 

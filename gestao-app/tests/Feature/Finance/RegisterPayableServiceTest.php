@@ -54,14 +54,16 @@ it('usa a categoria padrão de compras quando nenhuma é informada (BR-503)', fu
         ->and($titulo->category->type)->toBe(FinanceCategoryType::Payable);
 });
 
-it('semeia a categoria padrão sem duplicar quando o deploy roda de novo', function () {
+it('semeia as categorias sem duplicar quando o deploy roda de novo', function () {
     // Regra 5 da pasta 04: o seeder roda em todo deploy. Duplicar aqui
     // partiria os títulos em duas linhas iguais do relatório — e o índice
     // único (tipo, nome) transformaria o deploy seguinte em erro.
     $this->seed(FinanceCategorySeeder::class);
+    $quantidadeAposUmaVez = FinanceCategory::query()->count();
+
     $this->seed(FinanceCategorySeeder::class);
 
-    expect(FinanceCategory::query()->count())->toBe(1);
+    expect(FinanceCategory::query()->count())->toBe($quantidadeAposUmaVez);
 });
 
 it('recusa registrar sem categoria padrão semeada, em vez de criá-la por conta própria', function () {

@@ -44,4 +44,42 @@ class TituloInvalido extends DomainException
             "Um título a pagar precisa de valor positivo; recebido R$ {$valor}."
         );
     }
+
+    public static function tituloInexistente(string $tipo, int $id): self
+    {
+        return new self("O título {$tipo} {$id} não existe.");
+    }
+
+    public static function tipoDesconhecido(string $tipo): self
+    {
+        // 'payable'/'receivable' são os dois únicos valores do morphMap
+        // (FinanceServiceProvider) — qualquer outro é bug de quem chama,
+        // não dado do usuário, mas ainda assim vira mensagem nomeada em
+        // vez de erro de SQL/morphMap sem contexto.
+        return new self("Tipo de título desconhecido: \"{$tipo}\". Use \"payable\" ou \"receivable\".");
+    }
+
+    public static function baixaExcedeSaldo(string $valor, string $saldo): self
+    {
+        // BR-509: pagamento a maior não é baixa parcial de sinal trocado —
+        // é decisão de negócio (registrar como receita de juros, devolver)
+        // que este Service não toma sozinho. Recusar é mais seguro que
+        // silenciosamente baixar o título inteiro e sumir com a diferença.
+        return new self(
+            "A baixa de R$ {$valor} excede o saldo aberto do título (R$ {$saldo})."
+        );
+    }
+
+    public static function contaInexistente(int $accountId): self
+    {
+        return new self("A conta financeira {$accountId} não existe.");
+    }
+
+    public static function estornoDeEstorno(int $settlementId): self
+    {
+        // BR-504: contrapartida de contrapartida encadearia baixas
+        // negativas indefinidamente sem nunca devolver o título ao estado
+        // real — sempre estorna a baixa original.
+        return new self("A baixa {$settlementId} já é um estorno; estorne a baixa original, não este.");
+    }
 }

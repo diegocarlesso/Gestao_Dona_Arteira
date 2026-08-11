@@ -1,17 +1,20 @@
 # 12 — Financeiro
 
-> **Status:** Em revisão · **Última atualização:** 2026-08-10 · **Responsável:** financial-specialist
+> **Status:** Núcleo implementado · **Última atualização:** 2026-08-11 · **Responsável:** financial-specialist
 > **Regras:** BR-501…BR-512 · **Fase:** Gate 04
-> **Documentos:** [Cobrança (boleto e PIX com vencimento)](01-cobranca-e-boletos.md) — ⚠️ escopo aguardando decisão do dono ([ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md))
+> **Documentos:** [Cobrança (boleto e PIX com vencimento)](01-cobranca-e-boletos.md) — 🔧 provedor decidido (Mercado Pago, 2026-08-11); em construção ([ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md))
 
-> ⚠️ **Fatia mínima adiantada para P0 (decisão da diretoria, 2026-08-10).**
-> O módulo de Compras (pasta 11, Fase 1) precisa gerar conta a pagar
-> (BR-501/502) antes do Gate 04 começar de fato. Nasce agora só o
-> necessário: título a pagar (`Payable`) e uma categoria simples (BR-503,
-> sem o plano de contas completo de §4). **Não** entram nesta fatia: baixa
-> (mesmo que BR-502 já a descreva), contas financeiras, fluxo de caixa,
-> cobrança (boleto/PIX) — tudo isso continua Gate 04 completo, no momento
-> planejado.
+> 🔧 **Núcleo implementado em 2026-08-11** (BR-501/BR-502/BR-503/BR-504):
+> `Receivable`, `Payable`, baixa (total/parcial, `finance_settlements`),
+> `FinanceAccount` (sem coluna de saldo — soma das baixas, mesmo princípio
+> do saldo de estoque, ADR-0008), estorno por contrapartida (nunca
+> `DELETE`), plano de categorias completo (árvore da §4, seedada como
+> default editável). Pedido confirmado gera título a receber
+> automaticamente (`RegistrarRecebivelAoConfirmarPedido`, ouve `Sales\
+> Events\OrderConfirmed`) — se o pedido já nasceu pago (balcão à vista, ou
+> `processing`/`completed` do Woo), o título nasce **já baixado**, sem
+> passo manual. Falta: telas (React), e a cobrança automatizada (Mercado
+> Pago) — próxima etapa imediata.
 
 ## 1. Objetivo
 
@@ -34,9 +37,10 @@ flowchart LR
     B --> FC[Fluxo de caixa<br/>realizado + projetado]
 ```
 
-- Venda balcão à vista: título já nasce baixado (atalho de UX, mas o título existe — trilha completa).
-- Pedido Woo: título nasce conforme status de pagamento do canal (pago no gateway do site → baixado na conta "Gateway Woo", com taxa registrada como despesa — mapa na pasta 16).
-- Estorno **nunca** apaga: contrapartida auditada (BR-504).
+- ✅ Venda balcão à vista: título já nasce baixado (atalho de UX, mas o título existe — trilha completa).
+- ✅ Pedido Woo: título nasce conforme status de pagamento do canal — `processing`/`completed` (o Woo já considera pago) baixa direto; `on-hold` fica aberto. A conta usada hoje é sempre "Conta padrão" — separar por canal (ex.: "Gateway Mercado Pago" com taxa registrada como despesa) é trabalho da Fase C (cobrança).
+- ✅ Estorno **nunca** apaga: contrapartida auditada (BR-504).
+- Se a categoria padrão ou a conta padrão não existirem quando o pedido confirma, o listener registra aviso no log e **nunca** desfaz a confirmação — cadastro financeiro incompleto não pode derrubar uma venda.
 
 ### Fluxo de caixa
 Projetado = títulos abertos por vencimento; realizado = baixas por data. Visões 30/60/90 dias no dashboard (pasta 21). Saldo por conta conferível contra extrato bancário manualmente (v1).
