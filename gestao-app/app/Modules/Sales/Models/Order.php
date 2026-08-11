@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use OwenIt\Auditing\Auditable as AuditableTrait;
@@ -56,6 +57,8 @@ class Order extends Model implements Auditable
 
     /** @use HasFactory<OrderFactory> */
     use HasFactory;
+
+    use SoftDeletes;
 
     /**
      * @var list<string>
@@ -126,6 +129,18 @@ class Order extends Model implements Auditable
     public function exigeNotaFiscal(): bool
     {
         return $this->channel === OrderChannel::WooCommerce;
+    }
+
+    /**
+     * Pode ser excluído (soft delete)? — BR-311.
+     *
+     * Só cancelado, e só quando nunca teve nota fiscal (nem pendente, nem
+     * rejeitada): nota fiscal é documento legal, e um pedido com rastro
+     * fiscal não pode sumir das listagens.
+     */
+    public function excluivel(): bool
+    {
+        return $this->status === OrderStatus::Cancelled && $this->nfe_status === null;
     }
 
     protected static function booted(): void

@@ -197,6 +197,57 @@ it('exige motivo ao cancelar', function () {
         ->assertSessionHasErrors('motivo');
 });
 
+// ------------------------------------------------------- exclusão (BR-311)
+
+it('exclui pedido cancelado', function () {
+    $produto = produtoVendavel();
+    $pedido = abrirPedido([['product' => $produto->public_id, 'qty' => '1']]);
+    app(CancelOrderService::class)->handle($pedido, 'teste');
+
+    actingAs(vendedorDe())
+        ->delete("/pedidos/{$pedido->public_id}")
+        ->assertRedirect('/pedidos');
+
+    expect(Order::query()->whereKey($pedido->id)->exists())->toBeFalse()
+        ->and(Order::withTrashed()->whereKey($pedido->id)->exists())->toBeTrue();
+});
+
+it('recusa excluir pedido que nao foi cancelado', function () {
+    $produto = produtoVendavel();
+    $pedido = abrirPedido([['product' => $produto->public_id, 'qty' => '1']]);
+
+    actingAs(vendedorDe())
+        ->delete("/pedidos/{$pedido->public_id}")
+        ->assertSessionHasErrors('exclusao');
+
+    expect(Order::query()->whereKey($pedido->id)->exists())->toBeTrue();
+});
+
+it('recusa excluir pedido cancelado que tem nota fiscal', function () {
+    $produto = produtoVendavel();
+    $pedido = abrirPedido([['product' => $produto->public_id, 'qty' => '1']]);
+    app(CancelOrderService::class)->handle($pedido, 'teste');
+    $pedido->forceFill(['nfe_status' => 'authorized'])->save();
+
+    actingAs(vendedorDe())
+        ->delete("/pedidos/{$pedido->public_id}")
+        ->assertSessionHasErrors('exclusao');
+
+    expect(Order::query()->whereKey($pedido->id)->exists())->toBeTrue();
+});
+
+it('barra quem cria mas nao pode excluir', function () {
+    $produto = produtoVendavel();
+    $pedido = abrirPedido([['product' => $produto->public_id, 'qty' => '1']]);
+    app(CancelOrderService::class)->handle($pedido, 'teste');
+
+    // Mesma alçada de cancelar (sales.cancel) — Fulfillment vê pedidos e
+    // não tem essa permissão.
+    actingAs(vendedorDe(Role::Fulfillment))
+        ->delete("/pedidos/{$pedido->public_id}")
+        ->assertForbidden();
+});
+
 // ------------------------------------------------- não editar depois
 
 it('não deixa editar itens de pedido confirmado', function () {

@@ -29,6 +29,7 @@ interface Props {
         status_label: string;
         rascunho: boolean;
         cancelavel: boolean;
+        excluivel: boolean;
         pode_separar: boolean;
         pode_embalar: boolean;
         pode_expedir: boolean;
@@ -47,6 +48,7 @@ interface Props {
     };
     podeConfirmar: boolean;
     podeCancelar: boolean;
+    podeExcluir: boolean;
     podeExpedir: boolean;
 }
 
@@ -59,7 +61,7 @@ async function buscar<T>(url: string, q: string): Promise<T[]> {
     return r.ok ? r.json() : [];
 }
 
-export default function PedidoEdit({ pedido, podeConfirmar, podeCancelar, podeExpedir }: Props) {
+export default function PedidoEdit({ pedido, podeConfirmar, podeCancelar, podeExcluir, podeExpedir }: Props) {
     const { errors } = usePage().props;
     const acao = useForm({});
 
@@ -109,6 +111,11 @@ export default function PedidoEdit({ pedido, podeConfirmar, podeCancelar, podeEx
         const motivo = prompt('Motivo do cancelamento?');
         if (!motivo) return;
         router.post(`/pedidos/${pedido.public_id}/cancelar`, { motivo }, { preserveScroll: true });
+    };
+
+    const excluir = () => {
+        if (!confirm(`Excluir o pedido #${pedido.number}?\n\nEle sai das listagens. Itens e histórico continuam guardados.`)) return;
+        router.delete(`/pedidos/${pedido.public_id}`);
     };
 
     // Separar, embalar e entregar são transições simples. Expedir tem seção
@@ -187,11 +194,18 @@ export default function PedidoEdit({ pedido, podeConfirmar, podeCancelar, podeEx
                                 Cancelar
                             </Button>
                         )}
+                        {pedido.excluivel && podeExcluir && (
+                            <Button variant="ghost" onClick={excluir}>
+                                <Trash2 className="size-4" />
+                                Excluir
+                            </Button>
+                        )}
                     </div>
                 </div>
 
                 {errors.confirmacao && <p className="text-destructive text-sm">{errors.confirmacao}</p>}
                 {errors.cancelamento && <p className="text-destructive text-sm">{errors.cancelamento}</p>}
+                {errors.exclusao && <p className="text-destructive text-sm">{errors.exclusao}</p>}
                 {errors.fulfillment && <p className="text-destructive text-sm">{errors.fulfillment}</p>}
                 {errors.pedido && <p className="text-destructive text-sm">{errors.pedido}</p>}
 

@@ -172,6 +172,7 @@ stateDiagram-v2
 - Transições são **ações explícitas da API** (`POST /orders/{id}/confirm|cancel|ship`, pasta 07); cada uma valida pré-condições e dispara os eventos (`OrderConfirmed`, `OrderShipped`…).
 - `order_status_history` grava toda transição com autor e motivo.
 - **Pedidos WooCommerce** (BR-304): entram via integração já `Confirmado`/`Pago` conforme mapeamento de status (pasta 16); ERP não edita itens/valores — apenas conduz o fulfillment. Cancelamento no Woo reflete no ERP e vice-versa (pasta 16 define quem vence em cada caso).
+- **Exclusão** (BR-311): só a partir de `Cancelado`, e só quando o pedido nunca teve nota fiscal emitida (`nfe_status` nulo) — nota fiscal é documento legal, e um pedido que já gerou NF-e (mesmo pendente/rejeitada) não pode desaparecer das listagens. É *soft delete* (`SoftDeletes`, mesmo padrão do cadastro de clientes — `CustomerController::destroy`): o pedido some da lista, mas a linha, os itens e o histórico continuam no banco, recuperáveis.
 
 ## 4. Preços e descontos
 

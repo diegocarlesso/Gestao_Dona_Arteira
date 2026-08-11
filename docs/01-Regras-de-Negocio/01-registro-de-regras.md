@@ -59,6 +59,7 @@ Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data)
 | BR-308 | Formas de pagamento aceitas: Dinheiro, PIX, Cartão, Boleto, Outro — parametrizável | legado (`PaymentMethod`) | 💡 |
 | BR-309 | Expedição só ocorre com NF-e autorizada quando a operação exigir documento fiscal (ver BR-601) | decisão nova | 💡 validar exceções com contador |
 | BR-310 | Cliente com e-mail cadastrado recebe e-mail transacional nos marcos do pedido: confirmação (BR-303 Confirmado) e envio (BR-303 Expedido, com rastreio se houver). Sem e-mail cadastrado, ou pedido de balcão sem cliente, não é falha — é ausência de destinatário | decisão nova | 🔧 **implementado em 2026-08-06:** ver [docs/15-Integracoes/01-email-transacional.md](../15-Integracoes/01-email-transacional.md) |
+| BR-311 | Pedido cancelado pode ser excluído (soft delete), mas só se nunca teve NF-e emitida (`nfe_status` nulo) — nota fiscal é documento legal e não pode desaparecer das listagens | decisão do dono (2026-08-11) | ✅ **implementado em 2026-08-11** |
 
 ## BR-4xx — Compras
 

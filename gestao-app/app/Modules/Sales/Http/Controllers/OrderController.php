@@ -16,6 +16,7 @@ use App\Modules\Sales\Models\OrderItem;
 use App\Modules\Sales\Models\OrderStatusHistory;
 use App\Modules\Sales\Services\CancelOrderService;
 use App\Modules\Sales\Services\ConfirmOrderService;
+use App\Modules\Sales\Services\DeleteOrderService;
 use App\Modules\Sales\Services\FulfillmentService;
 use App\Modules\Sales\Services\SaveOrderService;
 use Illuminate\Http\JsonResponse;
@@ -94,6 +95,7 @@ class OrderController extends Controller
                 'status_label' => $order->status->label(),
                 'rascunho' => $order->status->rascunho(),
                 'cancelavel' => $order->status->cancelavel(),
+                'excluivel' => $order->excluivel(),
                 // Etapas do fulfillment: cada uma só avança da anterior.
                 'pode_separar' => $order->status === OrderStatus::Confirmed,
                 'pode_embalar' => $order->status === OrderStatus::Separando,
@@ -133,6 +135,7 @@ class OrderController extends Controller
             ],
             'podeConfirmar' => request()->user()?->can('confirm', $order) ?? false,
             'podeCancelar' => request()->user()?->can('cancel', $order) ?? false,
+            'podeExcluir' => request()->user()?->can('delete', $order) ?? false,
             'podeExpedir' => request()->user()?->can('fulfill', $order) ?? false,
         ]);
     }
@@ -178,6 +181,19 @@ class OrderController extends Controller
         }
 
         return back()->with('sucesso', "Pedido #{$order->number} cancelado.");
+    }
+
+    public function destroy(Order $order, DeleteOrderService $service): RedirectResponse
+    {
+        $this->authorize('delete', $order);
+
+        try {
+            $service->handle($order);
+        } catch (PedidoInvalido $e) {
+            return back()->withErrors(['exclusao' => $e->getMessage()]);
+        }
+
+        return to_route('sales.orders.index')->with('sucesso', "Pedido #{$order->number} excluído.");
     }
 
     public function separar(Request $request, Order $order, FulfillmentService $service): RedirectResponse

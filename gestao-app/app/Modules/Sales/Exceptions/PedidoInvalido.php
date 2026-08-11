@@ -34,6 +34,17 @@ class PedidoInvalido extends DomainException
         return new self("Pedido {$de} não pode ir para {$para}.");
     }
 
+    public static function naoExcluivel(string $status, bool $temNota): self
+    {
+        // BR-311: nota fiscal é documento legal, mesmo pendente/rejeitada —
+        // um pedido com rastro fiscal não pode sumir das listagens.
+        $motivo = $temNota
+            ? 'ele tem nota fiscal associada'
+            : "o status é {$status}, e só pedido cancelado pode ser excluído";
+
+        return new self("Este pedido não pode ser excluído: {$motivo}.");
+    }
+
     public static function semNotaFiscalAutorizada(int $numero, ?string $situacao): self
     {
         // BR-309: a mercadoria não circula sem documento fiscal. A trava

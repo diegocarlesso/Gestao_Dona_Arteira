@@ -51,6 +51,15 @@ class OrderPolicy
     }
 
     /**
+     * Excluir (BR-311) — mesma alçada de cancelar, é a mesma trilha de
+     * confiança que já mexe no estado final do pedido.
+     */
+    public function delete(Authorizable $usuario, Order $pedido): bool
+    {
+        return $usuario->can(Permission::SalesCancel->value);
+    }
+
+    /**
      * Separar, embalar, expedir e entregar — alçada da Expedição
      * (`fulfillment.execute`), distinta de criar/cancelar venda. É a mão que
      * mexe na peça, não a que fecha o negócio.
