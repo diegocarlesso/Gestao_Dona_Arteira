@@ -1,6 +1,6 @@
 # Mapeamento de Campos ERP ↔ WooCommerce
 
-> **Status:** Rascunho (completar no Gate 02 com inventário real do Woo) · **Última atualização:** 2026-07-03 · **Responsável:** woocommerce-specialist
+> **Status:** Rascunho (completar no Gate 02 com inventário real do Woo) · **Última atualização:** 2026-08-10 · **Responsável:** woocommerce-specialist
 
 De-para canônico usado pelos Adapters e pelo importador da migração (pasta 17). Campos do Woo conforme REST API v3.
 
@@ -25,13 +25,15 @@ De-para canônico usado pelos Adapters e pelo importador da migração (pasta 17
 
 | ERP (`customers`) | WooCommerce | Notas |
 |---|---|---|
-| name | `first_name + last_name` | concatenação na entrada, split heurístico marcado p/ revisão |
-| email | `email` | **chave de dedupe** nº 1 |
-| doc (CPF/CNPJ) | meta (plugin brasileiro, ex.: `_billing_cpf`/`_billing_cnpj`) | inventariar qual plugin de checkout há no site; chave de dedupe nº 2 |
+| name | `first_name + last_name` | recuo: nomes de `billing`; depois `Cliente do site` |
+| email | `email` | **chave de dedupe** nº 1; normalizado em minúsculas |
+| doc (CPF/CNPJ) | `billing.cpf`/`billing.cnpj` **ou** meta `_billing_cpf`, `billing_cpf`, `_billing_cnpj`, `billing_cnpj` | ✅ nomes confirmados rodando (corte 4 + migração de clientes); chave de dedupe nº 2 |
 | phone | `billing.phone` | |
-| endereços | `billing` / `shipping` | viram `customer_addresses` |
-| is_wholesale | — | conceito só do ERP |
-| convidado (guest checkout) | pedido sem customer id | ERP cria/casa cliente pelo e-mail do pedido |
+| endereços | `billing` / `shipping` | viram `customer_addresses`; iguais → **um** registro com os dois padrões |
+| endereço: número e bairro | meta `_billing_number` / `_billing_neighborhood` (idem `shipping`) | do plugin brasileiro; **nunca** extraídos de `address_1` por heurística |
+| is_wholesale | — | conceito só do ERP; sempre `false` no canal (100% PF/varejo) |
+| convidado (guest checkout) | pedido sem customer id | ERP cria/casa cliente pelo e-mail do pedido; **não** aparece em `/customers` |
+| — (só quem comprou migra) | `orders_count` | critério de rejeição da migração (LGPD) — [pasta 17 § Clientes](../17-Migracao/README.md#clientes-f2f5) |
 
 ## Pedido
 
@@ -65,7 +67,7 @@ De-para canônico usado pelos Adapters e pelo importador da migração (pasta 17
 
 ## Pendências de inventário (Gate 02)
 
-- [ ] Plugin de checkout brasileiro em uso (campos de CPF/CNPJ) — nome exato dos metadados.
+- [x] ~~Plugin de checkout brasileiro em uso (campos de CPF/CNPJ) — nome exato dos metadados.~~ Resolvido **empiricamente**, não por leitura de documentação: o código varre as chaves conhecidas (`_billing_cpf`, `billing_cpf`, `_billing_cnpj`, `billing_cnpj`, `_billing_number`, `_billing_neighborhood`) em vez de fixar uma — o plugin pode registrar o campo no REST ou só no `meta_data`, e ler um lugar só perderia metade dos casos.
 - [ ] Uso de produtos variáveis? cupons? assinaturas? — listar plugins ativos.
 - [ ] Plugin de frete (Correios/Melhor Envio?) e de rastreio.
 - [ ] Gateways ativos e comportamento de refund.

@@ -1,6 +1,6 @@
 # 06 — Clientes
 
-> **Status:** Em revisão · **Última atualização:** 2026-07-06 · **Responsável:** migration-specialist / sales-specialist
+> **Status:** Em revisão · **Última atualização:** 2026-08-10 · **Responsável:** migration-specialist / sales-specialist
 > **Regras relacionadas:** BR-001 (CPF/CNPJ), BR-006 (PF/PJ), BR-301 (atacado), BR-706 (dedupe migração)
 
 ## 1. Objetivo
@@ -89,4 +89,36 @@ Não há flag de inatividade. Na prática, ~136 contas nunca geraram pedido (can
 
 - Migrar como **PF/varejo**; a dimensão **atacado/PJ virá do desktop**, não do site.
 - Dedupe por **e-mail (nº1)** e **CPF (nº2)** ([16-WooCommerce/01](../16-WooCommerce/01-mapeamento-de-campos.md)); atenção à **sobreposição site×desktop**.
-- Decidir política para as ~136 contas sem compra (migrar? arquivar? LGPD).
+- ~~Decidir política para as ~136 contas sem compra (migrar? arquivar? LGPD).~~ **Decidido** — ver abaixo.
+
+> 📌 **Correção de 2026-07-25.** A "sobreposição site×desktop" **não
+> existe**: o desktop nunca foi alimentado. Não há segunda fonte de
+> clientes, e o dedupe roda só contra o próprio ERP.
+
+### Decisão de escopo — 2026-08-10 (diretoria)
+
+**Migram apenas os 62 cadastros com pedido real.** Os ~136 sem nenhuma
+compra ficam de fora por **minimização de dados pessoais** (LGPD,
+[25-Segurança §3](../25-Seguranca/README.md)): são checkout abandonado,
+newsletter e importação antiga, e retê-los no ERP seria guardar dado de
+gente sem finalidade de venda nem obrigação fiscal.
+
+Como a decisão foi implementada ([pasta 17 § Clientes](../17-Migracao/README.md#clientes-f2f5)):
+
+| Ponto | Escolha |
+|---|---|
+| Critério | `orders_count` do objeto `customer` da REST v3 — o número da própria origem, não uma recontagem nossa |
+| Onde é aplicado | na **triagem (F3)**, não na extração — a F2 traz tudo "como é, sem julgar", igual ao catálogo |
+| Como fica registrado | `status_triagem = sem_pedido` + motivo escrito, listável por `erp:migrate:triage clientes --rejeitados` (e-mail mascarado) |
+| `orders_count` ausente | **não** rejeita: fica `pending` para decisão humana — rejeitar por dado ausente descartaria um comprador em silêncio |
+
+Os 136 continuam no staging (`stg_woo_customers`) com o motivo da
+recusa: o descarte é do **cadastro no ERP**, e o staging é o registro de
+que a decisão foi tomada — princípio 4 da pasta 17. Se a política mudar,
+basta retriar; não é preciso bater na API do site de novo.
+
+**O que este número não cobre:** compradores **convidados** (sem conta
+no Woo) não aparecem em `/customers` e, portanto, não estão nos 62. Eles
+entram pelo caminho do pedido (`ResolveCustomerService`), que já cria o
+cliente por e-mail/CPF desde o Gate 02 — sem endereço, que é justamente
+o que esta migração acrescenta a quem tem conta.

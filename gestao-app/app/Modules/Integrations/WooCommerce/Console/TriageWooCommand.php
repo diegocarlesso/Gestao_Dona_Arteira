@@ -5,27 +5,44 @@ declare(strict_types=1);
 namespace App\Modules\Integrations\WooCommerce\Console;
 
 use App\Modules\Integrations\WooCommerce\Enums\DestinoDaTriagem;
+use App\Modules\Integrations\WooCommerce\Enums\DestinoDoCliente;
+use App\Modules\Integrations\WooCommerce\Models\StgWooCustomer;
 use App\Modules\Integrations\WooCommerce\Models\StgWooProduct;
+use App\Modules\Integrations\WooCommerce\Services\TriageWooCustomers;
 use App\Modules\Integrations\WooCommerce\Services\TriageWooProducts;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Saneamento do catálogo — docs/17-Migracao F3.
+ * Saneamento do staging — docs/17-Migracao F3.
  *
- * Classifica o staging e propõe os SKUs. Nada é carregado: a F4 só aceita
- * o que estiver **aprovado**, e a aprovação é humana por decisão da
- * pasta 17 — a BR-002 torna o código imutável.
+ * Classifica o que veio do site e propõe o que a carga vai usar. Nada é
+ * carregado aqui, para nenhuma entidade.
+ *
+ * As duas entidades pedem coisas diferentes da fase, e o comando reflete
+ * isso: no **catálogo** a triagem existe para *propor* SKU, que depois
+ * alguém aprova (a BR-002 torna o código imutável); nos **clientes** ela
+ * existe para *recusar* — 136 dos 198 cadastros do site não migram por
+ * minimização de dados (LGPD).
  */
 class TriageWooCommand extends Command
 {
     protected $signature = 'erp:migrate:triage
-        {--duplicados : lista os títulos repetidos, que precisam de olhos}';
+        {entidade=catalogo : catalogo ou clientes}
+        {--duplicados : lista os títulos repetidos, que precisam de olhos (catálogo)}
+        {--rejeitados : lista quem não migra, com o motivo (clientes)}';
 
-    protected $description = 'Classifica o staging do Woo e propõe os SKUs para aprovação';
+    protected $description = 'Classifica o staging do Woo e prepara a carga (fase 4)';
 
-    public function handle(TriageWooProducts $triagem): int
+    public function handle(TriageWooProducts $triagem, TriageWooCustomers $deClientes): int
+    {
+        return (string) $this->argument('entidade') === 'clientes'
+            ? $this->triarClientes($deClientes)
+            : $this->triarCatalogo($triagem);
+    }
+
+    private function triarCatalogo(TriageWooProducts $triagem): int
     {
         if (StgWooProduct::query()->doesntExist()) {
             $this->components->error('O staging está vazio. Rode `erp:migrate:extract` antes.');
@@ -74,6 +91,144 @@ class TriageWooCommand extends Command
         $this->line('  Para ver o que exige decisão: <fg=cyan>erp:migrate:triage --duplicados</>');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Triagem dos clientes — onde a rejeição é o produto principal.
+     *
+     * O relatório mostra quem **não** migra com o mesmo destaque de quem
+     * migra: são 136 pessoas cujo dado o ERP decidiu não guardar, e essa
+     * decisão precisa estar visível para quem a assina.
+     */
+    private function triarClientes(TriageWooCustomers $triagem): int
+    {
+        if (StgWooCustomer::query()->doesntExist()) {
+            $this->components->error('O staging de clientes está vazio. Rode `erp:migrate:extract clientes` antes.');
+
+            return self::FAILURE;
+        }
+
+        if ($this->option('rejeitados')) {
+            $this->listarRejeitados();
+
+            return self::SUCCESS;
+        }
+
+        $contagem = $triagem->executar();
+
+        $this->newLine();
+        $this->components->twoColumnDetail('<fg=gray>Destino na carga</>', '<fg=gray>cadastros</>');
+
+        foreach (DestinoDoCliente::cases() as $destino) {
+            $total = $contagem[$destino->value] ?? 0;
+
+            if ($total === 0) {
+                continue;
+            }
+
+            $this->components->twoColumnDetail(
+                $destino->viraCliente() ? "<fg=green>{$destino->label()}</>" : $destino->label(),
+                (string) $total,
+            );
+        }
+
+        $migram = $contagem[DestinoDoCliente::Cliente->value] ?? 0;
+        $pendentes = $contagem[DestinoDoCliente::Pendente->value] ?? 0;
+
+        $this->newLine();
+        $this->components->info("{$migram} clientes migram — o inventário da pasta 31 §2 esperava 62.");
+
+        if ($migram !== 62) {
+            $this->line('  <fg=yellow>O número mudou desde a medição.</> Não é necessariamente erro (o');
+            $this->line('  site continuou vendendo), mas confira antes de carregar.');
+        }
+
+        if ($pendentes > 0) {
+            $this->newLine();
+            $this->components->warn("{$pendentes} cadastros ficaram pendentes — a origem não trouxe `orders_count`.");
+            $this->line('  Eles NÃO carregam. Rejeitar por dado ausente descartaria um comprador');
+            $this->line('  em silêncio, então a decisão fica com você.');
+        }
+
+        $semDoc = StgWooCustomer::query()
+            ->where('status_triagem', DestinoDoCliente::Cliente->value)
+            ->whereNull('doc_proposto')
+            ->count();
+
+        if ($semDoc > 0) {
+            $this->newLine();
+            $this->components->twoColumnDetail('<fg=yellow>sem CPF/CNPJ na origem</>', (string) $semDoc);
+            $this->line('  <fg=gray>Não bloqueia a migração: o cliente entra com pendência fiscal');
+            $this->line('  (BR-001), que aparece na listagem e barra só a emissão de NF-e</>');
+        }
+
+        $this->newLine();
+        $this->line('  Nada foi carregado. Para ver quem fica de fora e por quê:');
+        $this->line('  <fg=cyan>erp:migrate:triage clientes --rejeitados</>');
+        $this->line('  A carga é <fg=cyan>erp:migrate:load clientes --dry-run</> primeiro.');
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * Quem não migra, com o motivo — princípio 4 da pasta 17.
+     *
+     * O e-mail sai **mascarado**. São 136 pessoas que nunca compraram, e o
+     * motivo de não migrá-las é justamente não espalhar o dado delas; o
+     * `woo_id` basta para achar o cadastro no site quando for preciso.
+     */
+    private function listarRejeitados(): void
+    {
+        $rejeitados = StgWooCustomer::query()
+            ->whereIn('status_triagem', [
+                DestinoDoCliente::SemPedido->value,
+                DestinoDoCliente::Duplicado->value,
+                DestinoDoCliente::Pendente->value,
+            ])
+            ->orderBy('status_triagem')
+            ->orderBy('woo_id')
+            ->get();
+
+        $this->newLine();
+        $this->components->info("{$rejeitados->count()} cadastros do site não migram.");
+        $this->line('  E-mail mascarado de propósito: o motivo de não migrá-los é não');
+        $this->line('  espalhar o dado deles (LGPD, pasta 25 §3). O `woo_id` identifica.');
+        $this->newLine();
+
+        foreach ($rejeitados->groupBy('status_triagem') as $status => $grupo) {
+            $destino = DestinoDoCliente::tryFrom((string) $status);
+
+            $this->line("  <fg=yellow>{$grupo->count()}×</> ".($destino?->label() ?? (string) $status));
+
+            foreach ($grupo as $linha) {
+                $this->line(sprintf(
+                    '      woo=%-6d  %-28s  %s',
+                    $linha->woo_id,
+                    $this->mascarar($linha->email),
+                    $linha->motivo_triagem ?? '—',
+                ));
+            }
+
+            $this->newLine();
+        }
+    }
+
+    /**
+     * `maria.silva@gmail.com` → `m***a@gmail.com`.
+     */
+    private function mascarar(?string $email): string
+    {
+        if ($email === null || ! str_contains($email, '@')) {
+            return '(sem e-mail)';
+        }
+
+        [$usuario, $dominio] = explode('@', $email, 2);
+
+        $visivel = mb_strlen($usuario) <= 2
+            ? mb_substr($usuario, 0, 1)
+            : mb_substr($usuario, 0, 1).'***'.mb_substr($usuario, -1);
+
+        return "{$visivel}@{$dominio}";
     }
 
     /**

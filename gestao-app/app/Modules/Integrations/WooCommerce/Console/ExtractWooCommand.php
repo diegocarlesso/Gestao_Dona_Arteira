@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Integrations\WooCommerce\Console;
 
 use App\Modules\Integrations\WooCommerce\Client;
+use App\Modules\Integrations\WooCommerce\Models\StgWooCustomer;
 use App\Modules\Integrations\WooCommerce\Models\StgWooProduct;
 use App\Modules\Integrations\WooCommerce\Services\ExtractWooCatalog;
+use App\Modules\Integrations\WooCommerce\Services\ExtractWooCustomers;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -16,17 +18,22 @@ use Throwable;
  * Não carrega nada no modelo do ERP: para no `stg_*`, de propósito. A
  * carga é a F4, depois do saneamento com aprovação humana — e essa
  * fronteira é o que permite rodar a extração à vontade sem risco.
+ *
+ * **`tudo` não inclui clientes, e isso é decisão.** Extrair pessoas é
+ * copiar dado pessoal para dentro do ERP (LGPD, pasta 25 §3): tem de ser
+ * um ato deliberado, escrito na linha de comando, e não um efeito colateral
+ * de quem só queria reextrair o catálogo.
  */
 class ExtractWooCommand extends Command
 {
     protected $signature = 'erp:migrate:extract
-        {entidade=tudo : produtos, categorias ou tudo}
+        {entidade=tudo : produtos, categorias, clientes ou tudo (tudo = catálogo, sem clientes)}
         {--dry-run : conta o que viria, sem gravar}
         {--pagina=1 : retoma a partir desta página}';
 
-    protected $description = 'Extrai o catálogo do WooCommerce para as tabelas de staging';
+    protected $description = 'Extrai dados do WooCommerce para as tabelas de staging';
 
-    public function handle(Client $client, ExtractWooCatalog $extrator): int
+    public function handle(Client $client, ExtractWooCatalog $extrator, ExtractWooCustomers $clientes): int
     {
         $dryRun = (bool) $this->option('dry-run');
         $entidade = (string) $this->argument('entidade');
@@ -62,6 +69,16 @@ class ExtractWooCommand extends Command
 
                 $this->line("  lote #{$lote->id} · {$lote->fetched} itens buscados, {$lote->stored} gravados");
             }
+
+            if ($entidade === 'clientes') {
+                $lote = $clientes->clientes(
+                    $dryRun,
+                    (int) $this->option('pagina'),
+                    fn (string $linha) => $this->line("  {$linha}"),
+                );
+
+                $this->line("  lote #{$lote->id} · {$lote->fetched} cadastros buscados, {$lote->stored} gravados");
+            }
         } catch (Throwable $e) {
             $this->components->error($e->getMessage());
             $this->line('  O lote guarda a última página concluída — retome com --pagina=N.');
@@ -69,9 +86,11 @@ class ExtractWooCommand extends Command
             return self::FAILURE;
         }
 
-        if (! $dryRun) {
-            $this->relatorio();
+        if ($dryRun) {
+            return self::SUCCESS;
         }
+
+        $entidade === 'clientes' ? $this->relatorioDeClientes() : $this->relatorio();
 
         return self::SUCCESS;
     }
@@ -131,5 +150,42 @@ class ExtractWooCommand extends Command
         $this->newLine();
         $this->line('  Nada foi carregado no catálogo ainda — isto é staging.');
         $this->line('  A carga é a fase 4, depois do saneamento com aprovação humana.');
+    }
+
+    /**
+     * O retrato dos cadastros que entraram.
+     *
+     * Os números do inventário aparecem ao lado de propósito: a pasta 31
+     * §2 contou 198 cadastros e 62 compradores, e é aqui que se vê se a
+     * extração conta o mesmo. Divergir não é necessariamente erro, mas é
+     * sempre pergunta — e é muito mais barato fazê-la agora do que depois
+     * da carga.
+     */
+    private function relatorioDeClientes(): void
+    {
+        $total = StgWooCustomer::query()->count();
+        $compradores = StgWooCustomer::query()->where('orders_count', '>', 0)->count();
+        $semCompra = StgWooCustomer::query()->where('orders_count', 0)->count();
+        $semContagem = StgWooCustomer::query()->whereNull('orders_count')->count();
+
+        $this->newLine();
+        $this->components->twoColumnDetail('<fg=gray>No staging</>', '<fg=gray>quantidade · inventário</>');
+        $this->components->twoColumnDetail('cadastros', "{$total} · <fg=gray>198</>");
+        $this->components->twoColumnDetail('<fg=green>com pedido</>', "{$compradores} · <fg=gray>62</>");
+        $this->components->twoColumnDetail('<fg=yellow>sem nenhuma compra</>', "{$semCompra} · <fg=gray>~136</>");
+
+        if ($semContagem > 0) {
+            $this->components->twoColumnDetail('<fg=red>sem `orders_count`</>', (string) $semContagem);
+        }
+
+        $this->components->twoColumnDetail(
+            'sem e-mail',
+            (string) StgWooCustomer::query()->whereNull('email')->count(),
+        );
+
+        $this->newLine();
+        $this->line('  Nada foi carregado no cadastro de clientes ainda — isto é staging.');
+        $this->line('  A triagem é <fg=cyan>erp:migrate:triage clientes</>; só quem comprou migra');
+        $this->line('  (decisão de 2026-08-10, minimização de dados pessoais).');
     }
 }

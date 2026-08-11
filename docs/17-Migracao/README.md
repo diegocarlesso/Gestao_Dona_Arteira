@@ -1,6 +1,6 @@
 # 17 — Migração de Dados
 
-> **Status:** Em revisão · **Última atualização:** 2026-07-03 · **Responsável:** migration-specialist
+> **Status:** Em revisão · **Última atualização:** 2026-08-10 · **Responsável:** migration-specialist
 > **Regras:** BR-706 · **Fase:** Gate 01 (executada antes do Gate 02) · **ADR:** [0010](../27-ADR/ADR-0010-migracao-etl.md) · **Documentos:** [Plano de cutover](01-plano-de-cutover.md)
 
 ## 1. Objetivo
@@ -46,10 +46,15 @@ Contagens (produtos, variações, clientes, pedidos por ano), plugins do Woo (ma
 ### F2 — Extração ✅ *catálogo implementado em 2026-07-25*
 - Woo: paginação via REST (products, categories, customers, orders com `after`), incremental por `modified_after` nas re-execuções.
 
-**Estado:** produtos e categorias prontos —
-`php artisan erp:migrate:extract {produtos|categorias|tudo} [--dry-run] [--pagina=N]`.
-Clientes e pedidos ficam para quando os módulos correspondentes
-existirem. Código em `app/Modules/Integrations/WooCommerce/`.
+**Estado:** produtos, categorias e **clientes** prontos —
+`php artisan erp:migrate:extract {produtos|categorias|clientes|tudo} [--dry-run] [--pagina=N]`.
+Pedidos ficam para quando o histórico for tratado (F4, ordem original).
+Código em `app/Modules/Integrations/WooCommerce/`.
+
+> ⚠️ **`tudo` não inclui clientes**, e isso é decisão (2026-08-10):
+> extrair pessoas é copiar dado pessoal para dentro do ERP (pasta 25 §3),
+> e tem de ser ato deliberado escrito na linha de comando — não efeito
+> colateral de quem só queria reextrair o catálogo. Ver [§ Clientes](#clientes-f2f5).
 
 Três coisas que a implementação obrigou a decidir:
 
@@ -265,6 +270,197 @@ disponível na origem.
 ### F4 — Carga (planejamento original)
 Ordem por dependência: categorias → produtos+imagens(refs)+preços → clientes+endereços → pedidos históricos (com snapshot de preço original; itens de produto extinto apontam para produto `archived`) → financeiro histórico **não** é migrado (somente pedidos; saldo financeiro abre zerado no Gate 04 — decisão registrada).
 
+---
+
+## Clientes (F2…F5)
+
+> ✅ **Implementado em 2026-08-10.** Fecha o item que faltava da F2:
+> "clientes e pedidos ficam para quando os módulos correspondentes
+> existirem" — Vendas existe desde o Gate 02. Pedidos históricos seguem
+> pendentes.
+
+### A decisão de escopo: 62, não 198
+
+**Migram só os clientes com pedido real** — 62 dos 198 cadastros do site
+([pasta 31 §2](../31-Inventario-Legado/06-clientes.md)). Os ~136 sem
+nenhuma compra ficam de fora por **minimização de dados pessoais**
+(LGPD, [pasta 25 §3](../25-Seguranca/README.md)): são checkout
+abandonado, newsletter e importação antiga, e guardá-los no ERP seria
+reter dado de gente sem finalidade de venda nem obrigação fiscal.
+Decisão da diretoria em 2026-08-10.
+
+O critério é o `orders_count` que a própria API do Woo devolve no objeto
+do cliente, e ele é aplicado **na triagem, não na extração**: a extração
+traz tudo "como é, sem julgar", como no catálogo. Filtrar antes
+economizaria linhas de staging e custaria a prestação de contas —
+ninguém conseguiria dizer depois quantos ficaram de fora e por quê
+(princípio 4).
+
+### F2 — Extração
+
+```
+php artisan erp:migrate:extract clientes [--dry-run] [--pagina=N]
+```
+
+Grava em `stg_woo_customers` (mesma convenção do `stg_woo_products`:
+colunas espelhando a origem + `payload` com o JSON inteiro, inclusive
+`billing`, `shipping` e `meta_data`). Idempotente por `woo_id`.
+
+Três coisas que a implementação obrigou a decidir:
+
+- **`tudo` não inclui clientes.** Ver o aviso na F2 acima.
+- **Sem `role=all`.** O endpoint `/customers` devolve, por padrão, só
+  quem tem papel `customer`. Os outros 2 usuários do site são
+  administradores do WordPress (pasta 31 §2) — trazê-los seria copiar
+  dado pessoal de quem nunca comprou.
+- **`orders_count` ausente ≠ zero.** A coluna é nulável: zero rejeita,
+  nulo fica **pendente de decisão humana**. Rejeitar por dado ausente
+  descartaria um comprador em silêncio.
+
+O relatório imprime os números medidos **ao lado dos do inventário**
+(198 cadastros / 62 compradores): é a conferência da F5 feita já na F2,
+como aconteceu no catálogo.
+
+### F3 — Triagem (onde a rejeição é o produto principal)
+
+```
+php artisan erp:migrate:triage clientes [--rejeitados]
+```
+
+No catálogo a triagem existia para *propor* SKU; aqui ela existe para
+*recusar*. Destinos (`DestinoDoCliente`):
+
+| Destino | O que é |
+|---|---|
+| `cliente` | comprou pelo menos uma vez — migra |
+| `sem_pedido` | cadastro sem compra — **não migra** (LGPD) |
+| `duplicado` | segunda conta da mesma pessoa no próprio site |
+| `pending` | origem não trouxe `orders_count` — decisão humana |
+
+Propõe também o **nome** (`first_name + last_name`, com recuo para os
+nomes da cobrança e, por fim, para `Cliente do site` — o **mesmo** texto
+que o `ResolveCustomerService` já usa; dois rótulos para a mesma lacuna
+fariam a operação achar que são duas situações) e o **documento**,
+garimpado nos metadados do plugin brasileiro (`_billing_cpf`,
+`billing_cpf`, `_billing_cnpj`, `billing_cnpj` — a mesma varredura que o
+`ImportWooOrder` resolveu empiricamente).
+
+Duplicata resolve pela regra desta pasta — **doc válido > e-mail > mais
+recente**. O inventário mediu **zero** duplicatas entre os 62
+compradores (§7: CPF e e-mail batem 1:1), então o esperado é não marcar
+nada; o código existe porque a alternativa é descobrir a duplicata como
+violação do UNIQUE de `customers.doc` no meio da carga.
+
+`--rejeitados` lista quem não migra, com o motivo e o **e-mail
+mascarado** (`m***a@gmail.com`): o motivo de não migrá-los é justamente
+não espalhar o dado deles, e o `woo_id` já identifica o cadastro no site.
+
+**Não há `erp:migrate:approve clientes`.** A aprovação existe no
+catálogo porque o SKU é imutável (BR-002) e errar ali é errar para
+sempre; aqui nada imutável é cunhado. A revisão humana é o `--dry-run`
+da carga, que imprime exatamente o que ela faria.
+
+### F4 — Carga
+
+```
+php artisan erp:migrate:load clientes --dry-run   # revisar primeiro
+php artisan erp:migrate:load clientes
+```
+
+**O que o catálogo não tinha: o destino já está povoado.** Quando
+`products` foi migrada, a tabela estava vazia. Aqui não — desde o Gate
+02, todo pedido do site chama o `ResolveCustomerService`, que **já cria
+o cliente** (origem Woo) e **já grava o mapeamento** quando o comprador
+tem conta no Woo. Só nunca grava endereço. Daí três situações:
+
+| Situação | Tratamento |
+|---|---|
+| `integration_mappings` já existe | **enriquece**: grava os endereços que faltam e completa campos vazios. Não cria um segundo. |
+| Sem mapping, mas e-mail/doc casa com cliente do ERP | **merge** (doc válido > e-mail > mais recente): o mapping é ligado ao cadastro existente e o merge aparece no relatório — "dois viraram um" é informação que a operação precisa ver. |
+| Nenhum dos dois | cria `Customer` (origem Woo) + `CustomerAddress` + mapping. |
+
+Quatro decisões que a implementação obrigou:
+
+- **Completa lacuna, não sobrescreve decisão.** Campo vazio no ERP
+  recebe o valor do site; campo já preenchido fica como está e a
+  diferença vai para o relatório em vez de sumir. É a regra 5 do projeto
+  ("conflito resolve-se a favor do ERP") e protege a correção que alguém
+  já tenha feito à mão. **Exceção:** o nome-recuo `Cliente do site`, que
+  é a marca de "não sabemos" — preservá-lo diante do nome real seria
+  preservar a lacuna.
+- **Cobrança e entrega iguais viram UM registro com os dois selos.** É o
+  caso mais comum (o checkout marca "entregar no endereço de cobrança" e
+  devolve os dois blocos idênticos). Dois registros gêmeos fariam a tela
+  pedir uma escolha sem conteúdo entre linhas iguais, e o
+  `CustomerAddress::saved` já garante um padrão de cada tipo por cliente.
+  Endereços diferentes viram dois registros.
+- **Endereço sem rua, cidade ou UF de 2 letras não vira registro.** Não
+  cota frete, não vira destinatário de NF-e e ocuparia a tela fingindo
+  ser dado. Fica de fora com o motivo no relatório; o cliente migra
+  assim mesmo e aparece com a pendência "sem endereço". O **número** vem
+  do campo do plugin brasileiro (`_billing_number`), nunca de heurística
+  sobre `address_1`: separar "Rua X, 123" acerta na maioria e erra calado
+  no resto, e endereço errado só aparece quando a encomenda volta.
+- **Documento que já pertence a outro cliente não estoura a carga.**
+  `customers.doc` é único e o soft delete não libera o número. A pessoa
+  entra **sem documento**, com pendência fiscal visível (BR-001) e a
+  recusa escrita no relatório — perder o cliente e os endereços por causa
+  de um campo seria pior.
+
+O `--dry-run` roda **o mesmo caminho de decisão** da carga real, sem
+`save()`: um dry-run que reimplementasse as regras prometeria uma coisa e
+faria outra no dia seguinte. Há teste comparando os dois relatórios
+campo a campo.
+
+`is_wholesale` é sempre `false` — a pasta 31 §3 confirmou 100% PF/varejo
+no canal.
+
+#### Passo obrigatório depois da carga: código IBGE do município
+
+Os endereços migrados nascem com `city_code` **nulo**, e isso é o
+desenho, não uma lacuna: o [ADR-0026](../27-ADR/ADR-0026-codigo-ibge-municipio.md)
+decidiu que a importação do Woo não resolve o município um a um no meio
+da carga — resolve-se depois, num lote que uma pessoa revisa. Sem o
+`cMun`, o `SpedNfeGateway` recusa emitir NF-e para o cliente.
+
+```
+php artisan erp:enderecos:resolver-ibge              # só relata
+php artisan erp:enderecos:resolver-ibge --gravar     # grava
+```
+
+O comando é idempotente (só toca em quem está nulo) e lista os pendentes
+com cidade e UF, para conferência.
+
+### F5 — Validação
+
+```
+php artisan erp:migrate:validate clientes [--amostra=20]
+```
+
+Contagens (triados × mapeados) + amostra estável de 20 clientes
+conferida campo a campo (nome · e-mail · telefone · documento ·
+endereços), com o esperado **re-derivado da origem por implementação
+independente** da carga — se chamasse os métodos de `LoadWooCustomers`,
+um bug de leitura passaria nos dois lados.
+
+Duas listas por cliente, porque nem toda diferença é erro:
+
+- **divergências** → a migração está errada (cliente sumido, lacuna que
+  deveria ter sido preenchida, endereço que não bate, marca de atacado).
+  Fazem o comando sair com erro.
+- **preservados** → o ERP já tinha valor próprio e ele venceu. Não é
+  erro; é o que a operação olha para decidir qual dos dois está certo.
+
+O comando também **falha** se sobrar cadastro em `pending`: linha
+pendente não carrega e não aparece em contagem nenhuma — sumiria calada,
+e a assinatura cobriria um número que ignora gente. E falha com zero
+triados, pelo mesmo motivo do catálogo: "0 = 0" batendo mandaria assinar
+sobre o nada, e o engano provável é rodar no banco local.
+
+`mapeados_total` sai separado e **pode ser maior** que os triados sem que
+isso seja erro: o pedido do site mapeia o comprador desde o Gate 02, e
+quem apagou a conta no Woo depois de comprar não está mais no staging.
+
 ### F5 — Validação ✅ *ferramenta pronta em 2026-07-27*
 
 `php artisan erp:migrate:validate [--amostra=30]`. Confere o catálogo
@@ -284,9 +480,11 @@ A amostra é **determinística** (espaçada por SKU): rodar de novo devolve
 os mesmos produtos — conferência assinada não depende de sorteio.
 
 > **Cobertura da amostra:** o comando confere o que a carga transformou
-> (kg→g, preço, cor, categoria canônica). A conferência de **clientes** e
-> **pedidos** (30/20/20 do plano original) fica para quando esses forem
-> migrados — hoje só o catálogo entrou. Σ de pedidos por ano idem.
+> (kg→g, preço, cor, categoria canônica). A conferência de **clientes**
+> ganhou comando próprio em 2026-08-10 —
+> `erp:migrate:validate clientes`, 20 da amostra do plano original (ver
+> [§ Clientes](#clientes-f2f5)). A de **pedidos** e o Σ por ano ficam
+> para quando o histórico for migrado.
 
 #### ✅ F5 executada e assinada — 2026-07-28, produção
 
@@ -316,7 +514,19 @@ Inclui **inventário físico completo** para o estoque inicial (nem legado nem W
 
 ## 4. Ferramental
 
-Comandos Artisan (`erp:migrate:inventory-report`, `erp:migrate:extract {fonte}`, `erp:migrate:load {entidade} [--dry-run]`, `erp:migrate:validate`) — documentados pela skill `importador-woocommerce`. Execução em lotes pequenos retomáveis (limites de shared hosting, pasta 03).
+Comandos Artisan documentados pela skill `importador-woocommerce`.
+Execução em lotes pequenos retomáveis (limites de shared hosting,
+pasta 03). Todos aceitam `{entidade}`, com o **catálogo como padrão** —
+os runbooks e a memória da operação registram os comandos sem argumento,
+e mudar isso quebraria o que já foi executado:
+
+| Comando | Catálogo | Clientes |
+|---|---|---|
+| extração | `erp:migrate:extract {produtos\|categorias\|tudo}` | `erp:migrate:extract clientes` |
+| triagem | `erp:migrate:triage [--duplicados]` | `erp:migrate:triage clientes [--rejeitados]` |
+| aprovação | `erp:migrate:approve [--completos]` | — (não há código imutável a aprovar) |
+| carga | `erp:migrate:load` | `erp:migrate:load clientes [--dry-run]` |
+| validação | `erp:migrate:validate [--amostra=30]` | `erp:migrate:validate clientes [--amostra=20]` |
 
 ## 5. Riscos
 
