@@ -3,7 +3,7 @@
 > **Status:** ⚠️ **Requer reescrita** — foi escrito assumindo SPA separada e ADR-0016 pendente · **Última atualização:** 2026-07-03 · **Responsável:** devops-specialist
 > **ADRs:** [0014](../27-ADR/ADR-0014-fila-database.md) (filas) · [**0016**](../27-ADR/ADR-0016-hospedagem.md) (hospedagem — **plano Business, aceito em 2026-07-22**) · [**0019**](../27-ADR/ADR-0019-inertia-substitui-spa.md) (Inertia — deploy passa a ser único)
 > **Documentos:** [Validação do ambiente Business](01-validacao-ambiente-business.md) ✅ · [Verificar cron e document root](02-verificar-cron-e-docroot.md) ✅ · [Instalação inicial](03-instalacao-inicial.md) ✅ **executada em 2026-07-22** · [Atualizar a produção](04-atualizar-producao.md) ✅ **runbook do dia a dia**
-> **Onde paramos:** [CHECKPOINT-2026-07-25](CHECKPOINT-2026-07-25.md) — ponto de retomada da implementação
+> **Onde paramos:** [CHECKPOINT-2026-08-10](CHECKPOINT-2026-08-10.md) — ponto de retomada da implementação
 
 ## 1. Objetivo
 
