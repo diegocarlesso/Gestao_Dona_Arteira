@@ -412,6 +412,53 @@ describe('nota do cliente, forma de entrega e endereço — BR-707', function ()
     });
 });
 
+describe('pagamento — BR-501', function () {
+    it('processing grava paid_at (Woo ja considera pago) e a forma de pagamento', function () {
+        produtoWooMapeado(501, '100.00', '5');
+
+        $r = app(ImportWooOrder::class)->handle(
+            pedidoWoo(1107, [itemWoo(501, 1, '100.00')], [
+                'status' => 'processing',
+                'total' => '100.00',
+                'payment_method_title' => 'Pix',
+                'date_paid_gmt' => '2026-05-03T14:22:10',
+            ])
+        );
+
+        $pedido = Order::query()->find($r->orderId);
+        expect($pedido->payment_method)->toBe('Pix')
+            ->and($pedido->paid_at?->toDateString())->toBe('2026-05-03');
+    });
+
+    it('on-hold nao grava paid_at (aguardando compensacao)', function () {
+        produtoWooMapeado(501, '100.00', '5');
+
+        $r = app(ImportWooOrder::class)->handle(
+            pedidoWoo(1108, [itemWoo(501, 1, '100.00')], [
+                'status' => 'on-hold',
+                'total' => '100.00',
+                'payment_method_title' => 'Boleto',
+            ])
+        );
+
+        expect(Order::query()->find($r->orderId)->paid_at)->toBeNull();
+    });
+
+    it('processing sem date_paid cai para date_created', function () {
+        produtoWooMapeado(501, '100.00', '5');
+
+        $r = app(ImportWooOrder::class)->handle(
+            pedidoWoo(1110, [itemWoo(501, 1, '100.00')], [
+                'status' => 'processing',
+                'total' => '100.00',
+                'date_created_gmt' => '2026-04-01T10:00:00',
+            ])
+        );
+
+        expect(Order::query()->find($r->orderId)->paid_at?->toDateString())->toBe('2026-04-01');
+    });
+});
+
 // ============================================================ webhook
 
 describe('entrada por webhook', function () {

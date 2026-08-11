@@ -28,7 +28,7 @@ class SaveOrderService
     public function __construct(private readonly ProductLookupService $catalogo) {}
 
     /**
-     * @param  array{customer_id?: int|null, notes?: string|null}  $dados
+     * @param  array{customer_id?: int|null, notes?: string|null, payment_method?: string|null, pago_agora?: bool}  $dados
      * @param  list<array{product: string, qty: string, note?: string|null}>  $itens  produtos por `public_id`
      *
      * @throws PedidoInvalido
@@ -59,6 +59,11 @@ class SaveOrderService
 
             $pedido->customer_id = $dados['customer_id'] ?? null;
             $pedido->notes = $dados['notes'] ?? null;
+            $pedido->payment_method = $dados['payment_method'] ?? null;
+            // Preserva o instante original se o rascunho já estava marcado
+            // como pago — reeditar o pedido não deveria mudar quando o
+            // dinheiro entrou.
+            $pedido->paid_at = ($dados['pago_agora'] ?? false) ? ($pedido->paid_at ?? now()) : null;
             $pedido->save();
 
             $this->sincronizarItens($pedido, $itens);

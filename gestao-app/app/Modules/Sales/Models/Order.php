@@ -42,6 +42,8 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property string|null $notes
  * @property string|null $customer_note
  * @property string|null $shipping_method
+ * @property string|null $payment_method
+ * @property Carbon|null $paid_at
  * @property Carbon|null $confirmed_at
  * @property Carbon|null $shipped_at
  * @property Carbon|null $delivered_at
@@ -79,6 +81,8 @@ class Order extends Model implements Auditable
         'notes',
         'customer_note',
         'shipping_method',
+        'payment_method',
+        'paid_at',
         'confirmed_at',
         'shipped_at',
         'delivered_at',
@@ -99,6 +103,7 @@ class Order extends Model implements Auditable
         return [
             'channel' => OrderChannel::class,
             'status' => OrderStatus::class,
+            'paid_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'shipped_at' => 'datetime',
             'delivered_at' => 'datetime',

@@ -145,6 +145,8 @@ class ImportWooOrder
                 entregueSemBaixa: $entregueSemBaixa,
                 orderedAt: $this->dataDe($order, 'date_created'),
                 entregueEm: $entregueSemBaixa ? ($this->dataDe($order, 'date_completed') ?? $this->dataDe($order, 'date_created')) : null,
+                paymentMethod: $this->formaDePagamentoDe($order),
+                paidAt: $this->dataDePagamentoDe($order, $status),
             );
 
             IntegrationMapping::registrar('order', $resultado->orderId, $wooId);
@@ -427,6 +429,42 @@ class ImportWooOrder
     }
 
     /**
+     * A forma de pagamento escolhida no checkout (`payment_method_title`)
+     * — BR-501. Texto livre, mesmo tratamento do `shippingMethodDe()`.
+     *
+     * @param  array<string, mixed>  $order
+     */
+    private function formaDePagamentoDe(array $order): ?string
+    {
+        $metodo = trim((string) ($order['payment_method_title'] ?? ''));
+
+        return $metodo === '' ? null : $metodo;
+    }
+
+    /**
+     * Quando o Woo confirmou o pagamento — BR-501.
+     *
+     * `processing` e `completed` são os únicos status do de-para (pasta 16)
+     * em que o próprio Woo já considera o pedido pago; `on-hold` é
+     * "aguardando" (boleto/PIX ainda não compensado). Sem essa data, o
+     * título a receber que o Financeiro cria não saberia nascer aberto ou
+     * já baixado. `date_paid` é o campo específico do Woo para isso; cai
+     * para `date_created` só se o Woo não tiver mandado `date_paid` (raro,
+     * mas mais correto que ficar sem nenhuma data num pedido que o próprio
+     * Woo diz estar pago).
+     *
+     * @param  array<string, mixed>  $order
+     */
+    private function dataDePagamentoDe(array $order, string $status): ?Carbon
+    {
+        if (! in_array($status, ['processing', 'completed'], true)) {
+            return null;
+        }
+
+        return $this->dataDe($order, 'date_paid') ?? $this->dataDe($order, 'date_created');
+    }
+
+    /**
      * A data real do pedido no Woo (`date_created`) ou da sua conclusão
      * (`date_completed`) — BR-703/BR-707.
      *
@@ -443,7 +481,7 @@ class ImportWooOrder
      * do Eloquent nesse caso).
      *
      * @param  array<string, mixed>  $order
-     * @param  'date_created'|'date_completed'  $campo
+     * @param  'date_created'|'date_completed'|'date_paid'  $campo
      */
     private function dataDe(array $order, string $campo): ?Carbon
     {

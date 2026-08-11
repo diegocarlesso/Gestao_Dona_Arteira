@@ -105,6 +105,15 @@ no checkout) e `shipping_method` (texto livre da forma de entrega
 escolhida, ex. "Loggi Express (Melhor Envio)") — o **valor** do frete já
 existia em `orders.shipping`.
 
+> ✅ **Pagamento no pedido, implementado em 2026-08-11** (pré-requisito do
+> núcleo financeiro, BR-501). `orders.payment_method` (texto livre) e
+> `orders.paid_at` (nulo = ainda não pago). No balcão, quem grava é a
+> própria tela ao salvar o rascunho (`SaveOrderService`); no site, é
+> inferido do status do Woo — `processing`/`completed` já são "pago" no
+> próprio vocabulário do Woo, `on-hold` é "aguardando" (boleto/PIX ainda
+> não compensado). É este campo que o Financeiro lê para decidir se o
+> título a receber nasce aberto ou já baixado.
+
 - **Não faz:** mexer em saldo (pede reserva/baixa ao Estoque), emitir NF-e (chama Fiscal), cobrar (Financeiro), falar com Woo (Integrações reage a eventos).
 
 ## 2.1 Corte do Gate 02 (decidido em 2026-07-28)

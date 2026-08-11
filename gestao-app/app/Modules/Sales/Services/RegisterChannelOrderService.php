@@ -55,6 +55,11 @@ class RegisterChannelOrderService
      *                                  data) mantém o comportamento padrão do Eloquent.
      * @param  Carbon|null  $entregueEm  data real da entrega/conclusão no canal, só usada com
      *                                   `$entregueSemBaixa`; `null` cai para `now()`.
+     * @param  string|null  $paymentMethod  forma de pagamento do canal (texto livre, BR-501)
+     * @param  Carbon|null  $paidAt  quando o canal confirmou o pagamento — `null` = ainda não pago
+     *                               (o pedido nasce com título a receber aberto; preenchido, nasce
+     *                               já baixado). Não é o mesmo dado que `$orderedAt`: um pedido pode
+     *                               ter sido feito num dia e pago (ou nunca pago) noutro.
      */
     public function handle(
         OrderChannel $channel,
@@ -71,12 +76,14 @@ class RegisterChannelOrderService
         bool $entregueSemBaixa = false,
         ?Carbon $orderedAt = null,
         ?Carbon $entregueEm = null,
+        ?string $paymentMethod = null,
+        ?Carbon $paidAt = null,
     ): ChannelOrderResult {
         if ($itens === []) {
             throw PedidoInvalido::semItens();
         }
 
-        return DB::transaction(function () use ($channel, $customerId, $channelOrderRef, $itens, $shipping, $discount, $channelTotal, $tentarReservar, $notaInicial, $customerNote, $shippingMethod, $entregueSemBaixa, $orderedAt, $entregueEm): ChannelOrderResult {
+        return DB::transaction(function () use ($channel, $customerId, $channelOrderRef, $itens, $shipping, $discount, $channelTotal, $tentarReservar, $notaInicial, $customerNote, $shippingMethod, $entregueSemBaixa, $orderedAt, $entregueEm, $paymentMethod, $paidAt): ChannelOrderResult {
             $pedido = new Order([
                 'number' => $this->proximoNumero(),
                 'channel' => $channel,
@@ -91,6 +98,8 @@ class RegisterChannelOrderService
                 'notes' => $notaInicial,
                 'customer_note' => $customerNote,
                 'shipping_method' => $shippingMethod,
+                'payment_method' => $paymentMethod,
+                'paid_at' => $paidAt,
             ]);
 
             if ($orderedAt !== null) {

@@ -103,6 +103,43 @@ it('não cria segunda linha para o mesmo produto', function () {
         ->and($pedido->items()->value('qty'))->toBe('5.000');
 });
 
+// ------------------------------------------------- pagamento (BR-501)
+
+it('venda à vista marcada como paga grava paid_at e forma de pagamento', function () {
+    $produto = produtoVendavel();
+
+    $pedido = app(SaveOrderService::class)->handle(null, [
+        'payment_method' => 'Dinheiro',
+        'pago_agora' => true,
+    ], [['product' => $produto->public_id, 'qty' => '1']]);
+
+    expect($pedido->payment_method)->toBe('Dinheiro')
+        ->and($pedido->paid_at)->not->toBeNull();
+});
+
+it('venda sem marcar pagamento nasce com paid_at nulo (título ficará aberto)', function () {
+    $produto = produtoVendavel();
+
+    $pedido = abrirPedido([['product' => $produto->public_id, 'qty' => '1']]);
+
+    expect($pedido->paid_at)->toBeNull();
+});
+
+it('reeditar um rascunho já pago preserva o instante original do pagamento', function () {
+    $produto = produtoVendavel();
+
+    $pedido = app(SaveOrderService::class)->handle(null, ['pago_agora' => true], [
+        ['product' => $produto->public_id, 'qty' => '1'],
+    ]);
+    $pagoEm = $pedido->paid_at;
+
+    app(SaveOrderService::class)->handle($pedido, ['pago_agora' => true], [
+        ['product' => $produto->public_id, 'qty' => '2'],
+    ]);
+
+    expect($pedido->refresh()->paid_at->equalTo($pagoEm))->toBeTrue();
+});
+
 // ------------------------------------------------- confirmar/reserva
 
 it('confirmar reserva o estoque de cada item', function () {
