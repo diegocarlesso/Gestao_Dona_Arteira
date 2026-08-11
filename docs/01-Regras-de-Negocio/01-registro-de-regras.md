@@ -116,6 +116,7 @@ Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data)
 | BR-704 | Toda entidade sincronizada mantém mapeamento ERP↔externo em `integration_mappings` | decisão nova | ✅ arquitetura (ADR-0007) |
 | BR-705 | Falha de sincronização nunca bloqueia a operação local do ERP (fila com retry; degradação graciosa) | decisão nova | ✅ |
 | BR-706 | Migração é idempotente e re-executável; produto/cliente já migrado é atualizado, não duplicado | decisão nova | ✅ (pasta 17) |
+| BR-707 | Pedido do site grava endereço de entrega/cobrança (`order_addresses`, separado do endereço do cliente — entrega às vezes é para outra pessoa), nota do cliente e forma de entrega. Na carga histórica (`--historico`), pedido `completed` vira `Entregue` só como rótulo — sem lançar reserva nem baixa no ledger, porque o Estoque ainda não tem contagem física calibrada | decisão da diretoria (2026-08-11) | ✅ **implementado em 2026-08-11** |
 
 ## BR-8xx — Segurança e permissões
 

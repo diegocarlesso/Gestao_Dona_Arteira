@@ -40,6 +40,8 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property string $shipping
  * @property string $total
  * @property string|null $notes
+ * @property string|null $customer_note
+ * @property string|null $shipping_method
  * @property Carbon|null $confirmed_at
  * @property Carbon|null $shipped_at
  * @property Carbon|null $delivered_at
@@ -75,6 +77,8 @@ class Order extends Model implements Auditable
         'shipping',
         'total',
         'notes',
+        'customer_note',
+        'shipping_method',
         'confirmed_at',
         'shipped_at',
         'delivered_at',
@@ -177,6 +181,14 @@ class Order extends Model implements Auditable
     public function history(): HasMany
     {
         return $this->hasMany(OrderStatusHistory::class);
+    }
+
+    /**
+     * @return HasMany<OrderAddress, $this>
+     */
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(OrderAddress::class);
     }
 
     public function money(): Money

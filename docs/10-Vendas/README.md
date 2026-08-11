@@ -1,7 +1,7 @@
 # 10 — Vendas
 
-> **Status:** Em revisão · **Última atualização:** 2026-08-10 · **Responsável:** sales-specialist
-> **Regras:** BR-301…BR-309, BR-001, BR-607 · **Fase:** Gate 02 · **Modelo:** [04/01](../04-Banco-de-Dados/01-modelo-conceitual.md)
+> **Status:** Em revisão · **Última atualização:** 2026-08-11 · **Responsável:** sales-specialist
+> **Regras:** BR-301…BR-312, BR-001, BR-607, BR-707 · **Fase:** Gate 02 · **Modelo:** [04/01](../04-Banco-de-Dados/01-modelo-conceitual.md)
 
 ## 1. Objetivo
 
@@ -80,6 +80,31 @@ Como se comporta, do ponto de vista de quem usa a tela:
 Endereços que já existiam quando a coluna nasceu (a base migrada do Woo)
 são varridos por `php artisan erp:enderecos:resolver-ibge`, que **relata
 sem gravar** por padrão e só aplica com `--gravar`.
+
+### 2.0.2 Endereço de entrega é do pedido, não só do cliente
+
+> ✅ **Implementado em 2026-08-11**, junto do importador de pedidos
+> históricos do site ([docs/17-Migracao § Pedidos históricos](../17-Migracao/README.md#pedidos-históricos)).
+
+`order_addresses` guarda o endereço de **cobrança** e o de **entrega** de
+cada pedido, separado do cadastro do cliente (`customer_addresses`) —
+mesma estrutura, sem vínculo com um customer_id fixo. Duas razões:
+
+- **A entrega às vezes não é no endereço do próprio comprador** (presente
+  para outra pessoa). Se o pedido só apontasse para o endereço padrão do
+  cliente, um presente compraria a peça certa e entregaria no lugar
+  errado.
+- **Corrige uma inconsistência fiscal**: `BuildOrderInvoiceSnapshot`
+  (Fiscal) monta o destinatário da NF-e a partir do `OrderAddress` do
+  pedido quando existir — só cai para o endereço padrão do cliente
+  (comportamento anterior) em pedidos sem `OrderAddress` (balcão, ou
+  pedidos importados antes desta mudança).
+
+`orders` ganhou também `customer_note` (comentário que o cliente digitou
+no checkout) e `shipping_method` (texto livre da forma de entrega
+escolhida, ex. "Loggi Express (Melhor Envio)") — o **valor** do frete já
+existia em `orders.shipping`.
+
 - **Não faz:** mexer em saldo (pede reserva/baixa ao Estoque), emitir NF-e (chama Fiscal), cobrar (Financeiro), falar com Woo (Integrações reage a eventos).
 
 ## 2.1 Corte do Gate 02 (decidido em 2026-07-28)

@@ -1,7 +1,7 @@
 # 17 — Migração de Dados
 
-> **Status:** Em revisão · **Última atualização:** 2026-08-10 · **Responsável:** migration-specialist
-> **Regras:** BR-706 · **Fase:** Gate 01 (executada antes do Gate 02) · **ADR:** [0010](../27-ADR/ADR-0010-migracao-etl.md) · **Documentos:** [Plano de cutover](01-plano-de-cutover.md)
+> **Status:** Em revisão · **Última atualização:** 2026-08-11 · **Responsável:** migration-specialist
+> **Regras:** BR-706, BR-707 · **Fase:** Gate 01 (executada antes do Gate 02) · **ADR:** [0010](../27-ADR/ADR-0010-migracao-etl.md) · **Documentos:** [Plano de cutover](01-plano-de-cutover.md)
 
 ## 1. Objetivo
 
@@ -48,8 +48,20 @@ Contagens (produtos, variações, clientes, pedidos por ano), plugins do Woo (ma
 
 **Estado:** produtos, categorias e **clientes** prontos —
 `php artisan erp:migrate:extract {produtos|categorias|clientes|tudo} [--dry-run] [--pagina=N]`.
-Pedidos ficam para quando o histórico for tratado (F4, ordem original).
 Código em `app/Modules/Integrations/WooCommerce/`.
+
+> ✅ **Pedidos históricos, implementado em 2026-08-11 — mas fora deste
+> pipeline de 5 fases.** Em vez de um `erp:migrate:extract/triage/load/
+> validate pedidos` novo, a carga histórica reaproveita o comando
+> síncrono que já sincroniza pedidos em produção
+> (`erp:woo:pull-orders`, módulo `Integrations/WooCommerce`) com a nova
+> flag `--historico`: `php artisan erp:woo:pull-orders --status=completed,processing,on-hold,cancelled --historico [--dry-run] [--after=...]`.
+> Sem etapa de triagem humana separada — o mesmo `ImportWooOrder` que já
+> roda para o webhook em tempo real processa cada pedido, com
+> idempotência por `integration_mappings` (repetir a puxada não
+> duplica). Ver [docs/16-WooCommerce/01-mapeamento-de-campos.md](../16-WooCommerce/01-mapeamento-de-campos.md#pedido)
+> para o que é capturado (itens, endereço de entrega/cobrança, nota do
+> cliente, forma de entrega, status).
 
 > ⚠️ **`tudo` não inclui clientes**, e isso é decisão (2026-08-10):
 > extrair pessoas é copiar dado pessoal para dentro do ERP (pasta 25 §3),
@@ -276,8 +288,8 @@ Ordem por dependência: categorias → produtos+imagens(refs)+preços → client
 
 > ✅ **Implementado em 2026-08-10.** Fecha o item que faltava da F2:
 > "clientes e pedidos ficam para quando os módulos correspondentes
-> existirem" — Vendas existe desde o Gate 02. Pedidos históricos seguem
-> pendentes.
+> existirem" — Vendas existe desde o Gate 02. Pedidos históricos foram
+> implementados em seguida, em 2026-08-11 — ver [§ Pedidos históricos](#pedidos-históricos).
 
 ### A decisão de escopo: 62, não 198
 
@@ -511,6 +523,52 @@ Woo · zero rejeições não-triadas.
 
 ### F6 — Cutover → [plano detalhado](01-plano-de-cutover.md)
 Inclui **inventário físico completo** para o estoque inicial (nem legado nem Woo são confiáveis — pasta 09) e ativação da sincronização (pasta 16).
+
+## Pedidos históricos
+
+> ✅ **Implementado em 2026-08-11.**
+
+Ao contrário de produtos/categorias/clientes, pedidos **não** ganharam um
+pipeline de 5 fases próprio (`erp:migrate:{extract,triage,load,validate}
+pedidos`) — decisão explícita, não descuido: o comando síncrono que já
+sincroniza pedidos em produção em tempo real (`erp:woo:pull-orders`,
+`app/Modules/Integrations/WooCommerce/Console/PullWooOrdersCommand.php`)
+já cobre paginação, `--dry-run`, contagem de resultado e idempotência via
+`integration_mappings` — construir um staging novo só para pedidos seria
+trabalho sem ganho.
+
+O que mudou foi o próprio motor compartilhado (`ImportWooOrder`, usado
+tanto pelo webhook em tempo real quanto pela puxada), que passou a
+capturar o que faltava — confirmado como lacuna real ao investigar o
+pedido #3 (site, chegou sem endereço nem forma de entrega):
+
+- **Endereço de entrega/cobrança do pedido**, gravado em `order_addresses`
+  — separado do endereço do cliente, porque a entrega às vezes é para
+  outra pessoa (presente). Mesma tradução de campos (`_billing_number`,
+  `_billing_neighborhood` etc.) que já roda para o cadastro do cliente.
+- **Comentário do cliente** (`customer_note` do Woo → `orders.customer_note`).
+- **Forma de entrega** (`shipping_lines[0].method_title` →
+  `orders.shipping_method` — o valor já existia em `orders.shipping`).
+
+Uso para a carga real do histórico:
+```
+php artisan erp:woo:pull-orders \
+  --status=completed,processing,on-hold,cancelled \
+  --historico --dry-run
+```
+Revisar o relatório, depois repetir sem `--dry-run`.
+
+**A flag `--historico` só muda o tratamento do status `completed`:** vira
+`Entregue` como rótulo documentário, sem lançar reserva nem baixa no
+ledger (decisão da diretoria — o Estoque ainda não tem contagem física
+calibrada; ver [docs/16-WooCommerce/01-mapeamento-de-campos.md](../16-WooCommerce/01-mapeamento-de-campos.md#status-de-pedido-de-para)
+para o detalhe completo). O webhook em tempo real não usa `--historico`
+e mantém o comportamento atual intacto.
+
+**Fora de escopo, registrado como pendência:** nota por item do pedido
+(`order_items.note`, hoje não preenchido a partir do `meta_data` da
+linha), rastreio/transportadora real de expedição refletido
+retroativamente a partir do histórico.
 
 ## 4. Ferramental
 

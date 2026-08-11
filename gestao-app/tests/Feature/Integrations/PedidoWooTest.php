@@ -13,6 +13,7 @@ use App\Modules\Integrations\WooCommerce\Services\ResultadoDaImportacao;
 use App\Modules\Inventory\Enums\MovementType;
 use App\Modules\Inventory\Enums\ReservationStatus;
 use App\Modules\Inventory\Models\InventoryBalance;
+use App\Modules\Inventory\Models\InventoryMovement;
 use App\Modules\Inventory\Models\Location;
 use App\Modules\Inventory\Models\StockReservation;
 use App\Modules\Inventory\Services\RecordMovementService;
@@ -282,6 +283,102 @@ describe('importação Woo→ERP', function () {
     });
 });
 
+// ==================================================== nota, entrega, endereço
+
+describe('nota do cliente, forma de entrega e endereço — BR-707', function () {
+    it('captura o customer_note do pedido', function () {
+        produtoWooMapeado(501, '100.00', '5');
+
+        $r = app(ImportWooOrder::class)->handle(
+            pedidoWoo(1101, [itemWoo(501, 1, '100.00')], [
+                'total' => '100.00',
+                'customer_note' => 'Entregar após as 18h, por favor.',
+            ])
+        );
+
+        $pedido = Order::query()->find($r->orderId);
+        expect($pedido->customer_note)->toBe('Entregar após as 18h, por favor.');
+    });
+
+    it('não grava customer_note em branco', function () {
+        produtoWooMapeado(501, '100.00', '5');
+
+        $r = app(ImportWooOrder::class)->handle(
+            pedidoWoo(1109, [itemWoo(501, 1, '100.00')], ['total' => '100.00', 'customer_note' => ''])
+        );
+
+        expect(Order::query()->find($r->orderId)->customer_note)->toBeNull();
+    });
+
+    it('captura a forma de entrega do pedido', function () {
+        produtoWooMapeado(501, '100.00', '5');
+
+        $r = app(ImportWooOrder::class)->handle(
+            pedidoWoo(1102, [itemWoo(501, 1, '100.00')], [
+                'total' => '100.00',
+                'shipping_lines' => [['method_title' => 'Loggi Express (Melhor Envio)']],
+            ])
+        );
+
+        $pedido = Order::query()->find($r->orderId);
+        expect($pedido->shipping_method)->toBe('Loggi Express (Melhor Envio)');
+    });
+
+    it('grava os endereços de cobrança e entrega do pedido, quando distintos', function () {
+        produtoWooMapeado(501, '100.00', '5');
+
+        $r = app(ImportWooOrder::class)->handle(
+            pedidoWoo(1103, [itemWoo(501, 1, '100.00')], [
+                'total' => '100.00',
+                'billing' => [
+                    'first_name' => 'Ana', 'last_name' => 'Silva', 'email' => 'ana@example.com',
+                    'address_1' => 'Rua das Flores', 'city' => 'Florianópolis', 'state' => 'sc',
+                    'postcode' => '88000000',
+                ],
+                'shipping' => [
+                    'address_1' => 'Rua do Comércio', 'city' => 'São José', 'state' => 'sc',
+                    'postcode' => '88100000',
+                ],
+            ])
+        );
+
+        $pedido = Order::query()->find($r->orderId);
+        $enderecos = $pedido->addresses()->get()->keyBy('type');
+
+        expect($enderecos)->toHaveCount(2)
+            ->and($enderecos['billing']->street)->toBe('Rua das Flores')
+            ->and($enderecos['billing']->city)->toBe('Florianópolis')
+            ->and($enderecos['shipping']->street)->toBe('Rua do Comércio')
+            ->and($enderecos['shipping']->city)->toBe('São José')
+            ->and($enderecos['billing']->street)->not->toBe($enderecos['shipping']->street);
+    });
+
+    it('bloco shipping vazio não vira endereço, mas billing continua sendo gravado', function () {
+        produtoWooMapeado(501, '100.00', '5');
+
+        $r = app(ImportWooOrder::class)->handle(
+            pedidoWoo(1104, [itemWoo(501, 1, '100.00')], [
+                'total' => '100.00',
+                'billing' => [
+                    'first_name' => 'Ana', 'last_name' => 'Silva', 'email' => 'ana@example.com',
+                    'address_1' => 'Rua das Flores', 'city' => 'Florianópolis', 'state' => 'SC',
+                    'postcode' => '88000000',
+                ],
+                // Woo deixa `shipping` em branco quando a entrega é no
+                // próprio endereço de cobrança — comportamento normal.
+                'shipping' => [],
+            ])
+        );
+
+        $pedido = Order::query()->find($r->orderId);
+        $enderecos = $pedido->addresses()->get();
+
+        expect($enderecos)->toHaveCount(1)
+            ->and($enderecos->first()->type)->toBe('billing')
+            ->and($enderecos->first()->street)->toBe('Rua das Flores');
+    });
+});
+
 // ============================================================ webhook
 
 describe('entrada por webhook', function () {
@@ -330,6 +427,33 @@ describe('entrada por webhook', function () {
         postWebhook($payload)->assertStatus(202);
 
         expect(Order::query()->where('channel_order_ref', '2003')->count())->toBe(1);
+    });
+
+    it('webhook em tempo real: completed continua em rascunho sem reserva, mas com nota/entrega/endereço capturados', function () {
+        produtoWooMapeado(501, '100.00', '5');
+
+        postWebhook(pedidoWoo(2004, [itemWoo(501, 1, '100.00')], [
+            'status' => 'completed',
+            'total' => '100.00',
+            'customer_note' => 'Presente — não incluir nota fiscal na caixa.',
+            'shipping_lines' => [['method_title' => 'Retirada no ateliê']],
+            'billing' => [
+                'first_name' => 'Ana', 'last_name' => 'Silva', 'email' => 'ana@example.com',
+                'address_1' => 'Rua das Flores', 'city' => 'Florianópolis', 'state' => 'SC',
+                'postcode' => '88000000',
+            ],
+        ]))->assertStatus(202);
+
+        $pedido = Order::query()->where('channel_order_ref', '2004')->firstOrFail();
+
+        // Regressão do corte 4: pedido `completed` via webhook (nunca
+        // `--historico`) continua entrando em rascunho, sem reserva.
+        expect($pedido->status)->toBe(OrderStatus::Draft)
+            ->and($pedido->customer_note)->toBe('Presente — não incluir nota fiscal na caixa.')
+            ->and($pedido->shipping_method)->toBe('Retirada no ateliê')
+            ->and($pedido->addresses()->where('type', 'billing')->exists())->toBeTrue();
+
+        expect(StockReservation::query()->count())->toBe(0);
     });
 });
 
@@ -394,6 +518,52 @@ describe('entrada por puxada (pull)', function () {
         test()->artisan('erp:woo:pull-orders --dry-run')->assertSuccessful();
 
         expect(Order::query()->count())->toBe(0);
+    });
+
+    it('--historico: completed vira Entregue sem reserva nem movimento de estoque', function () {
+        produtoWooMapeado(501, '100.00', '5');
+
+        Http::fake([
+            '*/products?*' => Http::response([['id' => 1]]),
+            '*/orders?*page=1*' => Http::response([
+                pedidoWoo(3004, [itemWoo(501, 1, '100.00')], ['status' => 'completed', 'total' => '100.00']),
+            ]),
+            '*' => Http::response([]),
+        ]);
+
+        test()->artisan('erp:woo:pull-orders --status=completed --historico')->assertSuccessful();
+
+        $pedido = Order::query()->where('channel_order_ref', '3004')->firstOrFail();
+
+        expect($pedido->status)->toBe(OrderStatus::Entregue)
+            ->and($pedido->delivered_at)->not->toBeNull();
+
+        expect(StockReservation::query()->where('reference_type', 'order')->where('reference_id', $pedido->id)->count())->toBe(0)
+            ->and(InventoryMovement::query()->where('reference_type', 'order')->where('reference_id', $pedido->id)->count())->toBe(0);
+    });
+
+    it('--historico: processing continua reservando normalmente (regressão)', function () {
+        produtoWooMapeado(501, '100.00', '10');
+
+        Http::fake([
+            '*/products?*' => Http::response([['id' => 1]]),
+            '*/orders?*page=1*' => Http::response([
+                pedidoWoo(3005, [itemWoo(501, 1, '100.00')], ['status' => 'processing', 'total' => '100.00']),
+            ]),
+            '*' => Http::response([]),
+        ]);
+
+        test()->artisan('erp:woo:pull-orders --status=processing --historico')->assertSuccessful();
+
+        $pedido = Order::query()->where('channel_order_ref', '3005')->firstOrFail();
+
+        expect($pedido->status)->toBe(OrderStatus::Confirmed);
+
+        expect(StockReservation::query()
+            ->where('reference_type', 'order')
+            ->where('reference_id', $pedido->id)
+            ->where('status', ReservationStatus::Active->value)
+            ->exists())->toBeTrue();
     });
 });
 

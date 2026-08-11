@@ -12,6 +12,7 @@ use App\Modules\Sales\DTO\OrderInvoiceSnapshot;
 use App\Modules\Sales\Models\Customer;
 use App\Modules\Sales\Models\CustomerAddress;
 use App\Modules\Sales\Models\Order;
+use App\Modules\Sales\Models\OrderAddress;
 use App\Modules\Sales\Models\OrderItem;
 
 /**
@@ -33,7 +34,7 @@ class BuildOrderInvoiceSnapshot
 
     public function handle(int $orderId): ?OrderInvoiceSnapshot
     {
-        $pedido = Order::query()->with(['items', 'customer'])->find($orderId);
+        $pedido = Order::query()->with(['items', 'customer', 'addresses'])->find($orderId);
 
         if ($pedido === null) {
             return null;
@@ -64,7 +65,7 @@ class BuildOrderInvoiceSnapshot
             customerDocument: $cliente?->doc,
             customerStateRegistration: $cliente?->state_registration,
             customerEmail: $cliente?->email,
-            shippingAddress: $this->enderecoDe($cliente),
+            shippingAddress: $this->enderecoDe($pedido, $cliente),
             items: array_map(
                 fn (OrderItem $item): OrderInvoiceItem => $this->linha($item, $fiscais[$item->product_id] ?? null),
                 $itens
@@ -95,6 +96,33 @@ class BuildOrderInvoiceSnapshot
     }
 
     /**
+     * O endereço de entrega deste pedido — BR-707.
+     *
+     * O `OrderAddress` do próprio pedido vence: a entrega às vezes não é no
+     * endereço do próprio comprador (presente para outra pessoa), e o
+     * endereço padrão do cliente sairia errado nesse caso. Dentro do
+     * pedido, `shipping` vence `billing` — mesma prioridade que o endereço
+     * do cliente já tinha entre "padrão de entrega" e "qualquer outro".
+     *
+     * Só cai para o endereço padrão do **cliente** (comportamento anterior
+     * a esta mudança) quando o pedido não tiver `OrderAddress` nenhum —
+     * pedido de balcão, ou pedido antigo importado antes do BR-707.
+     */
+    private function enderecoDe(Order $pedido, ?Customer $cliente): ?OrderInvoiceAddress
+    {
+        $enderecosDoPedido = $pedido->addresses;
+
+        $doPedido = $enderecosDoPedido->firstWhere('type', 'shipping')
+            ?? $enderecosDoPedido->first();
+
+        if ($doPedido instanceof OrderAddress) {
+            return $this->paraSnapshot($doPedido);
+        }
+
+        return $this->enderecoDoCliente($cliente);
+    }
+
+    /**
      * O endereço de entrega do cliente — o padrão, ou o primeiro cadastrado.
      *
      * Cair no primeiro em vez de devolver nulo é deliberado: cliente com um
@@ -103,7 +131,7 @@ class BuildOrderInvoiceSnapshot
      * cadastro. Cliente sem endereço nenhum devolve nulo, e aí a pendência
      * é real (a mesma que `Customer::pendencias()` já sinaliza na tela).
      */
-    private function enderecoDe(?Customer $cliente): ?OrderInvoiceAddress
+    private function enderecoDoCliente(?Customer $cliente): ?OrderInvoiceAddress
     {
         if ($cliente === null) {
             return null;
@@ -118,6 +146,11 @@ class BuildOrderInvoiceSnapshot
             return null;
         }
 
+        return $this->paraSnapshot($endereco);
+    }
+
+    private function paraSnapshot(OrderAddress|CustomerAddress $endereco): OrderInvoiceAddress
+    {
         return new OrderInvoiceAddress(
             zip: $endereco->zip,
             street: $endereco->street,

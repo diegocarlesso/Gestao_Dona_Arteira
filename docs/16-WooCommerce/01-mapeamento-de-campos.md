@@ -1,6 +1,6 @@
 # Mapeamento de Campos ERP ↔ WooCommerce
 
-> **Status:** Rascunho (completar no Gate 02 com inventário real do Woo) · **Última atualização:** 2026-08-10 · **Responsável:** woocommerce-specialist
+> **Status:** Rascunho (completar no Gate 02 com inventário real do Woo) · **Última atualização:** 2026-08-11 · **Responsável:** woocommerce-specialist
 
 De-para canônico usado pelos Adapters e pelo importador da migração (pasta 17). Campos do Woo conforme REST API v3.
 
@@ -46,6 +46,9 @@ De-para canônico usado pelos Adapters e pelo importador da migração (pasta 17
 | totais/frete/desconto | `total`, `shipping_total`, `discount_total` | conferência de centavos na importação |
 | pagamento | `payment_method_title`, `transaction_id` | vira `payments` + baixa conforme status |
 | rastreio (saída) | meta/plugin de rastreio ou nota ao cliente | definir plugin no Gate 02 |
+| endereço de entrega/cobrança (`order_addresses`) | `shipping` / `billing` (do **pedido**, não do cliente) | ✅ **implementado em 2026-08-11**: gravado por pedido, não pelo cadastro do cliente — a entrega às vezes não é no endereço do próprio comprador (presente). Mesma tradução de campos que já roda para o cliente (`_billing_number`/`_billing_neighborhood` etc.), aplicada ao bloco do pedido. `BuildOrderInvoiceSnapshot` (Fiscal) usa este endereço para a NF-e antes de cair no endereço padrão do cliente |
+| comentário do cliente (`orders.customer_note`) | `customer_note` | ✅ **implementado em 2026-08-11** |
+| forma de entrega (`orders.shipping_method`) | `shipping_lines[0].method_title` | ✅ **implementado em 2026-08-11** — texto livre do Woo (ex.: "Loggi Express (Melhor Envio)"), não normalizado; o valor continua em `orders.shipping` |
 
 ## Status de pedido (de-para)
 
@@ -56,6 +59,20 @@ De-para canônico usado pelos Adapters e pelo importador da migração (pasta 17
 | processing | **Confirmado** (reserva estoque) | caso principal. *Pago* é o alvo final, mas o ERP não modela pagamento até o Gate 04 (Financeiro) — no corte 4 entra Confirmado; o status/pagamento do Woo ficam no bruto (`woo_webhook_events`) |
 | completed | Expedido/Entregue | na migração de histórico: Entregue |
 | cancelled / refunded / failed | Cancelado (com estorno se pago) | reembolso parcial: caso de borda documentar no Gate 02 |
+
+> ✅ **`completed` no histórico é rótulo documentário, implementado em
+> 2026-08-11.** A entrada corrente (webhook em tempo real,
+> `ProcessWooOrder`) **continua** tratando `completed` como hoje —
+> `Draft` sem reserva, com pendência anotada (decisão deliberada:
+> completed chegando ao vivo normalmente significa que a peça já saiu
+> sem passar pelo fulfillment do ERP). Só a **puxada histórica**
+> (`erp:woo:pull-orders --historico`) grava `completed` diretamente como
+> `Entregue` — e só como rótulo: **não** lança reserva nem movimento de
+> baixa no ledger. O Estoque ainda não tem contagem física calibrada
+> (P2 não priorizado); lançar baixas retroativas de pedidos que já
+> saíram há tempo arriscaria poluir um saldo que ninguém validou ainda.
+> `processing`/`on-hold` no histórico continuam pelo caminho atual
+> (tenta reservar, cai para `Draft` sem saldo).
 
 ## Sentido inverso (ERP → Woo)
 

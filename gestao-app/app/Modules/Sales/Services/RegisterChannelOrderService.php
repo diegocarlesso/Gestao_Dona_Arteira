@@ -39,6 +39,14 @@ class RegisterChannelOrderService
     /**
      * @param  list<array{product_id: int, qty: string, unit_price: string, note?: string|null}>  $itens
      * @param  string|null  $notaInicial  pendência a anexar já na criação (ex.: itens não mapeados)
+     * @param  string|null  $customerNote  o que o cliente digitou no checkout do canal (BR-707) — nunca
+     *                                     confundir com `$notaInicial`, que é gerado pelo próprio ERP
+     * @param  string|null  $shippingMethod  forma de entrega escolhida no canal (texto livre, BR-707)
+     * @param  bool  $entregueSemBaixa  histórico já entregue no canal (Woo `completed`): grava o
+     *                                  pedido direto em `Entregue`, sem reserva nem baixa no ledger —
+     *                                  a peça já saiu antes de o ERP existir. Só se aplica quando
+     *                                  `$tentarReservar` é `false` (é sempre o caso: `completed` nunca
+     *                                  está em `RESERVAVEIS`); os dois juntos não acontecem na prática.
      */
     public function handle(
         OrderChannel $channel,
@@ -50,12 +58,15 @@ class RegisterChannelOrderService
         ?string $channelTotal = null,
         bool $tentarReservar = false,
         ?string $notaInicial = null,
+        ?string $customerNote = null,
+        ?string $shippingMethod = null,
+        bool $entregueSemBaixa = false,
     ): ChannelOrderResult {
         if ($itens === []) {
             throw PedidoInvalido::semItens();
         }
 
-        return DB::transaction(function () use ($channel, $customerId, $channelOrderRef, $itens, $shipping, $discount, $channelTotal, $tentarReservar, $notaInicial): ChannelOrderResult {
+        return DB::transaction(function () use ($channel, $customerId, $channelOrderRef, $itens, $shipping, $discount, $channelTotal, $tentarReservar, $notaInicial, $customerNote, $shippingMethod, $entregueSemBaixa): ChannelOrderResult {
             $pedido = new Order([
                 'number' => $this->proximoNumero(),
                 'channel' => $channel,
@@ -68,6 +79,8 @@ class RegisterChannelOrderService
                 'shipping' => $this->dinheiro($shipping),
                 'total' => '0.00',
                 'notes' => $notaInicial,
+                'customer_note' => $customerNote,
+                'shipping_method' => $shippingMethod,
             ]);
             $pedido->save();
 
@@ -84,6 +97,15 @@ class RegisterChannelOrderService
             $this->recalcular($pedido, $channelTotal);
 
             if (! $tentarReservar) {
+                if ($entregueSemBaixa) {
+                    // Direto para Entregue, sem passar pelo ConfirmOrderService:
+                    // não há reserva a fazer (a peça já saiu no site) nem baixa
+                    // de ledger a registrar (histórico, não fulfillment real).
+                    $pedido->status = OrderStatus::Entregue;
+                    $pedido->delivered_at = now();
+                    $pedido->save();
+                }
+
                 return new ChannelOrderResult($pedido->id, false);
             }
 

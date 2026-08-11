@@ -29,6 +29,7 @@ class PullWooOrdersCommand extends Command
     protected $signature = 'erp:woo:pull-orders
         {--after= : só pedidos modificados depois desta data ISO (ex.: 2026-07-28T00:00:00)}
         {--status=processing,on-hold : status do Woo a trazer, separados por vírgula}
+        {--historico : puxada de histórico (docs/16 §4) — "completed" entra direto como Entregue, sem reserva}
         {--dry-run : conta o que viria, sem gravar}';
 
     protected $description = 'Puxa pedidos do WooCommerce e cria os pedidos correspondentes no ERP';
@@ -40,6 +41,7 @@ class PullWooOrdersCommand extends Command
         }
 
         $dryRun = (bool) $this->option('dry-run');
+        $historico = (bool) $this->option('historico');
 
         $parametros = [
             'status' => (string) $this->option('status'),
@@ -51,7 +53,11 @@ class PullWooOrdersCommand extends Command
             $parametros['modified_after'] = (string) $this->option('after');
         }
 
-        $contagem = ['vistos' => 0, 'importados' => 0, 'pendentes' => 0, 'duplicados' => 0, 'cancelados' => 0, 'conflitos' => 0, 'ignorados' => 0, 'erros' => 0];
+        $contagem = [
+            'vistos' => 0, 'importados' => 0, 'pendentes' => 0, 'duplicados' => 0,
+            'cancelados' => 0, 'conflitos' => 0, 'ignorados' => 0, 'erros' => 0,
+            'com_endereco' => 0, 'com_nota' => 0, 'com_forma_entrega' => 0,
+        ];
 
         try {
             foreach ($client->paginar('orders', $parametros) as $pagina) {
@@ -62,7 +68,7 @@ class PullWooOrdersCommand extends Command
                         continue;
                     }
 
-                    $this->importarUm($import, $order, $contagem);
+                    $this->importarUm($import, $order, $historico, $contagem);
                 }
             }
         } catch (Throwable $e) {
@@ -80,7 +86,7 @@ class PullWooOrdersCommand extends Command
      * @param  array<string, mixed>  $order
      * @param  array<string, int>  $contagem
      */
-    private function importarUm(ImportWooOrder $import, array $order, array &$contagem): void
+    private function importarUm(ImportWooOrder $import, array $order, bool $historico, array &$contagem): void
     {
         $wooId = (string) ($order['id'] ?? '');
         $status = (string) ($order['status'] ?? '');
@@ -106,13 +112,55 @@ class PullWooOrdersCommand extends Command
         ]);
 
         try {
-            $resultado = $import->handle($order);
+            $resultado = $import->handle($order, historico: $historico);
             $evento->marcarProcessado($resultado->motivo);
             $this->tally($resultado, $contagem);
+
+            if ($resultado->processado()) {
+                $this->tallyCampos($order, $contagem);
+            }
         } catch (Throwable $e) {
             $evento->registrarErro($e->getMessage());
             $contagem['erros']++;
             $this->components->warn("Pedido Woo #{$wooId}: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Conta quantos pedidos importados trouxeram endereço, nota do cliente
+     * ou forma de entrega (BR-707) — só para o relatório, não afeta a
+     * importação em si (o `ImportWooOrder` já capturou tudo).
+     *
+     * @param  array<string, mixed>  $order
+     * @param  array<string, int>  $contagem
+     */
+    private function tallyCampos(array $order, array &$contagem): void
+    {
+        $temEndereco = false;
+
+        foreach (['billing', 'shipping'] as $bloco) {
+            $dados = (array) ($order[$bloco] ?? []);
+
+            if (trim((string) ($dados['address_1'] ?? '')) !== '') {
+                $temEndereco = true;
+
+                break;
+            }
+        }
+
+        if ($temEndereco) {
+            $contagem['com_endereco']++;
+        }
+
+        if (trim((string) ($order['customer_note'] ?? '')) !== '') {
+            $contagem['com_nota']++;
+        }
+
+        $linhas = (array) ($order['shipping_lines'] ?? []);
+        $primeira = $linhas[0] ?? null;
+
+        if (is_array($primeira) && trim((string) ($primeira['method_title'] ?? '')) !== '') {
+            $contagem['com_forma_entrega']++;
         }
     }
 
@@ -178,5 +226,10 @@ class PullWooOrdersCommand extends Command
         if ($contagem['erros'] > 0) {
             $this->components->twoColumnDetail('<fg=red>Erros</>', (string) $contagem['erros']);
         }
+
+        $this->newLine();
+        $this->components->twoColumnDetail('<fg=gray>Com endereço capturado</>', (string) $contagem['com_endereco']);
+        $this->components->twoColumnDetail('<fg=gray>Com nota do cliente</>', (string) $contagem['com_nota']);
+        $this->components->twoColumnDetail('<fg=gray>Com forma de entrega</>', (string) $contagem['com_forma_entrega']);
     }
 }

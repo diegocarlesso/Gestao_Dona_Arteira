@@ -9,6 +9,7 @@ use App\Modules\Sales\Enums\OrderChannel;
 use App\Modules\Sales\Services\CancelChannelOrderService;
 use App\Modules\Sales\Services\RegisterChannelOrderService;
 use App\Modules\Sales\Services\ResolveCustomerService;
+use App\Modules\Sales\Services\SaveOrderAddressesService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -66,12 +67,16 @@ class ImportWooOrder
         private readonly ResolveCustomerService $clientes,
         private readonly RegisterChannelOrderService $pedidos,
         private readonly CancelChannelOrderService $cancelamentos,
+        private readonly SaveOrderAddressesService $enderecos,
     ) {}
 
     /**
      * @param  array<string, mixed>  $order  payload cru do pedido, formato REST v3
+     * @param  bool  $historico  puxada de histórico (docs/16 §4): pedido `completed` entra direto
+     *                           como `Entregue`, sem reserva — a peça já saiu antes do ERP existir.
+     *                           O webhook em tempo real nunca passa `true` aqui.
      */
-    public function handle(array $order): ResultadoDaImportacao
+    public function handle(array $order, bool $historico = false): ResultadoDaImportacao
     {
         $wooId = (string) ($order['id'] ?? '');
         $status = (string) ($order['status'] ?? '');
@@ -114,10 +119,16 @@ class ImportWooOrder
             );
         }
 
-        return DB::transaction(function () use ($order, $wooId, $status, $mapeados, $naoMapeados): ResultadoDaImportacao {
+        return DB::transaction(function () use ($order, $wooId, $status, $mapeados, $naoMapeados, $historico): ResultadoDaImportacao {
             $customerId = $this->resolverCliente($order);
 
             $reservavel = $naoMapeados === [] && in_array($status, self::RESERVAVEIS, true);
+
+            // `completed` nunca é reservável (self::RESERVAVEIS), então
+            // `$entregueSemBaixa` e `$reservavel` nunca são true ao mesmo
+            // tempo — não há caso de "histórico entregue com reserva" para
+            // tratar.
+            $entregueSemBaixa = $historico && $status === 'completed';
 
             $resultado = $this->pedidos->handle(
                 channel: OrderChannel::WooCommerce,
@@ -128,9 +139,14 @@ class ImportWooOrder
                 channelTotal: isset($order['total']) ? (string) $order['total'] : null,
                 tentarReservar: $reservavel,
                 notaInicial: $this->pendenciaInicial($status, $naoMapeados),
+                customerNote: $this->customerNoteDe($order),
+                shippingMethod: $this->shippingMethodDe($order),
+                entregueSemBaixa: $entregueSemBaixa,
             );
 
             IntegrationMapping::registrar('order', $resultado->orderId, $wooId);
+
+            $this->enderecos->handle($resultado->orderId, $this->enderecosDoPedido($order));
 
             if ($resultado->confirmed) {
                 return ResultadoDaImportacao::importado($resultado->orderId);
@@ -368,5 +384,147 @@ class ImportWooOrder
         $qty = (float) ($linha['quantity'] ?? 0);
 
         return $qty > 0 ? bcdiv($total, (string) $qty, 2) : '0.00';
+    }
+
+    /**
+     * O que o cliente digitou no checkout ("entregar nos fundos", "presente,
+     * não incluir nota") — BR-707. String vazia (campo do Woo sempre
+     * presente, raramente preenchido) vira nulo, não fica registrada como
+     * observação vazia.
+     *
+     * @param  array<string, mixed>  $order
+     */
+    private function customerNoteDe(array $order): ?string
+    {
+        $nota = trim((string) ($order['customer_note'] ?? ''));
+
+        return $nota === '' ? null : $nota;
+    }
+
+    /**
+     * A forma de entrega escolhida no checkout — BR-707. O Woo manda
+     * `shipping_lines` como lista (múltiplos métodos no mesmo carrinho é
+     * possível); só a primeira linha é capturada — mais de uma forma de
+     * entrega por pedido é caso de borda fora de escopo aqui.
+     *
+     * @param  array<string, mixed>  $order
+     */
+    private function shippingMethodDe(array $order): ?string
+    {
+        $linhas = (array) ($order['shipping_lines'] ?? []);
+        $primeira = $linhas[0] ?? null;
+
+        if (! is_array($primeira)) {
+            return null;
+        }
+
+        $metodo = trim((string) ($primeira['method_title'] ?? ''));
+
+        return $metodo === '' ? null : $metodo;
+    }
+
+    /**
+     * Os endereços de cobrança/entrega do pedido, prontos para o
+     * `SaveOrderAddressesService` — BR-707.
+     *
+     * Mesma regra do `LoadWooCustomers::enderecoDe()`/`campoBr()` (bloco
+     * vazio não é erro — o Woo deixa `shipping` em branco quando a entrega é
+     * no endereço de cobrança; endereço incompleto não vira registro). A
+     * diferença é a origem: aqui é o array cru do pedido (`$order['billing']`
+     * /`$order['shipping']`/`$order['meta_data']`), não o staging de
+     * cliente — duplicar essas ~40 linhas adaptadas é aceitável, a fronteira
+     * entre migração de cliente e importação de pedido não vale a pena
+     * forçar por um helper compartilhado agora.
+     *
+     * @param  array<string, mixed>  $order
+     * @return list<array{type: string, zip: string, street: string, number: ?string, complement: ?string, district: ?string, city: string, state: string}>
+     */
+    private function enderecosDoPedido(array $order): array
+    {
+        $enderecos = [];
+
+        foreach (['billing', 'shipping'] as $bloco) {
+            $endereco = $this->enderecoDoPedido($order, $bloco);
+
+            if ($endereco !== null) {
+                $enderecos[] = $endereco;
+            }
+        }
+
+        return $enderecos;
+    }
+
+    /**
+     * @param  array<string, mixed>  $order
+     * @return array{type: string, zip: string, street: string, number: ?string, complement: ?string, district: ?string, city: string, state: string}|null
+     */
+    private function enderecoDoPedido(array $order, string $bloco): ?array
+    {
+        /** @var array<string, mixed> $dados */
+        $dados = (array) ($order[$bloco] ?? []);
+
+        $rua = trim((string) ($dados['address_1'] ?? ''));
+        $cidade = trim((string) ($dados['city'] ?? ''));
+        $uf = mb_strtoupper(trim((string) ($dados['state'] ?? '')));
+
+        if ($rua === '' && $cidade === '' && $uf === '') {
+            // Bloco inteiramente vazio é o normal, não um problema — mesma
+            // regra do `LoadWooCustomers`.
+            return null;
+        }
+
+        if ($rua === '' || $cidade === '' || mb_strlen($uf) !== 2) {
+            // Incompleto: não vira registro. Best-effort de importação de
+            // pedido, não migração de cliente — não há relatório de recusa
+            // aqui, o pedido entra do mesmo jeito sem este endereço.
+            return null;
+        }
+
+        return [
+            'type' => $bloco,
+            'zip' => (string) ($dados['postcode'] ?? ''),
+            'street' => $rua,
+            // O número mora num campo do plugin brasileiro, não em
+            // `address_1` — mesma ressalva do `LoadWooCustomers`.
+            'number' => $this->campoBrDoPedido($order, $dados, $bloco, 'number'),
+            'complement' => trim((string) ($dados['address_2'] ?? '')),
+            'district' => $this->campoBrDoPedido($order, $dados, $bloco, 'neighborhood'),
+            'city' => $cidade,
+            'state' => $uf,
+        ];
+    }
+
+    /**
+     * Campo que o plugin de checkout brasileiro acrescenta (número, bairro),
+     * onde quer que ele o guarde — mesma varredura empírica do
+     * `LoadWooCustomers::campoBr()`, lendo direto do pedido.
+     *
+     * @param  array<string, mixed>  $order
+     * @param  array<string, mixed>  $dados
+     */
+    private function campoBrDoPedido(array $order, array $dados, string $bloco, string $campo): ?string
+    {
+        if (isset($dados[$campo]) && trim((string) $dados[$campo]) !== '') {
+            return trim((string) $dados[$campo]);
+        }
+
+        $conhecidos = ["_{$bloco}_{$campo}", "{$bloco}_{$campo}"];
+
+        foreach ((array) ($order['meta_data'] ?? []) as $meta) {
+            // O Woo às vezes guarda um array em `value` (campo multivalor de
+            // outro plugin) — não é número de casa nem bairro, então pula.
+            if (! is_array($meta) || ! is_string($meta['value'] ?? null)) {
+                continue;
+            }
+
+            $chave = (string) ($meta['key'] ?? '');
+            $valor = trim($meta['value']);
+
+            if ($valor !== '' && in_array($chave, $conhecidos, true)) {
+                return $valor;
+            }
+        }
+
+        return null;
     }
 }
