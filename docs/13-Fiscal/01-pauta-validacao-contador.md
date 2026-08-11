@@ -150,6 +150,8 @@ Perguntas que nascem do módulo Financeiro e da [cobrança por boleto](../12-Fin
 | H-02 | O contador acompanha as **Notas Técnicas** da NF-e e nos avisará das mudanças de layout? Com que antecedência? | |
 | H-03 | Há expectativa de mudança de anexo/enquadramento durante a transição? | |
 | H-04 | Periodicidade sugerida para revisarmos os perfis fiscais juntos (semestral?) | |
+| H-05 | **Confirmar o regime para fins do prazo do grupo IBS/CBS (Grupo UB) na NF-e**: a partir de **03/08/2026** a SEFAZ passou a rejeitar automaticamente NF-e de contribuintes do regime regular (Lucro Real/Presumido) sem os campos de IBS/CBS preenchidos. Empresas do **Simples Nacional e MEI** têm prazo até **04/01/2027**. A Dona Arteira está no Simples Nacional — o contador confirma que o prazo aplicável é o de 2027, e não o de agosto/2026? | |
+| H-06 | Quando o preenchimento do grupo IBS/CBS entrar em vigor pra nós, qual `cClassTrib` (classificação tributária) e quais alíquotas-teste usar para os nossos produtos (peças decorativas em gesso, CFOP de venda ao consumidor final)? | |
 
 ## 11. O que fazemos com cada resposta
 
