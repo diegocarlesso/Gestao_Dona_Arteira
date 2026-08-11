@@ -53,7 +53,7 @@ export default function Dashboard({ metrics, auth }: DashboardProps) {
                 {/* Fulfillment Queue (Highlighted for Operacional) */}
                 <div className="grid gap-6 md:grid-cols-3">
                     <Link
-                        href="/sales/orders?status=confirmed"
+                        href="/pedidos?status=confirmed"
                         className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-200 transition-all hover:shadow-md hover:ring-blue-500 dark:bg-neutral-900 dark:ring-neutral-800 dark:hover:ring-blue-500"
                     >
                         <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-blue-50/50 transition-transform group-hover:scale-150 dark:bg-blue-500/10" />
@@ -69,7 +69,7 @@ export default function Dashboard({ metrics, auth }: DashboardProps) {
                     </Link>
 
                     <Link
-                        href="/sales/orders?status=separando"
+                        href="/pedidos?status=separando"
                         className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-200 transition-all hover:shadow-md hover:ring-amber-500 dark:bg-neutral-900 dark:ring-neutral-800 dark:hover:ring-amber-500"
                     >
                         <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-amber-50/50 transition-transform group-hover:scale-150 dark:bg-amber-500/10" />
@@ -85,7 +85,7 @@ export default function Dashboard({ metrics, auth }: DashboardProps) {
                     </Link>
 
                     <Link
-                        href="/sales/orders?status=embalado"
+                        href="/pedidos?status=embalado"
                         className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-200 transition-all hover:shadow-md hover:ring-green-500 dark:bg-neutral-900 dark:ring-neutral-800 dark:hover:ring-green-500"
                     >
                         <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-green-50/50 transition-transform group-hover:scale-150 dark:bg-green-500/10" />
@@ -144,7 +144,7 @@ export default function Dashboard({ metrics, auth }: DashboardProps) {
                                     <Activity className="mr-2 h-5 w-5 text-teal-500" /> Saúde das Integrações
                                 </h2>
                                 <Link
-                                    href="/integrations"
+                                    href="/integracoes"
                                     className="text-sm font-medium text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300"
                                 >
                                     Ver todas →
