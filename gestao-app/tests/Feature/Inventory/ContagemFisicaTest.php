@@ -199,6 +199,51 @@ it('recusa aprovar contagem que ainda esta aberta', function () {
     expect(fn () => aprovar($contagem->fresh(), pessoa()->id))->toThrow(ContagemInvalida::class);
 });
 
+// -------------------------------------------------------- o cancelamento
+
+it('cancela contagem que ainda esta em contagem', function () {
+    $local = Location::factory()->padrao()->create();
+    Product::factory()->create();
+    $contagem = abrirContagem($local, pessoa()->id);
+
+    actingAs(pessoa())
+        ->post("/estoque/contagens/{$contagem->public_id}/cancelar")
+        ->assertRedirect();
+
+    expect($contagem->fresh()->status)->toBe(StockCountStatus::Cancelled);
+});
+
+it('cancela contagem que ja foi encerrada, aguardando aprovacao', function () {
+    $local = Location::factory()->padrao()->create();
+    Product::factory()->create();
+    $contagem = abrirContagem($local, pessoa()->id);
+    $contagem->forceFill(['status' => StockCountStatus::AwaitingApproval])->save();
+
+    actingAs(pessoa())
+        ->post("/estoque/contagens/{$contagem->public_id}/cancelar")
+        ->assertRedirect();
+
+    expect($contagem->fresh()->status)->toBe(StockCountStatus::Cancelled);
+});
+
+it('recusa cancelar contagem ja aprovada', function () {
+    $local = Location::factory()->padrao()->create();
+    Product::factory()->create();
+    $contagem = abrirContagem($local, pessoa()->id);
+    $contagem->items()->update(['qty_counted' => '5']);
+    $contagem->forceFill(['status' => StockCountStatus::AwaitingApproval])->save();
+    aprovar($contagem->fresh(), pessoa()->id);
+
+    // Aprovada já virou movimento no ledger — cancelar não desfaria o
+    // ajuste, só esconderia de onde ele veio.
+    actingAs(pessoa())
+        ->post("/estoque/contagens/{$contagem->public_id}/cancelar")
+        ->assertRedirect()
+        ->assertSessionHasErrors('status');
+
+    expect($contagem->fresh()->status)->toBe(StockCountStatus::Approved);
+});
+
 // ------------------------------------------------------------- as telas
 
 it('grava as quantidades digitadas', function () {

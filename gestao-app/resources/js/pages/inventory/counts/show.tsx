@@ -127,7 +127,7 @@ export default function ContagemShow({ contagem, resumo, itens, filtros, podeAju
                             </p>
                         )}
 
-                        {!contagem.aberta && contagem.status !== 'approved' && contagem.status !== 'cancelled' && podeAjustar && (
+                        {contagem.status !== 'approved' && contagem.status !== 'cancelled' && podeAjustar && (
                             <Button variant="ghost" onClick={() => acao('cancelar', 'Cancelar a contagem? Nada será ajustado.')}>
                                 <X className="size-4" />
                                 Cancelar
