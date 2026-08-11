@@ -6,9 +6,12 @@ namespace App\Modules\Fiscal\Providers;
 
 use App\Modules\Fiscal\Contracts\NfeGatewayInterface;
 use App\Modules\Fiscal\Listeners\EmitirNfeAoConfirmarPedido;
+use App\Modules\Fiscal\Models\Invoice;
+use App\Modules\Fiscal\Policies\InvoicePolicy;
 use App\Modules\Fiscal\Services\Gateways\NullNfeGateway;
 use App\Modules\Sales\Events\OrderConfirmed;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -57,5 +60,9 @@ class FiscalServiceProvider extends ServiceProvider
         // não sabe que o Fiscal existe (ADR-0020). Mesmo arranjo que
         // `IntegrationsServiceProvider` já usa para `OrderShipped`.
         Event::listen(OrderConfirmed::class, EmitirNfeAoConfirmarPedido::class);
+
+        $this->loadRoutesFrom(__DIR__.'/../Routes/web.php');
+
+        Gate::policy(Invoice::class, InvoicePolicy::class);
     }
 }

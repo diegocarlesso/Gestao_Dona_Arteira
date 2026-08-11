@@ -4,7 +4,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { usePermissions } from '@/lib/permissions';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { Boxes, LayoutGrid, Package, Plug, ShoppingCart, Truck, Users } from 'lucide-react';
+import { Boxes, FileText, LayoutGrid, Package, Plug, ShoppingCart, Truck, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 
 type ItemDoMenu = NavItem & { permissao?: string; children?: ItemDoMenu[] };
@@ -78,6 +78,12 @@ const ITENS: ItemDoMenu[] = [
                 permissao: 'purchasing.manage',
             },
         ],
+    },
+    {
+        title: 'Fiscal',
+        url: '/fiscal',
+        icon: FileText,
+        permissao: 'fiscal.view',
     },
     {
         title: 'Integrações',
