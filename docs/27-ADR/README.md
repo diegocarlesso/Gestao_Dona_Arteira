@@ -39,6 +39,7 @@
 | [0023](ADR-0023-producao-e-pintura-nao-fundicao.md) | **Produção é pintura, não fundição** (remove moldes; peça crua é `kind`; custeio ABC com mão de obra) | ⚠️ **Proposto — premissa do dono** |
 | [0024](ADR-0024-quarentena-de-secagem.md) | **Quarentena de secagem no recebimento** (peça úmida entra mas não libera para pintar; via localização, ledger inalterado) | ⚠️ **Proposto — premissa do dono** |
 | [0025](ADR-0025-emissao-automatica-nfe.md) | **Emissão automática de NF-e no fluxo de pedidos** (módulo Fiscal único, gatilho via `OrderConfirmed`, gate BR-309, ambiente controlado por flag) | ⚠️ **Proposto — 2026-08-10** |
+| [0026](ADR-0026-codigo-ibge-municipio.md) | **Código IBGE do município** — tabela de referência embarcada (dados oficiais do IBGE), sem dependência externa em tempo de execução | ⚠️ **Proposto — 2026-08-10** |
 
 ## Backlog de ADRs futuros (escrever quando o tema chegar)
 

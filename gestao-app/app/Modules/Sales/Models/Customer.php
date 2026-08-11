@@ -37,6 +37,11 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property CustomerOrigin $origin
  * @property string|null $notes
  * @property Carbon|null $lgpd_consent_at
+ *
+ * Contagens que a listagem carrega por `withCount` para `pendencias()` não
+ * consultar o banco uma vez por linha. Nulas quando ninguém as pediu.
+ * @property-read int|null $addresses_count
+ * @property-read int|null $enderecos_sem_ibge_count
  */
 class Customer extends Model implements Auditable
 {
@@ -146,8 +151,23 @@ class Customer extends Model implements Auditable
             $pendencias[] = 'CPF/CNPJ inválido';
         }
 
-        if ($this->addresses()->count() === 0) {
+        // Usa a contagem já carregada quando a listagem a trouxe
+        // (`withCount`) — sem isso, cada linha da tela dispara as suas
+        // próprias consultas de pendência.
+        $enderecos = $this->addresses_count ?? $this->addresses()->count();
+
+        if ($enderecos === 0) {
             $pendencias[] = 'sem endereço';
+        } elseif (($this->enderecos_sem_ibge_count ?? $this->addresses()->whereNull('city_code')->count()) > 0) {
+            // ADR-0026: `enderDest/cMun` é obrigatório no layout 4.00, e a
+            // emissão recusa em vez de aproximar pelo nome da cidade. A
+            // falta aparece aqui, ao lado das outras, para ser resolvida
+            // antes da venda — a resolução é escolher o município na tela.
+            //
+            // Só quando **já existe** endereço: quem não tem endereço
+            // nenhum não tem, além disso, um município pendente; seria a
+            // mesma lacuna contada duas vezes.
+            $pendencias[] = 'sem código IBGE do município';
         }
 
         return $pendencias;
@@ -160,5 +180,20 @@ class Customer extends Model implements Auditable
     public function scopeAtacadistas(Builder $query): Builder
     {
         return $query->where('is_wholesale', true);
+    }
+
+    /**
+     * Clientes com pelo menos um endereço sem município resolvido.
+     *
+     * O filtro que dá seguimento ao backfill (ADR-0026): depois de
+     * `erp:enderecos:resolver-ibge`, é por aqui que se acha quem sobrou
+     * para escolher o município à mão.
+     *
+     * @param  Builder<$this>  $query
+     * @return Builder<$this>
+     */
+    public function scopeSemCodigoIbge(Builder $query): Builder
+    {
+        return $query->whereHas('addresses', fn (Builder $q) => $q->whereNull('city_code'));
     }
 }

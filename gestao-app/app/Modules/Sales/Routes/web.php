@@ -17,6 +17,12 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware(['web', 'auth', 'conta.ativa', 'senha.trocada', '2fa.confirmado'])->group(function () {
+    // Municípios do IBGE (ADR-0026) — a escolha manual quando a resolução
+    // automática do `city_code` não acha a cidade. Fora do prefixo
+    // `clientes` porque não é um cliente: é a tabela de referência que o
+    // formulário de endereço consulta.
+    Route::get('municipios/buscar', [CustomerController::class, 'searchMunicipalities'])->name('sales.municipalities.search');
+
     Route::get('clientes', [CustomerController::class, 'index'])->name('sales.customers.index');
     Route::get('clientes/novo', [CustomerController::class, 'create'])->name('sales.customers.create');
     Route::post('clientes', [CustomerController::class, 'store'])->name('sales.customers.store');

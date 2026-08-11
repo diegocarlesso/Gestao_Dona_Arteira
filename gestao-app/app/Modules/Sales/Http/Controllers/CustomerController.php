@@ -9,7 +9,9 @@ use App\Modules\Sales\Enums\CustomerType;
 use App\Modules\Sales\Http\Requests\SaveCustomerRequest;
 use App\Modules\Sales\Models\Customer;
 use App\Modules\Sales\Models\CustomerAddress;
+use App\Modules\Sales\Services\ResolveIbgeCityCode;
 use App\Modules\Sales\Services\SaveCustomerService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -31,7 +33,12 @@ class CustomerController extends Controller
         $pendencia = $request->string('pendencia')->trim()->value();
 
         $clientes = Customer::query()
-            ->withCount('addresses')
+            ->withCount([
+                'addresses',
+                // Alimenta `pendencias()` sem uma consulta por linha
+                // (ADR-0026) — o mesmo papel que `addresses_count` já fazia.
+                'addresses as enderecos_sem_ibge_count' => fn ($q) => $q->whereNull('city_code'),
+            ])
             ->when($busca !== '', fn ($q) => $q->where(
                 fn ($q) => $q->where('name', 'like', "%{$busca}%")
                     ->orWhere('email', 'like', "%{$busca}%")
@@ -41,6 +48,7 @@ class CustomerController extends Controller
             ))
             ->when($pendencia === 'sem_doc', fn ($q) => $q->whereNull('doc'))
             ->when($pendencia === 'sem_endereco', fn ($q) => $q->doesntHave('addresses'))
+            ->when($pendencia === 'sem_ibge', fn ($q) => $q->semCodigoIbge())
             ->when($pendencia === 'atacado', fn ($q) => $q->atacadistas())
             ->orderBy('name')
             ->paginate(20)
@@ -52,6 +60,7 @@ class CustomerController extends Controller
             'contagens' => [
                 'sem_doc' => Customer::query()->whereNull('doc')->count(),
                 'sem_endereco' => Customer::query()->doesntHave('addresses')->count(),
+                'sem_ibge' => Customer::query()->semCodigoIbge()->count(),
                 'atacado' => Customer::query()->atacadistas()->count(),
             ],
         ]);
@@ -82,7 +91,7 @@ class CustomerController extends Controller
     {
         $this->authorize('view', $customer);
 
-        $customer->load('addresses');
+        $customer->load('addresses.municipality');
 
         return Inertia::render('sales/customers/edit', [
             'cliente' => $this->paraTela($customer) + [
@@ -100,6 +109,11 @@ class CustomerController extends Controller
                     'district' => $e->district,
                     'city' => $e->city,
                     'state' => $e->state,
+                    // Vai e volta no formulário: sem devolver o código, um
+                    // salvamento seguinte reenviaria o endereço sem ele e a
+                    // escolha manual do operador se perderia (ADR-0026).
+                    'city_code' => $e->city_code,
+                    'municipio' => $e->municipality?->name,
                     'is_default_shipping' => $e->is_default_shipping,
                     'is_default_billing' => $e->is_default_billing,
                 ])->values(),
@@ -131,6 +145,28 @@ class CustomerController extends Controller
 
         return to_route('sales.customers.index')
             ->with('sucesso', "{$customer->name} foi inativado. O histórico de compras continua intacto.");
+    }
+
+    /**
+     * Busca de municípios do IBGE para a escolha manual — ADR-0026.
+     *
+     * Existe porque a resolução automática recusa aproximar: quando a
+     * grafia do cadastro não bate com a oficial, alguém precisa **escolher**
+     * o município, e escolher exige ver a lista. Sempre dentro de uma UF —
+     * há homônimos entre estados (Jacutinga/MG e Jacutinga/RS), e uma lista
+     * sem UF convidaria ao clique errado.
+     *
+     * Mesma alçada de quem edita o cadastro (`sales.create`): é o mesmo
+     * formulário, e a lista de municípios do Brasil não é dado sensível.
+     */
+    public function searchMunicipalities(Request $request, ResolveIbgeCityCode $municipios): JsonResponse
+    {
+        $this->authorize('create', Customer::class);
+
+        return response()->json($municipios->buscar(
+            $request->string('uf')->trim()->value(),
+            $request->string('q')->trim()->value(),
+        ));
     }
 
     /**

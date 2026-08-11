@@ -125,10 +125,11 @@ class BuildOrderInvoiceSnapshot
             complement: $endereco->complement,
             district: $endereco->district,
             city: $endereco->city,
-            // Ainda não há de onde tirar: `customer_addresses` não guarda o
-            // código IBGE do município. A NF-e exige (`enderDest/cMun`), e
-            // quem trata a falta é o Fiscal — aqui só se declara o fato.
-            cityCode: null,
+            // `enderDest/cMun` (ADR-0026). Continua podendo ser nulo — é o
+            // endereço que ainda não teve o município resolvido, e aí quem
+            // recusa a emissão é o Fiscal, com mensagem própria. O que
+            // mudou é que agora existe de onde tirar quando está resolvido.
+            cityCode: $endereco->city_code,
             state: $endereco->state,
         );
     }

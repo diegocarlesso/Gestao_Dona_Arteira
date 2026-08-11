@@ -1,7 +1,7 @@
 # 14 — NF-e (Emissão Eletrônica)
 
 > **Status:** Em revisão · **Última atualização:** 2026-08-10 · **Responsável:** nfe-specialist
-> **Regras:** BR-601…BR-606 · **Fase:** Gate 05 · **ADR:** [0009 (sped-nfe vs API gerenciada)](../27-ADR/ADR-0009-emissao-nfe.md)
+> **Regras:** BR-601…BR-607 · **Fase:** Gate 05 · **ADR:** [0009 (sped-nfe vs API gerenciada)](../27-ADR/ADR-0009-emissao-nfe.md)
 
 ## 1. Objetivo
 
@@ -43,24 +43,36 @@ flowchart TD
 | Montagem do XML 4.00 | `Fiscal\Services\Gateways\MontarXmlNfe` | ✅ testado contra o XSD oficial |
 | Certificado A1 + `Tools` | `Fiscal\Services\Gateways\CanalSefaz` | ✅ escrito; assinatura verificada com certificado autoassinado |
 | Assinatura + transmissão + retorno | `Fiscal\Services\Gateways\SpedNfeGateway` | ⚠️ escrito, **não verificado** (sem A1 real) |
+| Código IBGE do município do destinatário | `Sales\Services\ResolveIbgeCityCode` + `ibge_municipalities` | ✅ resolvido automaticamente, com escolha manual na tela quando não casa ([ADR-0026](../27-ADR/ADR-0026-codigo-ibge-municipio.md)) |
 | DANFE, eventos, contingência, guarda em lote | — | ❌ não iniciados |
 
 **O bind ativo continua sendo `NullNfeGateway`** (`FiscalServiceProvider`).
 Trocar por `SpedNfeGateway` é uma linha, e só depois da bateria em
 homologação que a BR-605 exige.
 
-Três coisas impedem a primeira emissão de verdade, nenhuma delas de código:
+**Duas** coisas impedem a primeira emissão de verdade, nenhuma delas de
+código:
 
 1. **Certificado A1** — `NFE_CERT_PATH`/`NFE_CERT_PASSWORD` (pasta 25).
 2. **Dados do emitente e CST de PIS/COFINS** — `NFE_EMITENTE_*`,
    `NFE_PIS_CST`, `NFE_COFINS_CST`, todos vazios até a doc 13 sair de
    bloqueada. A emissão recusa nomeando a variável que falta; não chuta.
-3. **Código IBGE do município do destinatário** — `enderDest/cMun` é
-   obrigatório no layout e `customer_addresses` **não guarda esse campo**.
-   O contrato já o prevê (`Sales\DTO\OrderInvoiceAddress::$cityCode`), mas
-   chega sempre nulo. É pendência do cadastro de Vendas (docs/10), e a
-   emissão para com mensagem própria em vez de aproximar pelo nome da
-   cidade — nota autorizada com município errado ninguém percebe.
+
+> ✅ **O terceiro bloqueio caiu em 2026-08-10.** O código IBGE do município
+> do destinatário (`enderDest/cMun`) era o item 3 desta lista: obrigatório
+> no layout 4.00 e sem coluna que o guardasse. Agora `customer_addresses`
+> tem `city_code` (FK para `ibge_municipalities`, tabela semeada dos dados
+> oficiais do IBGE), a resolução por cidade + UF é automática no cadastro,
+> e `Sales\DTO\OrderInvoiceAddress::$cityCode` chega preenchido — ver
+> [ADR-0026](../27-ADR/ADR-0026-codigo-ibge-municipio.md) e BR-607.
+>
+> O campo **continua nulável**, e a emissão continua parando quando ele
+> falta: quando a grafia da cidade não bate com a oficial, a resolução
+> recusa aproximar e o endereço fica com pendência visível até alguém
+> escolher o município na tela do cliente. O que mudou é que agora isso é
+> exceção rara, e não o caso de todo mundo. Endereços que já existiam:
+> `php artisan erp:enderecos:resolver-ibge` (relata primeiro, grava só com
+> `--gravar`).
 
 Pontos críticos:
 

@@ -24,7 +24,7 @@ type Cliente = {
 interface Props {
     clientes: Paginado<Cliente>;
     filtros: { busca: string; pendencia: string };
-    contagens: { sem_doc: number; sem_endereco: number; atacado: number };
+    contagens: { sem_doc: number; sem_endereco: number; sem_ibge: number; atacado: number };
 }
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Clientes', href: '/clientes' }];
@@ -38,6 +38,9 @@ export default function ClientesIndex({ clientes, filtros, contagens }: Props) {
     const filtrosRapidos = [
         { chave: 'sem_doc', rotulo: 'Sem CPF/CNPJ', total: contagens.sem_doc },
         { chave: 'sem_endereco', rotulo: 'Sem endereço', total: contagens.sem_endereco },
+        // ADR-0026: quem sobrou da resolução automática do município e
+        // precisa de escolha manual antes de virar nota fiscal.
+        { chave: 'sem_ibge', rotulo: 'Sem código IBGE', total: contagens.sem_ibge },
         { chave: 'atacado', rotulo: 'Atacado', total: contagens.atacado },
     ];
 

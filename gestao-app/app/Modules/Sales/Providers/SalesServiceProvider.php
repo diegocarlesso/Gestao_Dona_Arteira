@@ -6,6 +6,7 @@ namespace App\Modules\Sales\Providers;
 
 use App\Modules\Fiscal\Events\InvoiceAuthorized;
 use App\Modules\Fiscal\Events\InvoiceRejected;
+use App\Modules\Sales\Console\ResolverIbgeEnderecosCommand;
 use App\Modules\Sales\Listeners\MarcarNotaFiscalAutorizada;
 use App\Modules\Sales\Models\Customer;
 use App\Modules\Sales\Models\Order;
@@ -35,5 +36,13 @@ class SalesServiceProvider extends ServiceProvider
         // no módulo que **ouve** — o Fiscal anuncia sem saber quem escuta.
         Event::listen(InvoiceAuthorized::class, MarcarNotaFiscalAutorizada::class);
         Event::listen(InvoiceRejected::class, MarcarNotaFiscalAutorizada::class);
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                // Backfill do código IBGE do município (ADR-0026): os
+                // endereços que já existiam quando a coluna nasceu.
+                ResolverIbgeEnderecosCommand::class,
+            ]);
+        }
     }
 }

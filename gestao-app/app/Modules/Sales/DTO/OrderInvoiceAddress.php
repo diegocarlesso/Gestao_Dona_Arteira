@@ -23,15 +23,15 @@ final readonly class OrderInvoiceAddress
         /**
          * Código IBGE do município (7 dígitos) — `enderDest/cMun` na NF-e.
          *
-         * **Nasce nulo e por enquanto é sempre nulo:** `customer_addresses`
-         * guarda cidade e UF, não o código, e ele não se deduz de cidade +
-         * UF sem a tabela do IBGE. O campo existe aqui, e não só na cabeça
-         * de quem escreveu a emissão, porque é assim que a lacuna fica
-         * visível no contrato entre Vendas e Fiscal (ADR-0025 §2) em vez de
-         * virar surpresa na primeira nota rejeitada.
+         * Vem de `customer_addresses.city_code`, resolvido a partir de
+         * cidade + UF contra a tabela `ibge_municipalities` (ADR-0026).
          *
-         * Quando a coluna existir, só esta linha do
-         * `BuildOrderInvoiceSnapshot` muda.
+         * **Continua nulável**, e isso é o desenho, não uma lacuna: quando
+         * a grafia do cadastro não bate com a oficial do IBGE, a resolução
+         * recusa aproximar e o endereço fica pendente até alguém escolher o
+         * município na tela do cliente. Nulo aqui significa "este endereço
+         * ainda não pode virar nota", e quem para a emissão com mensagem
+         * própria é o Fiscal — nunca um código chutado.
          */
         public ?string $cityCode,
         public string $state,

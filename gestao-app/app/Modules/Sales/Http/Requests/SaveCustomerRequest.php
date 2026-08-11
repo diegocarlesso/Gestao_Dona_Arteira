@@ -51,6 +51,19 @@ class SaveCustomerRequest extends FormRequest
             'enderecos.*.district' => ['nullable', 'string', 'max:120'],
             'enderecos.*.city' => ['required', 'string', 'max:120'],
             'enderecos.*.state' => ['required', 'string', 'size:2'],
+
+            // Código IBGE do município (ADR-0026). Nulável: o normal é vir
+            // vazio e a resolução automática preencher — só chega valor
+            // quando alguém escolheu o município na tela.
+            //
+            // O `exists` não é redundante com a FK: sem ele, um código
+            // inexistente estouraria como `QueryException` (erro 500) em
+            // vez de virar mensagem de formulário. A FK continua sendo a
+            // garantia final; esta regra é a educada.
+            'enderecos.*.city_code' => [
+                'nullable', 'string', 'size:7',
+                Rule::exists('ibge_municipalities', 'ibge_code'),
+            ],
             'enderecos.*.is_default_shipping' => ['boolean'],
             'enderecos.*.is_default_billing' => ['boolean'],
         ];
@@ -78,6 +91,8 @@ class SaveCustomerRequest extends FormRequest
             'doc.unique' => 'Já existe um cliente com este CPF/CNPJ.',
             'enderecos.*.zip.required' => 'Informe o CEP do endereço.',
             'enderecos.*.state.size' => 'A UF tem duas letras.',
+            'enderecos.*.city_code.exists' => 'Município não encontrado na tabela do IBGE — escolha um da busca.',
+            'enderecos.*.city_code.size' => 'O código do IBGE tem 7 dígitos.',
         ];
     }
 }

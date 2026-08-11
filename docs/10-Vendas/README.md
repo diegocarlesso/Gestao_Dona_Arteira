@@ -1,7 +1,7 @@
 # 10 — Vendas
 
-> **Status:** Em revisão · **Última atualização:** 2026-07-03 · **Responsável:** sales-specialist
-> **Regras:** BR-301…BR-309 · **Fase:** Gate 02 · **Modelo:** [04/01](../04-Banco-de-Dados/01-modelo-conceitual.md)
+> **Status:** Em revisão · **Última atualização:** 2026-08-10 · **Responsável:** sales-specialist
+> **Regras:** BR-301…BR-309, BR-001, BR-607 · **Fase:** Gate 02 · **Modelo:** [04/01](../04-Banco-de-Dados/01-modelo-conceitual.md)
 
 ## 1. Objetivo
 
@@ -43,6 +43,43 @@ Unificar pedidos de **todos os canais** (balcão/atacado/encomenda no ERP + WooC
 > houver pedido e NF-e — a rotina precisa recusar anonimizar quem tem
 > dever legal de guarda, e hoje essa checagem não teria o que consultar.
 > Construí-la agora entregaria um controle que sempre diz "pode".
+
+### 2.0.1 Município do endereço: resolução automática e escolha manual (BR-607)
+
+Cada endereço guarda, além de cidade e UF, o **código IBGE do município**
+(`customer_addresses.city_code`) — é o `enderDest/cMun` que a NF-e exige, e
+sem ele o Fiscal recusa emitir de propósito, em vez de aproximar pelo nome
+da cidade ([ADR-0026](../27-ADR/ADR-0026-codigo-ibge-municipio.md)).
+
+Como se comporta, do ponto de vista de quem usa a tela:
+
+- **Ao salvar o cliente, o código se resolve sozinho.** `ResolveIbgeCityCode`
+  normaliza a cidade digitada (caixa alta, sem acento — a mesma
+  normalização que o banco aplica na coluna gerada) e casa contra
+  `ibge_municipalities` por **UF + nome**. Quem digita "são paulo" ou
+  "SAO PAULO" acha; o operador nunca vê o campo.
+- **A UF nunca é opcional no casamento.** Há municípios homônimos em
+  estados diferentes — inclusive **Jacutinga/MG e Jacutinga/RS**, e a do RS
+  é a cidade da loja. Casar só por nome mandaria boa parte da base para
+  Minas Gerais.
+- **Sem casamento exato, fica nulo** — nada de "a cidade mais parecida". O
+  endereço aparece com a pendência *"sem código IBGE do município"* na
+  mesma lista de `Customer::pendencias()` que já mostra "sem CPF/CNPJ" e
+  "sem endereço", e a listagem de clientes ganhou o filtro rápido
+  **Sem código IBGE** para achar quem falta.
+- **O fallback é escolher, não digitar.** No formulário de endereço, quando
+  o código está faltando, aparece uma busca de municípios da UF
+  (`GET /municipios/buscar?uf=RS&q=jacu`, mesmo componente das buscas de
+  produto e cliente da tela de pedido). A escolha manual vence a resolução
+  automática — é justamente o caso da grafia divergente. Digitar um número
+  solto não é possível: há FK para a tabela de referência.
+- **Mexer na cidade ou na UF limpa o código**, e ele se resolve de novo no
+  salvamento seguinte. Manter o código antigo faria a nota sair com o
+  município anterior — autorizada e errada, que é o pior desfecho.
+
+Endereços que já existiam quando a coluna nasceu (a base migrada do Woo)
+são varridos por `php artisan erp:enderecos:resolver-ibge`, que **relata
+sem gravar** por padrão e só aplica com `--gravar`.
 - **Não faz:** mexer em saldo (pede reserva/baixa ao Estoque), emitir NF-e (chama Fiscal), cobrar (Financeiro), falar com Woo (Integrações reage a eventos).
 
 ## 2.1 Corte do Gate 02 (decidido em 2026-07-28)

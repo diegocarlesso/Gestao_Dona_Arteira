@@ -26,6 +26,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property string|null $district
  * @property string $city
  * @property string $state
+ * @property string|null $city_code Código IBGE do município (`cMun` da NF-e). Nulo = ainda não resolvido — ADR-0026.
  * @property bool $is_default_shipping
  * @property bool $is_default_billing
  */
@@ -49,6 +50,7 @@ class CustomerAddress extends Model implements Auditable
         'district',
         'city',
         'state',
+        'city_code',
         'is_default_shipping',
         'is_default_billing',
     ];
@@ -103,6 +105,31 @@ class CustomerAddress extends Model implements Auditable
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /**
+     * O município do IBGE, quando já resolvido — ADR-0026.
+     *
+     * Aponta por `city_code` → `ibge_code`, e não por id: é a mesma coluna
+     * que a FK usa, então a relação não precisa de nenhuma junção a mais
+     * do que o banco já garante. Nula enquanto o endereço estiver pendente.
+     *
+     * @return BelongsTo<IbgeMunicipality, $this>
+     */
+    public function municipality(): BelongsTo
+    {
+        return $this->belongsTo(IbgeMunicipality::class, 'city_code', 'ibge_code');
+    }
+
+    /**
+     * Falta o código IBGE do município para este endereço sair numa NF-e?
+     *
+     * Separado de `Customer::pendencias()` porque a pergunta é do endereço:
+     * um cliente pode ter três endereços e só um deles pendente.
+     */
+    public function semCodigoIbge(): bool
+    {
+        return $this->city_code === null;
     }
 
     /**

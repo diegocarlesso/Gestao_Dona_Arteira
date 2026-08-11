@@ -8,6 +8,7 @@ use Database\Seeders\Finance\FinanceCategorySeeder;
 use Database\Seeders\Identity\AdminInicialSeeder;
 use Database\Seeders\Identity\RolePermissionSeeder;
 use Database\Seeders\Inventory\LocalPadraoSeeder;
+use Database\Seeders\Sales\IbgeMunicipalitySeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -26,6 +27,7 @@ class DatabaseSeeder extends Seeder
             AdminInicialSeeder::class,
             LocalPadraoSeeder::class,
             FinanceCategorySeeder::class,
+            IbgeMunicipalitySeeder::class,
         ]);
     }
 }

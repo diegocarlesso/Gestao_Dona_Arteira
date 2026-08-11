@@ -84,6 +84,11 @@ export default function ClienteEdit({ cliente, tipos }: Props) {
                             district: e.district ?? '',
                             city: e.city ?? '',
                             state: e.state ?? '',
+                            // Vai e volta: sem reenviar o código, salvar de
+                            // novo apagaria a escolha manual do município
+                            // feita numa edição anterior (ADR-0026).
+                            city_code: e.city_code ?? '',
+                            municipio: e.municipio ?? null,
                             is_default_shipping: e.is_default_shipping,
                             is_default_billing: e.is_default_billing,
                         })),

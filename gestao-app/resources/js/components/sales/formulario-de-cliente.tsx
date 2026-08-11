@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useForm } from '@inertiajs/react';
 import { Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 export type Endereco = {
     public_id?: string | null;
@@ -15,9 +16,15 @@ export type Endereco = {
     district: string;
     city: string;
     state: string;
+    /** Código IBGE do município — `enderDest/cMun` da NF-e (ADR-0026). */
+    city_code: string;
+    /** Nome oficial do município já resolvido, só para exibir. */
+    municipio?: string | null;
     is_default_shipping: boolean;
     is_default_billing: boolean;
 };
+
+type MunicipioBusca = { codigo: string; nome: string; uf: string };
 
 export type DadosDoCliente = {
     type: string;
@@ -51,12 +58,33 @@ const enderecoVazio = (): Endereco => ({
     district: '',
     city: '',
     state: '',
+    city_code: '',
+    municipio: null,
     is_default_shipping: false,
     is_default_billing: false,
 });
 
+/**
+ * Municípios da UF cujo nome contém o termo (ADR-0026).
+ *
+ * Só entra em cena quando a resolução automática não achou a cidade — o
+ * backend casa cidade + UF contra a tabela do IBGE ao salvar e recusa
+ * aproximar, então quem escolhe nesses casos é a pessoa.
+ */
+async function buscarMunicipios(uf: string, q: string): Promise<MunicipioBusca[]> {
+    if (uf.trim().length !== 2 || q.trim().length < 2) return [];
+    const r = await fetch(`/municipios/buscar?uf=${encodeURIComponent(uf)}&q=${encodeURIComponent(q)}`, {
+        headers: { Accept: 'application/json' },
+    });
+    return r.ok ? r.json() : [];
+}
+
 export function FormularioDeCliente({ dados, tipos, metodo, url, rotuloDoBotao }: Props) {
     const form = useForm<DadosDoCliente>(dados);
+
+    // Busca de município aberta por endereço (índice), com os resultados.
+    const [buscaMunicipio, setBuscaMunicipio] = useState<Record<number, string>>({});
+    const [municipios, setMunicipios] = useState<Record<number, MunicipioBusca[]>>({});
 
     const tipoAtual = tipos.find((t) => t.valor === form.data.type) ?? tipos[0];
 
@@ -73,8 +101,27 @@ export function FormularioDeCliente({ dados, tipos, metodo, url, rotuloDoBotao }
     const mudarEndereco = (indice: number, campo: keyof Endereco, valor: string | boolean) =>
         form.setData(
             'enderecos',
-            form.data.enderecos.map((e, i) => (i === indice ? { ...e, [campo]: valor } : e)),
+            form.data.enderecos.map((e, i) => {
+                if (i !== indice) return e;
+
+                // Mexer na cidade ou na UF invalida o município resolvido:
+                // manter o código antigo faria a NF-e sair com o `cMun` da
+                // cidade anterior — errada e autorizada, que é o pior caso
+                // (ADR-0026). Limpo, o backend resolve de novo ao salvar.
+                const limpa = campo === 'city' || campo === 'state';
+
+                return { ...e, [campo]: valor, ...(limpa ? { city_code: '', municipio: null } : {}) };
+            }),
         );
+
+    const escolherMunicipio = (indice: number, m: MunicipioBusca) => {
+        form.setData(
+            'enderecos',
+            form.data.enderecos.map((e, i) => (i === indice ? { ...e, city_code: m.codigo, municipio: m.nome } : e)),
+        );
+        setBuscaMunicipio({ ...buscaMunicipio, [indice]: '' });
+        setMunicipios({ ...municipios, [indice]: [] });
+    };
 
     return (
         <form onSubmit={enviar} className="flex max-w-3xl flex-col gap-6">
@@ -219,6 +266,55 @@ export function FormularioDeCliente({ dados, tipos, metodo, url, rotuloDoBotao }
                                 required
                             />
                         </div>
+
+                        {/* Município do IBGE — o `cMun` da NF-e (ADR-0026).
+                            Resolvido sozinho por cidade + UF ao salvar; a
+                            busca só aparece quando não houve casamento,
+                            porque o normal é o operador nunca ver isto. */}
+                        {endereco.city_code ? (
+                            <p className="text-muted-foreground text-xs">
+                                Município do IBGE: <span className="font-medium">{endereco.municipio ?? endereco.city}</span>{' '}
+                                <span className="font-mono">{endereco.city_code}</span>
+                            </p>
+                        ) : (
+                            <div className="relative">
+                                <p className="text-xs">
+                                    <span className="text-destructive font-medium">Sem código IBGE do município.</span>{' '}
+                                    <span className="text-muted-foreground">
+                                        Preenche sozinho ao salvar, quando a cidade bate com a grafia oficial. Se não bater, escolha aqui — sem
+                                        ele não sai nota fiscal.
+                                    </span>
+                                </p>
+                                <Input
+                                    className="mt-2 max-w-md"
+                                    placeholder={endereco.state ? `Buscar município em ${endereco.state}` : 'Informe a UF para buscar o município'}
+                                    disabled={endereco.state.length !== 2}
+                                    value={buscaMunicipio[i] ?? ''}
+                                    onChange={async (e) => {
+                                        setBuscaMunicipio({ ...buscaMunicipio, [i]: e.target.value });
+                                        setMunicipios({ ...municipios, [i]: await buscarMunicipios(endereco.state, e.target.value) });
+                                    }}
+                                />
+                                {(municipios[i]?.length ?? 0) > 0 && (
+                                    <div className="bg-popover absolute z-10 mt-1 max-w-md rounded-md border shadow">
+                                        {municipios[i].map((m) => (
+                                            <button
+                                                key={m.codigo}
+                                                type="button"
+                                                className="hover:bg-accent flex w-full items-center justify-between gap-4 px-3 py-2 text-left text-sm"
+                                                onClick={() => escolherMunicipio(i, m)}
+                                            >
+                                                <span>
+                                                    {m.nome}
+                                                    <span className="text-muted-foreground"> · {m.uf}</span>
+                                                </span>
+                                                <span className="text-muted-foreground font-mono text-xs">{m.codigo}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <div className="flex flex-wrap gap-4 text-sm">
                             <label className="flex items-center gap-2">

@@ -102,6 +102,7 @@ Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data)
 | BR-604 | Cancelamento de NF-e apenas dentro do prazo legal (24h padrão SEFAZ) e sem circulação da mercadoria; fora disso, fluxo de devolução | legislação | ✅ |
 | BR-605 | Emissão em homologação SEFAZ deve estar disponível permanentemente para testes | decisão nova | ✅ |
 | BR-606 | Dados fiscais do produto (NCM, CFOP, CSOSN, origem) são obrigatórios antes da primeira emissão que o inclua | legislação | ✅ |
+| BR-607 | Endereço de destinatário tem o **código IBGE do município** (`enderDest/cMun`, 7 dígitos) resolvido a partir de cidade + UF contra a tabela oficial; sem casamento **exato** o campo fica nulo e vira pendência do cadastro — nunca é aproximado por semelhança de nome | legislação + decisão nova ([ADR-0026](../27-ADR/ADR-0026-codigo-ibge-municipio.md)) | 🔧 **implementada em 2026-08-10**: `Sales\Services\ResolveIbgeCityCode` casa por `(uf, nome normalizado)` — chave `UNIQUE` na tabela, o que impede escolher entre homônimos (há Jacutinga em MG e no RS). Fallback é **escolher** o município na tela, não digitar número (FK barra código inexistente). Endereços antigos: `erp:enderecos:resolver-ibge` |
 
 ## BR-7xx — Integrações e migração
 
