@@ -8,6 +8,7 @@ use App\Modules\Catalog\DTO\ProductFiscalData;
 use App\Modules\Catalog\DTO\ProductSnapshot;
 use App\Modules\Catalog\DTO\ProductSummary;
 use App\Modules\Catalog\Enums\PriceList;
+use App\Modules\Catalog\Enums\ProductKind;
 use App\Modules\Catalog\Models\Product;
 
 /**
@@ -184,6 +185,44 @@ class ProductLookupService
                 'name' => $p->name,
                 'color' => $p->color,
                 'retail_price' => $p->precoVigente(PriceList::Retail)?->price,
+            ])
+            ->all();
+    }
+
+    /**
+     * Produtos que casam com o termo, restritos ao que se compra de
+     * fornecedor — para o autocomplete de item do pedido de compra.
+     *
+     * **Não inclui peça acabada.** A peça acabada é a peça crua já pintada
+     * pelo ateliê (ADR-0023) — nenhum fornecedor vende "buda azul", vende
+     * a peça crua que uma pintura interna transforma em peça de qualquer
+     * cor do catálogo. Oferecer peça acabada aqui faria o comprador
+     * escolher uma cor que não existe do lado do fornecedor.
+     *
+     * @return list<array{public_id: string, sku: string, name: string, color: string|null, unit: string}>
+     */
+    public function buscarParaCompra(string $termo, int $limite = 15): array
+    {
+        $tiposComprapveis = array_values(array_map(
+            fn (ProductKind $k): string => $k->value,
+            array_filter(ProductKind::cases(), fn (ProductKind $k): bool => $k->isPurchasable()),
+        ));
+
+        return Product::query()
+            ->active()
+            ->whereIn('kind', $tiposComprapveis)
+            ->where(fn ($q) => $q->where('name', 'like', "%{$termo}%")
+                ->orWhere('sku', 'like', "%{$termo}%")
+                ->orWhere('color', 'like', "%{$termo}%"))
+            ->orderBy('name')
+            ->limit($limite)
+            ->get(['public_id', 'sku', 'name', 'color', 'unit'])
+            ->map(fn (Product $p): array => [
+                'public_id' => $p->public_id,
+                'sku' => $p->sku,
+                'name' => $p->name,
+                'color' => $p->color,
+                'unit' => $p->unit,
             ])
             ->all();
     }

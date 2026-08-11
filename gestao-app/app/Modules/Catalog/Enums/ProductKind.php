@@ -57,4 +57,18 @@ enum ProductKind: string
     {
         return $this === self::FinishedGood;
     }
+
+    /**
+     * Compra-se de fornecedor?
+     *
+     * Peça acabada é pintura interna sobre peça crua comprada — não existe
+     * fornecedor de "buda azul" (ADR-0023). O que se compra é a peça crua
+     * (`raw_material`), a embalagem, o insumo e a revenda; a cor nasce
+     * depois, no ateliê. Usado por Compras (pasta 11) para não oferecer no
+     * pedido uma cor que nenhum fornecedor tem.
+     */
+    public function isPurchasable(): bool
+    {
+        return $this !== self::FinishedGood;
+    }
 }

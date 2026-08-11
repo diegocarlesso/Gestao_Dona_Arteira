@@ -446,3 +446,41 @@ it('barra quem não pode gerenciar compras de confirmar (gerar dívida)', functi
     expect($pc->fresh()->status)->toBe(PurchaseOrderStatus::Draft)
         ->and(Payable::query()->count())->toBe(0);
 });
+
+// -------------------------------------------- busca de item (BR-406)
+
+it('a busca de item do PC traz matéria-prima', function () {
+    $crua = Product::factory()->rawMaterial()->create(['name' => 'Trio de budas 14 cm']);
+
+    $resposta = actingAs(usuarioDeCompras())
+        ->getJson('/compras/buscar-produtos?q=budas')
+        ->assertOk();
+
+    expect($resposta->json())->toHaveCount(1)
+        ->and($resposta->json('0.public_id'))->toBe($crua->public_id)
+        ->and($resposta->json('0.color'))->toBeNull();
+});
+
+it('a busca de item do PC não traz peça acabada (BR-406)', function () {
+    // Peça acabada é o default da factory — a mesma "trio de budas", mas já
+    // pintada e com cor, exatamente o que um fornecedor nunca vende.
+    Product::factory()->create(['name' => 'Trio de budas 14 cm', 'color' => 'azul']);
+
+    $resposta = actingAs(usuarioDeCompras())
+        ->getJson('/compras/buscar-produtos?q=budas')
+        ->assertOk();
+
+    expect($resposta->json())->toBe([]);
+});
+
+it('a busca de item do PC traz revenda e não confunde com peça acabada do mesmo nome', function () {
+    Product::factory()->resale()->create(['name' => 'Incenso de baunilha']);
+    Product::factory()->create(['name' => 'Peça acabada qualquer']);
+
+    $resposta = actingAs(usuarioDeCompras())
+        ->getJson('/compras/buscar-produtos?q=incenso')
+        ->assertOk();
+
+    expect($resposta->json())->toHaveCount(1)
+        ->and($resposta->json('0.name'))->toBe('Incenso de baunilha');
+});

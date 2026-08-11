@@ -54,6 +54,15 @@ class ProductFactory extends Factory
         ]);
     }
 
+    public function rawMaterial(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'kind' => ProductKind::RawMaterial,
+            // Peça crua não tem cor — a cor nasce na pintura (ADR-0023).
+            'color' => null,
+        ]);
+    }
+
     /**
      * Com o cadastro fiscal completo — o que a NF-e exige (BR-606).
      *

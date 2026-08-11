@@ -165,7 +165,7 @@ export function FormularioDePedidoDeCompra({ dados, metodo, url, rotuloDoBotao, 
                 {editavel && (
                     <div className="relative max-w-md">
                         <Input
-                            placeholder="Buscar peça por nome, código ou cor"
+                            placeholder="Buscar matéria-prima, embalagem, insumo ou revenda por nome ou código"
                             value={buscaProduto}
                             onChange={async (e) => {
                                 setBuscaProduto(e.target.value);

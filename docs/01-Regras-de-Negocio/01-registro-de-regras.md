@@ -70,6 +70,7 @@ Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data)
 | BR-403 | Divergência entre pedido e recebimento (falta/sobra/avaria) é registrada e não bloqueia entrada parcial | decisão nova | 💡 |
 | BR-404 | Recebimento de peça crua entra na localização `quarantine`; não fica liberada para pintar até a liberação da secagem (default `received_at + drying_days`; manual — padrão — ou por data) | decisão nova ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) | 💡 |
 | BR-405 | Cada recebimento é um lote (fornecedor + data); a taxa de quebra por fornecedor/lote é medida pelas perdas (`loss`) que referenciam o recebimento | decisão nova ([ADR-0024](../27-ADR/ADR-0024-quarentena-de-secagem.md)) | 💡 |
+| BR-406 | O pedido de compra só oferece produtos compráveis de fornecedor (`kind` ≠ peça acabada): matéria-prima, embalagem, insumo, revenda. Peça acabada é pintura interna sobre peça crua comprada (ADR-0023) — nenhum fornecedor vende por cor, então a busca de item do PC não pode oferecer o SKU já pintado | decisão nova ([ADR-0022](../27-ADR/ADR-0022-modelo-de-produto-e-sku.md), [ADR-0023](../27-ADR/ADR-0023-producao-e-pintura-nao-fundicao.md)) | ✅ **implementado em 2026-08-11** |
 
 ## BR-5xx — Financeiro
 

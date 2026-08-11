@@ -82,7 +82,9 @@ Fornecedor: CNPJ único, contatos, prazo médio de entrega (lead time alimenta s
 
 ## 5. Dependências
 
-Estoque (entrada/custo, **localização `quarantine` e a transferência de liberação da secagem** — BR-404), Financeiro (payable), Catálogo (itens `kind=raw_piece/raw_material/packaging/resale`). A sugestão de reposição depende de `min_stock` + lead time do fornecedor.
+Estoque (entrada/custo, **localização `quarantine` e a transferência de liberação da secagem** — BR-404), Financeiro (payable), Catálogo (itens `kind=raw_material/packaging/resale/supply` — nunca `finished_good`, BR-406). A sugestão de reposição depende de `min_stock` + lead time do fornecedor.
+
+> **BR-406, implementado em 2026-08-11:** a busca de item do pedido de compra (`ProductLookupService::buscarParaCompra`) filtra por `ProductKind::isPurchasable()`, excluindo peça acabada. Até essa correção a busca trazia o catálogo inteiro, inclusive as ~754 peças já pintadas por cor (ADR-0022) — o comprador acabava escolhendo uma cor específica para um item que o fornecedor nunca vende por cor, porque a cor é acabamento de pintura interna (ADR-0023). Os cadastros de matéria-prima em si (uma linha por "peça crua" — ex. "Trio de budas infantis da sabedoria 14 cm — crua") ainda precisam ser criados na tela de Catálogo (`kind = Matéria-prima`); o vínculo entre a peça crua e as cores que ela pode virar (ficha técnica/BOM) é P2 (Produção), fora deste corte.
 
 ## 6. Boas práticas
 

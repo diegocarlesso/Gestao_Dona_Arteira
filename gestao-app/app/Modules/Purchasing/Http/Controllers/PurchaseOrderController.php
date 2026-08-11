@@ -246,15 +246,7 @@ class PurchaseOrderController extends Controller
             return response()->json([]);
         }
 
-        $ids = array_slice($catalogo->idsPorTermo($termo), 0, 15);
-
-        return response()->json(array_values(array_map(fn ($p): array => [
-            'public_id' => $p->publicId,
-            'sku' => $p->sku,
-            'name' => $p->name,
-            'color' => $p->color,
-            'unit' => $p->unit,
-        ], $catalogo->resumos($ids))));
+        return response()->json($catalogo->buscarParaCompra($termo));
     }
 
     /**
