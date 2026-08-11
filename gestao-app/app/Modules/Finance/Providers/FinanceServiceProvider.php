@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace App\Modules\Finance\Providers;
 
 use App\Modules\Finance\Listeners\RegistrarRecebivelAoConfirmarPedido;
+use App\Modules\Finance\Models\FinanceAccount;
+use App\Modules\Finance\Models\FinanceCategory;
 use App\Modules\Finance\Models\Payable;
 use App\Modules\Finance\Models\Receivable;
+use App\Modules\Finance\Policies\FinanceSettingsPolicy;
+use App\Modules\Finance\Policies\TitlePolicy;
 use App\Modules\Sales\Events\OrderConfirmed;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -36,5 +41,15 @@ class FinanceServiceProvider extends ServiceProvider
         // Vendas não sabe que o Financeiro existe (ADR-0020) — quem ouve
         // registra o listener, mesmo arranjo do Fiscal para o mesmo Event.
         Event::listen(OrderConfirmed::class, RegistrarRecebivelAoConfirmarPedido::class);
+
+        $this->loadRoutesFrom(__DIR__.'/../Routes/web.php');
+
+        // Um TitlePolicy só, registrado duas vezes: a regra de quem vê/dá
+        // baixa/estorna é idêntica para Payable e Receivable.
+        Gate::policy(Payable::class, TitlePolicy::class);
+        Gate::policy(Receivable::class, TitlePolicy::class);
+
+        Gate::policy(FinanceAccount::class, FinanceSettingsPolicy::class);
+        Gate::policy(FinanceCategory::class, FinanceSettingsPolicy::class);
     }
 }
