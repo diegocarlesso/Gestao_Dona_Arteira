@@ -37,6 +37,8 @@ use Throwable;
  */
 class ExtractWooCustomers
 {
+    private const NAMESPACE_ANALYTICS = 'wc-analytics';
+
     public function __construct(private readonly Client $client) {}
 
     /**
@@ -45,6 +47,7 @@ class ExtractWooCustomers
     public function clientes(bool $dryRun = false, int $apartirDaPagina = 1, ?Closure $progresso = null): ImportBatch
     {
         $lote = $this->abrirLote('customers', $dryRun);
+        $comprasPorUsuario = $this->comprasPorUsuario();
 
         try {
             foreach ($this->client->paginar('customers', [], $apartirDaPagina) as $pagina) {
@@ -52,7 +55,7 @@ class ExtractWooCustomers
                     $lote->fetched++;
 
                     if (! $dryRun) {
-                        $this->gravar($item, $lote->id);
+                        $this->gravar($item, $lote->id, $comprasPorUsuario);
                         $lote->stored++;
                     }
                 }
@@ -82,8 +85,9 @@ class ExtractWooCustomers
 
     /**
      * @param  array<string, mixed>  $item
+     * @param  array<int, int>  $comprasPorUsuario  user_id => pedidos (ver comprasPorUsuario())
      */
-    private function gravar(array $item, int $loteId): void
+    private function gravar(array $item, int $loteId, array $comprasPorUsuario): void
     {
         StgWooCustomer::query()->updateOrCreate(
             ['woo_id' => (int) $item['id']],
@@ -98,10 +102,13 @@ class ExtractWooCustomers
                 'first_name' => $this->texto($item['first_name'] ?? null),
                 'last_name' => $this->texto($item['last_name'] ?? null),
 
-                // Nulo quando a origem não mandou o campo — é o que separa
+                // Nulo quando o cliente não aparece no relatório de
+                // analytics (ver comprasPorUsuario()) — é o que separa
                 // "nunca comprou" (0, rejeita) de "não deu para saber"
-                // (nulo, fica pendente).
-                'orders_count' => isset($item['orders_count']) ? (int) $item['orders_count'] : null,
+                // (nulo, fica pendente). `/wc/v3/customers` nunca trouxe
+                // esse campo, apesar do que a versão anterior deste código
+                // supunha — confirmado contra a API de produção.
+                'orders_count' => $comprasPorUsuario[(int) $item['id']] ?? null,
 
                 'woo_modified_at' => $item['date_modified_gmt'] ?? null,
                 'payload' => $item,
@@ -135,5 +142,36 @@ class ExtractWooCustomers
             'dry_run' => $dryRun,
             'started_at' => now(),
         ]);
+    }
+
+    /**
+     * Quantos pedidos cada cliente já fez, pelo `user_id` do WordPress.
+     *
+     * `/wc/v3/customers` nunca devolveu `orders_count` — confirmado contra a
+     * API de produção em 2026-08-11, não é suposição. O dado real vem do
+     * relatório de clientes do WooCommerce Analytics (`wc-analytics`, no core
+     * desde a 4.0), que soma os pedidos por `user_id`.
+     *
+     * Cliente sem sync nesse relatório (~6 dos 198 medidos) some do mapa — e
+     * isso é "não dá para saber", não "nunca comprou": `gravar()` trata os
+     * dois jeitos diferente de propósito.
+     *
+     * @return array<int, int> user_id => quantidade de pedidos
+     */
+    private function comprasPorUsuario(): array
+    {
+        $mapa = [];
+
+        foreach ($this->client->paginar('reports/customers', [], versaoApi: self::NAMESPACE_ANALYTICS) as $pagina) {
+            foreach ($pagina['itens'] as $item) {
+                if (! isset($item['user_id'])) {
+                    continue;
+                }
+
+                $mapa[(int) $item['user_id']] = (int) ($item['orders_count'] ?? 0);
+            }
+        }
+
+        return $mapa;
     }
 }

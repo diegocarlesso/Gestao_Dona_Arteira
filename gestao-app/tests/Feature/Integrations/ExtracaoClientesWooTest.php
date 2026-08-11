@@ -58,6 +58,16 @@ function clienteWoo(int $id, array $extra = []): array
     ], $extra);
 }
 
+/**
+ * Uma linha do relatório de clientes do WooCommerce Analytics
+ * (`wc-analytics/reports/customers`) — é daqui que `orders_count` vem de
+ * verdade, não do objeto `/customers` (que nunca trouxe esse campo).
+ */
+function relatorioClienteWoo(int $userId, int $ordersCount): array
+{
+    return ['user_id' => $userId, 'orders_count' => $ordersCount];
+}
+
 it('traz todas as páginas até a última', function () {
     Http::fake([
         '*/customers?*page=1*' => Http::response([clienteWoo(1), clienteWoo(2)]),
@@ -77,9 +87,15 @@ it('traz todas as páginas até a última', function () {
 
 it('traz quem nunca comprou, para a triagem poder rejeitar em voz alta', function () {
     Http::fake([
-        '*/customers?*page=1*' => Http::response([
+        // Padrão específico com "wc/v3" — "*/customers?*" sozinho também
+        // casaria com a URL de wc-analytics/reports/customers abaixo, que
+        // precisa de uma resposta diferente.
+        '*wc/v3/customers?*page=1*' => Http::response([
             clienteWoo(1, ['orders_count' => 3]),
             clienteWoo(2, ['orders_count' => 0]),
+        ]),
+        '*/reports/customers?*' => Http::response([
+            relatorioClienteWoo(2, 0),
         ]),
         '*' => Http::response([]),
     ]);
@@ -189,10 +205,21 @@ it('não cadastra ninguém — extração para no staging', function () {
 
 it('extrai pelo comando e compara com o inventário no relatório', function () {
     Http::fake([
-        '*/customers?*page=1*' => Http::response([
+        // Padrão específico com "wc/v3" — "*/customers?*" sozinho também
+        // casaria com a URL de wc-analytics/reports/customers abaixo, que
+        // precisa de uma resposta diferente.
+        '*wc/v3/customers?*page=1*' => Http::response([
             clienteWoo(1, ['orders_count' => 2]),
             clienteWoo(2, ['orders_count' => 0]),
         ]),
+        // Duas linhas — página cheia (per_page=2 no beforeEach) — precisa
+        // de uma página seguinte explícita e vazia para não repetir a
+        // mesma URL indefinidamente contra o fake genérico.
+        '*/reports/customers?*page=1*' => Http::response([
+            relatorioClienteWoo(1, 2),
+            relatorioClienteWoo(2, 0),
+        ]),
+        '*/reports/customers?*page=2*' => Http::response([]),
         '*' => Http::response([]),
     ]);
 

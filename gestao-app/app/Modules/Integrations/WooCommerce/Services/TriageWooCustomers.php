@@ -27,10 +27,10 @@ use Illuminate\Support\LazyCollection;
  * descartado silenciosamente" (princípio 4 da pasta 17) vale
  * principalmente quando o descarte é o certo a fazer.
  *
- * O critério é o `orders_count` que a própria API do Woo devolve no objeto
- * do cliente — não uma contagem nossa. Isso é decisão: derivar de pedidos
- * exigiria ter os pedidos migrados, que ainda não estão, e recontar do
- * nosso lado criaria um segundo número para divergir do primeiro.
+ * O critério é o `orders_count` que a extração resolve contra o relatório
+ * de clientes do WooCommerce Analytics (`ExtractWooCustomers::comprasPorUsuario()`)
+ * — não uma contagem nossa, mas também não vem mais do objeto `/customers`
+ * em si, que nunca trouxe esse campo (achado de 2026-08-11).
  */
 class TriageWooCustomers
 {
@@ -160,12 +160,14 @@ class TriageWooCustomers
         $conhecidos = ['_billing_cpf', 'billing_cpf', '_billing_cnpj', 'billing_cnpj'];
 
         foreach ((array) ($linha->payload['meta_data'] ?? []) as $meta) {
-            if (! is_array($meta)) {
+            // O Woo às vezes guarda um array em `value` (campo multivalor de
+            // outro plugin) — não é CPF nem CNPJ, então pula.
+            if (! is_array($meta) || ! is_string($meta['value'] ?? null)) {
                 continue;
             }
 
             $chave = (string) ($meta['key'] ?? '');
-            $valor = (string) ($meta['value'] ?? '');
+            $valor = $meta['value'];
 
             if ($valor !== '' && in_array($chave, $conhecidos, true)) {
                 return $valor;

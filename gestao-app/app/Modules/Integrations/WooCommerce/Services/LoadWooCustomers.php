@@ -342,12 +342,14 @@ class LoadWooCustomers
         $conhecidos = ["_{$bloco}_{$campo}", "{$bloco}_{$campo}"];
 
         foreach ((array) ($linha->payload['meta_data'] ?? []) as $meta) {
-            if (! is_array($meta)) {
+            // O Woo às vezes guarda um array em `value` (campo multivalor de
+            // outro plugin) — não é número de casa nem bairro, então pula.
+            if (! is_array($meta) || ! is_string($meta['value'] ?? null)) {
                 continue;
             }
 
             $chave = (string) ($meta['key'] ?? '');
-            $valor = trim((string) ($meta['value'] ?? ''));
+            $valor = trim($meta['value']);
 
             if ($valor !== '' && in_array($chave, $conhecidos, true)) {
                 return $valor;

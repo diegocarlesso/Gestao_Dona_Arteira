@@ -308,12 +308,14 @@ class ImportWooOrder
         $conhecidos = ['_billing_cpf', 'billing_cpf', '_billing_cnpj', 'billing_cnpj'];
 
         foreach ((array) ($order['meta_data'] ?? []) as $meta) {
-            if (! is_array($meta)) {
+            // O Woo às vezes guarda um array em `value` (campo multivalor de
+            // outro plugin) — não é CPF nem CNPJ, então pula.
+            if (! is_array($meta) || ! is_string($meta['value'] ?? null)) {
                 continue;
             }
 
             $chave = (string) ($meta['key'] ?? '');
-            $valor = (string) ($meta['value'] ?? '');
+            $valor = $meta['value'];
 
             if ($valor !== '' && in_array($chave, $conhecidos, true)) {
                 return $valor;

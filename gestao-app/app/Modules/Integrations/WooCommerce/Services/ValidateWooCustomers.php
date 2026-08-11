@@ -388,11 +388,13 @@ class ValidateWooCustomers
     private function metaDe(StgWooCustomer $linha, array $chaves): ?string
     {
         foreach ((array) ($linha->payload['meta_data'] ?? []) as $meta) {
-            if (! is_array($meta)) {
+            // O Woo às vezes guarda um array em `value` (campo multivalor de
+            // outro plugin) — não é CPF nem CNPJ, então pula.
+            if (! is_array($meta) || ! is_string($meta['value'] ?? null)) {
                 continue;
             }
 
-            $valor = trim((string) ($meta['value'] ?? ''));
+            $valor = trim($meta['value']);
 
             if ($valor !== '' && in_array((string) ($meta['key'] ?? ''), $chaves, true)) {
                 return $valor;

@@ -35,9 +35,9 @@ class Client
      * @param  array<string, scalar>  $parametros
      * @return array<int, array<string, mixed>>
      */
-    public function get(string $recurso, array $parametros = []): array
+    public function get(string $recurso, array $parametros = [], string $versaoApi = self::VERSAO_API): array
     {
-        $resposta = $this->request()->get($this->url($recurso), $parametros);
+        $resposta = $this->request()->get($this->url($recurso, $versaoApi), $parametros);
 
         if ($resposta->failed()) {
             throw IntegracaoWooIndisponivel::resposta($recurso, $resposta->status(), $resposta->body());
@@ -104,7 +104,7 @@ class Client
      * @param  array<string, scalar>  $parametros
      * @return \Generator<int, array{pagina: int, itens: array<int, array<string, mixed>>}>
      */
-    public function paginar(string $recurso, array $parametros = [], int $apartirDaPagina = 1): \Generator
+    public function paginar(string $recurso, array $parametros = [], int $apartirDaPagina = 1, string $versaoApi = self::VERSAO_API): \Generator
     {
         $porPagina = (int) config('integrations.woocommerce.per_page', 50);
         $pagina = max(1, $apartirDaPagina);
@@ -124,7 +124,7 @@ class Client
             $itens = $this->get($recurso, $parametros + [
                 'page' => $pagina,
                 'per_page' => $porPagina,
-            ]);
+            ], $versaoApi);
 
             if ($itens === []) {
                 return;
@@ -159,11 +159,11 @@ class Client
             ->acceptJson();
     }
 
-    private function url(string $recurso): string
+    private function url(string $recurso, string $versaoApi = self::VERSAO_API): string
     {
         $base = rtrim((string) config('integrations.woocommerce.url'), '/');
 
-        return "{$base}/wp-json/".self::VERSAO_API."/{$recurso}";
+        return "{$base}/wp-json/{$versaoApi}/{$recurso}";
     }
 
     private function garantirConfiguracao(): void
