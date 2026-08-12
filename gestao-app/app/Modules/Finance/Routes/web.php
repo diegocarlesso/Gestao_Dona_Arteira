@@ -49,4 +49,5 @@ Route::middleware(['web', 'auth', 'conta.ativa', 'senha.trocada', '2fa.confirmad
         // `catalog.reports.duplicate-names` → `/relatorios/produtos-repetidos`).
         Route::get('relatorios/vencimentos', [AgingReportController::class, 'index'])->name('reports.aging');
         Route::get('relatorios/vencimentos/csv', [AgingReportController::class, 'export'])->name('reports.aging.export');
+        Route::get('relatorios/vencimentos/pdf', [AgingReportController::class, 'pdf'])->name('reports.aging.pdf');
     });

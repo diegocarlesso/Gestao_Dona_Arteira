@@ -12,7 +12,7 @@ Catálogo canônico dos relatórios do ERP e padrões de construção: todo rela
 1. Cada relatório tem ficha neste catálogo: pergunta de negócio que responde, filtros, colunas, fonte (módulos), permissão, dono.
 2. Consulta implementada como classe de leitura dedicada (query object) — sem impacto em telas transacionais; consultas pesadas rodam com limites e são candidatas a snapshot noturno (fase 6).
 3. Teste com dataset fixo (factory) que valida totais — relatório errado é pior que sem relatório.
-4. Exportação CSV sempre; PDF quando for documento de trabalho (ex.: lista de separação).
+4. Exportação CSV sempre; PDF quando for documento de trabalho (ex.: lista de separação) ou pedido para impressão/envio formal — motor `dompdf` (pura PHP, sem Node/Chrome no servidor), timbre único compartilhado ([ADR-0028](../27-ADR/ADR-0028-exportacao-pdf-de-relatorios.md)).
 5. Datas com visão competência × caixa explícita nos financeiros (pasta 12).
 
 ## 3. Catálogo inicial

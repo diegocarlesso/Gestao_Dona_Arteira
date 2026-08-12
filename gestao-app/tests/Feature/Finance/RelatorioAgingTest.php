@@ -128,3 +128,19 @@ it('não deixa quem não tem reports.view baixar o CSV', function () {
         ->get('/financeiro/relatorios/vencimentos/csv')
         ->assertForbidden();
 });
+
+it('exporta PDF timbrado — ADR-0028', function () {
+    Receivable::factory()->create(['amount' => '100.00', 'customer_name' => 'Cliente PDF', 'due_date' => now()->subDays(5)->toDateString()]);
+
+    $resposta = actingAs(usuarioComPapel(Role::Finance))->get('/financeiro/relatorios/vencimentos/pdf');
+
+    $resposta->assertOk();
+    $resposta->assertHeader('Content-Type', 'application/pdf');
+    expect($resposta->getContent())->toStartWith('%PDF-');
+});
+
+it('não deixa quem não tem reports.view baixar o PDF', function () {
+    actingAs(usuarioComPapel(Role::Production))
+        ->get('/financeiro/relatorios/vencimentos/pdf')
+        ->assertForbidden();
+});

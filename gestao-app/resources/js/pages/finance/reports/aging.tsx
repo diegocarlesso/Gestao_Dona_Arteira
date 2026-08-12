@@ -63,6 +63,7 @@ export default function RelatorioDeVencimentos({ tipo, dataDe, dataAte, titulos,
     };
 
     const urlCsv = `/financeiro/relatorios/vencimentos/csv?tipo=${tipo}&data_de=${dataDe ?? ''}&data_ate=${dataAte ?? ''}`;
+    const urlPdf = `/financeiro/relatorios/vencimentos/pdf?tipo=${tipo}&data_de=${dataDe ?? ''}&data_ate=${dataAte ?? ''}`;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -77,9 +78,16 @@ export default function RelatorioDeVencimentos({ tipo, dataDe, dataAte, titulos,
                             receber/pagar.
                         </p>
                     </div>
-                    <Button asChild size="sm" variant="outline">
-                        <a href={urlCsv}>Exportar CSV</a>
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button asChild size="sm" variant="outline">
+                            <a href={urlCsv}>Exportar CSV</a>
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                            <a href={urlPdf} target="_blank" rel="noreferrer">
+                                Exportar PDF
+                            </a>
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap items-end gap-3">

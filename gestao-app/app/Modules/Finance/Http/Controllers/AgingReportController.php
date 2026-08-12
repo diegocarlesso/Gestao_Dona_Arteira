@@ -8,7 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Modules\Finance\Models\Payable;
 use App\Modules\Finance\Models\Receivable;
 use App\Modules\Finance\Repositories\TitlesAgingReport;
+use App\Support\Reports\ReportLetterhead;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as PdfResponse;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -76,6 +79,34 @@ class AgingReportController extends Controller
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Cache-Control' => 'no-store',
         ]);
+    }
+
+    /**
+     * PDF timbrado — ADR-0028. Mesmo filtro/consulta do `index()`/
+     * `export()`; só o formato de saída muda.
+     */
+    public function pdf(Request $request, TitlesAgingReport $relatorio, ReportLetterhead $letterhead): PdfResponse
+    {
+        $this->authorize('viewReports', Payable::class);
+
+        [$tipo, $dataDe, $dataAte] = $this->filtros($request);
+
+        $linhas = $relatorio->linhas($tipo, $dataDe, $dataAte);
+
+        $pdf = Pdf::loadView('reports.vencimentos-pdf', [
+            'tipo' => $tipo,
+            'dataDe' => $dataDe,
+            'dataAte' => $dataAte,
+            'titulos' => $this->paraTela($linhas, $tipo, $relatorio),
+            'totais' => $relatorio->totaisPorFaixa($linhas),
+            'letterhead' => $letterhead,
+            'empresa' => $letterhead->empresa(),
+            'geradoEm' => now()->format('d/m/Y \à\s H:i'),
+            'emReais' => fn (string $valor): string => $this->emReais($valor),
+            'faixaLabel' => fn (string $faixa): string => $this->faixaLabel($faixa),
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->stream("vencimentos-{$tipo}.pdf");
     }
 
     /**
