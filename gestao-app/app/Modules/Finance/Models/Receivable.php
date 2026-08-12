@@ -9,6 +9,7 @@ use Database\Factories\Finance\ReceivableFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use OwenIt\Auditing\Auditable as AuditableTrait;
@@ -82,5 +83,24 @@ class Receivable extends Model implements Auditable
     public function category(): BelongsTo
     {
         return $this->belongsTo(FinanceCategory::class, 'category_id');
+    }
+
+    /**
+     * @return HasMany<BillingCharge, $this>
+     */
+    public function billingCharges(): HasMany
+    {
+        return $this->hasMany(BillingCharge::class, 'receivable_id');
+    }
+
+    /**
+     * A cobrança mais recente, qualquer que seja o status — a tela mostra
+     * "última tentativa" e libera emitir de novo conforme o estado dela
+     * (`EmitirCobrancaService::solicitar()` já recusa uma segunda cobrança
+     * ativa, então mostrar só a última nunca esconde uma corrente).
+     */
+    public function cobrancaMaisRecente(): ?BillingCharge
+    {
+        return $this->billingCharges()->latest('id')->first();
     }
 }

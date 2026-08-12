@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Finance\Providers;
 
+use App\Modules\Finance\Contracts\CobrancaGatewayInterface;
 use App\Modules\Finance\Listeners\RegistrarRecebivelAoConfirmarPedido;
 use App\Modules\Finance\Models\FinanceAccount;
 use App\Modules\Finance\Models\FinanceCategory;
@@ -11,6 +12,7 @@ use App\Modules\Finance\Models\Payable;
 use App\Modules\Finance\Models\Receivable;
 use App\Modules\Finance\Policies\FinanceSettingsPolicy;
 use App\Modules\Finance\Policies\TitlePolicy;
+use App\Modules\Finance\Services\Gateways\NullCobrancaGateway;
 use App\Modules\Sales\Events\OrderConfirmed;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
@@ -22,6 +24,16 @@ use Illuminate\Support\ServiceProvider;
  */
 class FinanceServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        // Padrão até as credenciais de produção do Mercado Pago existirem —
+        // `IntegrationsServiceProvider` (registrado depois, `bootstrap/
+        // providers.php`) sobrescreve este bind quando a integração está
+        // ligada. Mesmo arranjo do `NfeGatewayInterface` no Fiscal
+        // (ADR-0009/ADR-0018).
+        $this->app->bind(CobrancaGatewayInterface::class, NullCobrancaGateway::class);
+    }
+
     public function boot(): void
     {
         // `settleable_type` grava `'payable'`/`'receivable'`, não o nome

@@ -54,4 +54,24 @@ return [
         'max_pages' => (int) env('WOO_MAX_PAGES', 1000),
     ],
 
+    // Cobrança (PIX com vencimento e boleto) — ADR-0018. Enquanto
+    // desligada, `CobrancaGatewayInterface` continua no `NullCobrancaGateway`
+    // (bind padrão do FinanceServiceProvider) — nenhuma cobrança sai sem
+    // que alguém ligue isto de propósito.
+    'mercadopago' => [
+        'enabled' => (bool) env('MERCADOPAGO_ENABLED', false),
+
+        // Painel do desenvolvedor do Mercado Pago → Credenciais. Prefixo
+        // `TEST_` = ambiente de teste; sem prefixo = produção. Mesma URL
+        // de API nos dois casos — a credencial é que decide o ambiente.
+        'access_token' => env('MERCADOPAGO_ACCESS_TOKEN'),
+
+        // Painel → Integrações → Webhooks → "Chave secreta". Assina o
+        // header `x-signature` de cada notificação (BR-701) — sem ele, o
+        // `MercadoPagoWebhookController` recusa tudo.
+        'webhook_secret' => env('MERCADOPAGO_WEBHOOK_SECRET'),
+
+        'timeout' => (int) env('MERCADOPAGO_TIMEOUT', 15),
+    ],
+
 ];

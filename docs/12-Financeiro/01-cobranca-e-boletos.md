@@ -1,8 +1,8 @@
 # 01 — Cobrança (boleto e PIX com vencimento)
 
-> **Status:** Rascunho — **BLOQUEADO por decisão do dono ([ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md)) e por definição do banco** · **Última atualização:** 2026-07-22 · **Responsável:** financial-specialist
+> **Status:** 🔧 Implementado (Mercado Pago, [ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md), 2026-08-12) — falta só o Access Token de produção · **Última atualização:** 2026-08-12 · **Responsável:** financial-specialist
 > **ADRs relacionados:** [ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md), [ADR-0007](../27-ADR/ADR-0007-sync-assincrona.md), [ADR-0013](../27-ADR/ADR-0013-dinheiro-decimal.md) · **Regras relacionadas:** BR-505…BR-512, BR-501, BR-502, BR-504
-> **Fase:** Gate 04 (mediante aprovação da mudança de escopo — [Roadmap](../28-Roadmap/README.md))
+> **Fase:** Gate 04 — Fase C do plano de Financeiro (núcleo BR-501…504 já em produção)
 
 ## 1. Objetivo
 
@@ -106,13 +106,19 @@ Credenciais do provedor vivem em `integration_settings` **cifradas** (padrão j�
 
 ## 9. Perguntas em aberto
 
-**Para o cliente (bloqueiam a escolha do provedor):**
-- **Qual banco e conta PJ** a empresa usa? Já existe convênio de cobrança?
-- **Por que boleto?** Quem exige — o lojista de atacado, o comprador do site, ou o contas-a-pagar de um cliente específico? Um PIX-cobrança com vencimento resolveria?
-- Volume estimado de cobranças por mês?
+**Resolvidas em 2026-08-11:**
+- ~~Qual banco/conta a empresa usa~~ → Mercado Pago, o mesmo do checkout do site (resolve
+  autenticação sem convênio bancário novo — só falta o Access Token de produção).
+- ~~Por que boleto vs. PIX~~ → decisão do dono: suportar os dois sob a mesma interface desde a
+  v1 (§2 do ADR-0018), sem esperar confirmação de demanda por canal.
+
+**Ainda em aberto (não bloqueiam o código, ajustam parâmetro depois):**
+- Volume estimado de cobranças por mês (referência para o gatilho de revisão do ADR-0018 — 200/mês).
 - Prazo praticado no atacado (30/60 dias)? Parcelamento?
 - Quem opera a cobrança hoje e como a baixa é conferida?
-- O envio ao cliente deve ser por e-mail, WhatsApp, ou ambos?
+- O envio ao cliente deve ser por e-mail, WhatsApp, ou ambos? (v1: a tela do título mostra o
+  link/QR/linha digitável para o operador copiar; envio automatizado fica para a régua de
+  cobrança, fase 6).
 
 **Para o contador** (já incorporadas ao Bloco G da [pauta](../13-Fiscal/01-pauta-validacao-contador.md)):
 - Multa, juros e desconto padrão a aplicar.

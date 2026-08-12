@@ -85,13 +85,13 @@ Regras nascem 💡 e só viram ✅ com validação nominal (quem validou + data)
 
 | ID | Regra | Origem | Status |
 |---|---|---|---|
-| BR-505 | Cobrança (boleto ou PIX com vencimento) só é emitida a partir de um título a receber existente; não existe cobrança avulsa | decisão nova | 💡 |
-| BR-506 | Cobrança registrada no banco é imutável: alterar valor ou vencimento exige cancelar a cobrança e emitir outra — o título permanece o mesmo | regra bancária | 💡 |
-| BR-507 | Liquidação informada pelo provedor gera baixa **idempotente** do título, com chave no ID da cobrança/evento no provedor; evento reprocessado nunca duplica baixa | decisão nova | 💡 |
-| BR-508 | Multa, juros e desconto são parametrizados por perfil de cobrança versionado por vigência, nunca digitados por cobrança | decisão nova | 💡 confirmar percentuais com o contador (G-03) |
-| BR-509 | Pagamento a menor gera baixa **parcial** e mantém o saldo aberto; nunca baixa total silenciosa. Pagamento a maior registra o excedente como receita de juros | decisão nova | 💡 |
-| BR-510 | Cobrança cancelada, vencida ou falha não baixa o título — ele permanece em aberto e continua no aging | decisão nova | 💡 |
-| BR-511 | Credenciais bancárias de cobrança são cifradas, de **escopo mínimo (somente cobrança, nunca pagamento ou transferência)** e jamais versionadas | segurança (pasta 25) | ✅ princípio de segurança |
+| BR-505 | Cobrança (boleto ou PIX com vencimento) só é emitida a partir de um título a receber existente; não existe cobrança avulsa | decisão nova | 🔧 **implementada em 2026-08-12**: `EmitirCobrancaService::solicitar()` recusa sem `receivable_id` válido e aberto |
+| BR-506 | Cobrança registrada no banco é imutável: alterar valor ou vencimento exige cancelar a cobrança e emitir outra — o título permanece o mesmo | regra bancária | 🔧 **implementada em 2026-08-12**: não existe endpoint de edição, só emitir/cancelar; `CancelarCobrancaService` + nova emissão |
+| BR-507 | Liquidação informada pelo provedor gera baixa **idempotente** do título, com chave no ID da cobrança/evento no provedor; evento reprocessado nunca duplica baixa | decisão nova | 🔧 **implementada em 2026-08-12**: `billing_charge_events.provider_event_id` UNIQUE + `ProcessarNotificacaoCobrancaService` |
+| BR-508 | Multa, juros e desconto são parametrizados por perfil de cobrança versionado por vigência, nunca digitados por cobrança | decisão nova | 🔧 estrutura implementada (`billing_profiles`, sem valor fixo — mesmo princípio do IBS/CBS, ADR-0027); 💡 percentuais aguardam o contador (G-03) |
+| BR-509 | Pagamento a menor gera baixa **parcial** e mantém o saldo aberto; nunca baixa total silenciosa. Pagamento a maior registra o excedente como receita de juros | decisão nova | 🔧 **parcial implementada em 2026-08-12** (`ProcessarNotificacaoCobrancaService` baixa pelo valor recebido); pagamento a maior como receita de juros ainda não tem caso de uso automatizado — fica para quando a régua de cobrança existir |
+| BR-510 | Cobrança cancelada, vencida ou falha não baixa o título — ele permanece em aberto e continua no aging | decisão nova | 🔧 **implementada em 2026-08-12**: `ProcessarNotificacaoCobrancaService::aplicarStatus()` |
+| BR-511 | Credenciais bancárias de cobrança são cifradas, de **escopo mínimo (somente cobrança, nunca pagamento ou transferência)** e jamais versionadas | segurança (pasta 25) | ✅ princípio de segurança; 💡 aplicação real pendente da credencial de produção do Mercado Pago (`.env`, nunca no repo) |
 | BR-512 | Venda a prazo com cobrança registrada referencia as duplicatas no grupo de cobrança da NF-e | legislação | 💡 **validar com contador** (G-02) |
 
 ## BR-6xx — Fiscal / NF-e

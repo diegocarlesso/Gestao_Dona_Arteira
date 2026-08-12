@@ -48,7 +48,7 @@ Reprocessável: payload bruto guardado 30 dias permite reprocessar após bug fix
 | Melhor Envio | bidirecional (etiqueta/rastreio) | 6 | Média | template a preencher no Gate 06 |
 | Transportadoras diretas | saída | 6+ | Baixa | idem |
 | WhatsApp (Meta Cloud API) | saída (notificações) | 7 | Baixa | idem |
-| Gateway de pagamento | bidirecional | 7 | Média | idem |
+| Gateway de pagamento (Mercado Pago) | bidirecional | 4 | Média | 🔧 implementado 2026-08-12 (ADR-0018) — [pasta 12, cobrança](../12-Financeiro/01-cobranca-e-boletos.md) |
 | Marketplaces | bidirecional | 7 | Média | um adapter por marketplace, mesmo padrão |
 
 ## 5. Observabilidade (obrigatória por integração)

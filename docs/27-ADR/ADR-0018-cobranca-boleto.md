@@ -1,8 +1,20 @@
 # ADR-0018: Cobrança (boleto e PIX) via adapter, com provedor plugável
 
-> **Status:** ⚠️ **Proposto — decisão do dono** (impacto de custo, escopo e prazo) · **Data:** 2026-07-22 · **Decisores:** dono do produto, com recomendação técnica
-> **Módulos afetados:** 12 (Financeiro), 15 (Integrações), 25 (Segurança), 28 (Roadmap), 14 (NF-e — grupo de cobrança)
-> **Prazo da decisão:** antes do início do Gate 04 · **Pré-requisito externo:** convênio de cobrança com o banco (lead time de semanas)
+> **Status:** ✅ **Decidido** — provedor Mercado Pago (branch "Gateway" da tabela de decisão) · **Data:** 2026-07-22, decisão de provedor em 2026-08-11 · **Decisores:** dono do produto, com recomendação técnica
+> **Módulos afetados:** 12 (Financeiro), 15 (Integrações), 25 (Segurança), 28 (Roadmap), 14 (NF-e — grupo de cobrança, adiado — BR-512)
+> **Pré-requisito externo:** conta Mercado Pago do negócio com credenciais de produção ativas (a mesma já usada no checkout do site via WooCommerce resolve a autenticação — falta apenas gerar o Access Token de produção com escopo de pagamentos no painel do desenvolvedor)
+
+> 🔧 **Implementado em 2026-08-12** (Fase C do plano de Financeiro): `CobrancaGatewayInterface`
+> + `NullCobrancaGateway` (padrão, como o ADR-0009 já estabeleceu para NF-e) no módulo
+> Financeiro; `MercadoPagoGateway` + submódulo `Integrations\MercadoPago` (`Client`, `Mappers\
+> StatusMap`, `Services\VerificaAssinaturaMercadoPago`, `Adapters\MercadoPagoGateway`,
+> `Http\Controllers\MercadoPagoWebhookController`, `Jobs\ProcessarWebhookMercadoPago`,
+> `Jobs\ReconciliarCobrancasMercadoPago` agendado de hora em hora) implementando a interface.
+> Rebind condicionado a `integrations.mercadopago.enabled` — enquanto o Access Token de
+> produção não estiver configurado, o sistema continua no `NullCobrancaGateway` (mesmo
+> espírito do `NullNfeGateway`: nunca finge sucesso). 29 testes cobrindo o domínio (Finance)
+> e o adapter (Integrations), incluindo o ciclo completo webhook → job → baixa idempotente
+> + tarifa como despesa (BR-507).
 
 ## Contexto
 
@@ -27,15 +39,42 @@ Três partes:
 
 **2. Escopo do produto.** O módulo se chama **Cobrança** e cobre boleto **e** PIX com vencimento sob a mesma interface. Motivo: o público que pede boleto é o mesmo do atacado, e para boa parte dele um PIX-cobrança com vencimento, multa e juros resolve a mesma dor por uma fração do custo — mas alguns compradores PJ só conseguem pagar via boleto. Suportar os dois sob uma interface custa pouco a mais que suportar um.
 
-**3. Provedor.** A escolha depende de duas respostas que ainda não temos (qual banco o cliente usa; por que o cliente quer boleto). O critério de decisão fica fixado aqui:
+**3. Provedor: Mercado Pago (decidido em 2026-08-11).** A escolha caiu no branch **Gateway** da tabela de critério abaixo — o mesmo provedor já usado no checkout do site via WooCommerce, o que resolve de uma vez a pergunta "qual banco/conta o cliente usa" (não é banco digital nem banco tradicional; é subadquirente, mesma categoria de Asaas/Efí/Iugu já citados como exemplo):
 
 | Se… | Então |
 |---|---|
 | O cliente já opera com **banco digital com API pública boa** (Inter, Cora, Sicoob, C6…) | Adapter direto do banco — custo por boleto próximo de zero, liquidação em tempo real |
-| O cliente opera com **banco tradicional grande** (Itaú, Bradesco, BB, Santander) | **Gateway** (Asaas, Efí, Iugu…) — a homologação direta com banco grande é lenta e burocrática demais para um dev solo |
+| O cliente opera com **banco tradicional grande** (Itaú, Bradesco, BB, Santander) | **Gateway** (Asaas, Efí, Iugu, **Mercado Pago**…) — a homologação direta com banco grande é lenta e burocrática demais para um dev solo |
 | O banco **só oferece CNAB** | Reabrir esta decisão. Não implementar CNAB sem nova análise |
 
 **Não implementaremos CNAB 240/400 nesta fase.**
+
+### 3.1 Notas técnicas do provedor (Mercado Pago, levantadas em 2026-08-11 na documentação oficial)
+
+Confirmam que a API de Pagamentos do Mercado Pago cobre o desenho deste ADR sem gambiarra:
+
+- **Um único endpoint** para PIX e boleto: `POST /v1/payments`, variando só `payment_method_id`
+  (`pix` ou `bolbradesco`) e os dados do pagador — PIX exige e-mail/CPF; **boleto exige também
+  endereço completo do pagador**, o que o formulário de emissão de cobrança precisa validar.
+- **Idempotência nativa**: header `X-Idempotency-Key` (UUID v4) obrigatório na criação — casa
+  diretamente com o princípio 4 da [pasta 15](../15-Integracoes/README.md); a chave usada é o
+  `public_id` da `billing_charges` sendo criada.
+- **Webhooks, não IPN** (IPN está deprecado). Payload de notificação é mínimo
+  (`{type, data:{id}}`) — o job sempre faz `GET /v1/payments/{id}` para pegar o estado real,
+  nunca confia no corpo do webhook por si só (mesma desconfiança que o BR-701 já aplica ao Woo).
+  Autenticidade por header `x-signature` (`ts=...,v1=...`, HMAC-SHA256 sobre
+  `id:{data.id};request-id:{request-id};ts:{ts};` com o segredo do painel) — mesmo padrão de
+  `VerificaAssinaturaWoo`, algoritmo diferente.
+- **Cancelamento** é `PUT /v1/payments/{id}` com `status: cancelled`, só válido enquanto a
+  cobrança está `pending`/`in_process` — depois de `approved` não cancela mais (BR-506: cobrança
+  registrada é imutável; mudar de ideia é cancelar e reemitir, nunca editar).
+- **Tarifa** não tem endpoint de consulta dedicada; vem no próprio objeto do pagamento
+  liquidado (`fee_details`) — a baixa idempotente lê esse campo para registrar a tarifa como
+  despesa (BR-502/12-Financeiro §3).
+- **Sandbox = mesma URL, credencial de teste** (prefixo `TEST_`) — não existe ambiente de
+  homologação separado; a distinção fica inteiramente na credencial configurada
+  (`integrations.mercadopago.enabled` + par de chaves teste/produção), mesmo espírito do
+  ambiente de homologação permanente da SEFAZ (BR-605).
 
 ## Alternativas consideradas
 
@@ -85,9 +124,19 @@ O cliente emite boleto pelo internet banking e registra a baixa no ERP à mão.
 - PIX-cobrança absorver mais de ~90% da cobrança a prazo por 6 meses → avaliar descontinuar o boleto e economizar a tarifa.
 - Cliente exigir cartão de crédito recorrente/link de pagamento → reabre a discussão de gateway completo (o "gateway de pagamento, fase 7" já no backlog de ADRs).
 
-## Decisões que o dono precisa tomar para este ADR sair de "Proposto"
+## Decisões que o dono tomou (histórico, ADR fechado em 2026-08-11)
 
-1. **Aprovar a mudança de roadmap**: cobrança sai da fase 7 e entra no Gate 04 (regra 1 do [roadmap](../28-Roadmap/README.md) — mudança de escopo é decisão do dono registrada).
-2. **Confirmar o orçamento adicional** do módulo (80–120 h) e o custo recorrente por boleto.
-3. **Obter do cliente**: qual banco/conta PJ, e **por que** boleto (§ Contexto, item 2) — sem isso o provedor não pode ser escolhido.
-4. **Iniciar o convênio de cobrança** imediatamente, em paralelo ao desenvolvimento — é o caminho crítico.
+1. ✅ **Mudança de roadmap aprovada**: cobrança saiu da fase 7 e entrou no Gate 04, na mesma
+   sessão que fechou o núcleo do Financeiro (regra 1 do [roadmap](../28-Roadmap/README.md)).
+2. ✅ **Provedor confirmado**: Mercado Pago, o mesmo já usado no checkout do site — resolve a
+   pergunta de qual conta/banco usar sem exigir convênio bancário novo (o "convênio de
+   cobrança" deste ADR passa a ser: gerar o Access Token de produção com escopo de pagamentos
+   no painel do desenvolvedor do Mercado Pago, não um processo bancário de semanas).
+3. **Ainda em aberto, não bloqueia o código**: percentuais de multa/juros/desconto do perfil de
+   cobrança (BR-508) e o grupo de duplicatas na NF-e (BR-512) dependem do retorno do contador
+   (pauta em `docs/13-Fiscal/01-pauta-validacao-contador.md`) — o `billing_profiles` nasce com
+   esses campos nulos/editáveis, sem valor padrão chutado, mesmo princípio já aplicado ao
+   grupo IBS/CBS (ADR-0027).
+4. **Antes de ligar em produção**: gerar o Access Token de produção real (hoje só o de teste
+   `TEST_` está em uso) e configurar o webhook secret no painel do Mercado Pago apontando para
+   `/webhooks/mercado-pago` do ERP.

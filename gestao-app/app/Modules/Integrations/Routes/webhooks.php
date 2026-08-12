@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Integrations\MercadoPago\Http\Controllers\MercadoPagoWebhookController;
 use App\Modules\Integrations\WooCommerce\Http\Controllers\WooWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,3 +22,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('webhooks/woocommerce/orders', WooWebhookController::class)
     ->name('integrations.woo.orders');
+
+// Painel do Mercado Pago → Integrações → Webhooks. Mesmo raciocínio do
+// webhook do Woo: sem CSRF/sessão, autenticado por `x-signature` (ADR-0018 §3.1).
+Route::post('webhooks/mercado-pago', MercadoPagoWebhookController::class)
+    ->name('integrations.mercadopago.webhook');

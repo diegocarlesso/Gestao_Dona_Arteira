@@ -18,6 +18,23 @@ type Baixa = {
     notas: string | null;
 };
 
+type StatusCobranca = 'pending' | 'registered' | 'paid' | 'partially_paid' | 'cancelled' | 'expired' | 'failed';
+
+type Cobranca = {
+    public_id: string;
+    type: 'pix' | 'boleto';
+    type_label: string;
+    status: StatusCobranca;
+    status_label: string;
+    terminal: boolean;
+    digitable_line: string | null;
+    barcode: string | null;
+    pix_payload: string | null;
+    pdf_url: string | null;
+    due_date: string | null;
+    failure_reason: string | null;
+};
+
 type Titulo = {
     public_id: string;
     nome: string;
@@ -29,16 +46,29 @@ type Titulo = {
     faixa_aging: '1-15' | '16-30' | '30+' | null;
     status: 'open' | 'partially_settled' | 'settled';
     baixas: Baixa[];
+    cobranca: Cobranca | null;
 };
 
 type Conta = { id: number; public_id: string; name: string };
+type PerfilDeCobranca = { id: number; public_id: string; name: string };
 
 interface Props {
     tipo: 'receivable' | 'payable';
     somenteAbertos: boolean;
     titulos: Paginado<Titulo>;
     contas: Conta[];
+    perfisDeCobranca: PerfilDeCobranca[];
 }
+
+const COBRANCA_STATUS_BADGE: Record<StatusCobranca, 'default' | 'secondary' | 'outline' | 'destructive'> = {
+    pending: 'secondary',
+    registered: 'outline',
+    paid: 'default',
+    partially_paid: 'outline',
+    cancelled: 'secondary',
+    expired: 'destructive',
+    failed: 'destructive',
+};
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Financeiro', href: '/financeiro' }];
 
@@ -63,10 +93,18 @@ const AGING_LABEL: Record<NonNullable<Titulo['faixa_aging']>, string> = {
 const emReais = (valor: string) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor));
 const emData = (data: string) => new Date(`${data}T00:00:00`).toLocaleDateString('pt-BR');
 
-export default function TitulosIndex({ tipo, somenteAbertos, titulos, contas }: Props) {
+export default function TitulosIndex({ tipo, somenteAbertos, titulos, contas, perfisDeCobranca }: Props) {
     const { errors } = usePage().props;
     const [tituloParaBaixar, setTituloParaBaixar] = useState<Titulo | null>(null);
     const [baixaParaEstornar, setBaixaParaEstornar] = useState<Baixa | null>(null);
+    const [tituloParaCobrar, setTituloParaCobrar] = useState<Titulo | null>(null);
+
+    const cancelarCobranca = (cobranca: Cobranca) => {
+        if (!confirm(`Cancelar a cobrança ${cobranca.type_label}? O título continua aberto.`)) {
+            return;
+        }
+        router.post(`/financeiro/cobrancas/${cobranca.public_id}/cancelar`, {}, { preserveScroll: true });
+    };
 
     const trocarAba = (novoTipo: 'receivable' | 'payable') =>
         router.get('/financeiro', { tipo: novoTipo, abertos: somenteAbertos ? 1 : 0 }, { preserveState: true, replace: true });
@@ -114,6 +152,7 @@ export default function TitulosIndex({ tipo, somenteAbertos, titulos, contas }: 
                                     <th className="p-3 font-medium">Saldo aberto</th>
                                     <th className="p-3 font-medium">Vencimento</th>
                                     <th className="p-3 font-medium">Status</th>
+                                    {tipo === 'receivable' && <th className="p-3 font-medium">Cobrança</th>}
                                     <th className="p-3" />
                                 </tr>
                             </thead>
@@ -131,6 +170,66 @@ export default function TitulosIndex({ tipo, somenteAbertos, titulos, contas }: 
                                         <td className="p-3">
                                             <Badge variant={STATUS_BADGE[t.status]}>{STATUS_LABEL[t.status]}</Badge>
                                         </td>
+                                        {tipo === 'receivable' && (
+                                            <td className="p-3">
+                                                {t.cobranca ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        <Badge variant={COBRANCA_STATUS_BADGE[t.cobranca.status]}>
+                                                            {t.cobranca.type_label} — {t.cobranca.status_label}
+                                                        </Badge>
+                                                        {t.cobranca.pix_payload && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="link"
+                                                                className="h-auto justify-start p-0 text-xs"
+                                                                onClick={() => navigator.clipboard.writeText(t.cobranca!.pix_payload!)}
+                                                            >
+                                                                Copiar PIX
+                                                            </Button>
+                                                        )}
+                                                        {t.cobranca.pdf_url && (
+                                                            <a
+                                                                href={t.cobranca.pdf_url}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="text-xs text-blue-600 underline"
+                                                            >
+                                                                Ver boleto
+                                                            </a>
+                                                        )}
+                                                        {t.cobranca.failure_reason && (
+                                                            <span className="text-destructive text-xs">{t.cobranca.failure_reason}</span>
+                                                        )}
+                                                        {!t.cobranca.terminal && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="link"
+                                                                className="h-auto justify-start p-0 text-xs"
+                                                                onClick={() => cancelarCobranca(t.cobranca!)}
+                                                            >
+                                                                Cancelar cobrança
+                                                            </Button>
+                                                        )}
+                                                        {t.cobranca.terminal && t.status !== 'settled' && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="link"
+                                                                className="h-auto justify-start p-0 text-xs"
+                                                                onClick={() => setTituloParaCobrar(t)}
+                                                            >
+                                                                Nova cobrança
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    t.status !== 'settled' && (
+                                                        <Button size="sm" variant="ghost" onClick={() => setTituloParaCobrar(t)}>
+                                                            Emitir cobrança
+                                                        </Button>
+                                                    )
+                                                )}
+                                            </td>
+                                        )}
                                         <td className="p-3 text-right whitespace-nowrap">
                                             {t.status !== 'settled' && (
                                                 <Button size="sm" variant="ghost" onClick={() => setTituloParaBaixar(t)}>
@@ -201,6 +300,15 @@ export default function TitulosIndex({ tipo, somenteAbertos, titulos, contas }: 
                     baixa={baixaParaEstornar}
                     erro={typeof errors.estorno === 'string' ? errors.estorno : undefined}
                     aoFechar={() => setBaixaParaEstornar(null)}
+                />
+            )}
+
+            {tituloParaCobrar && (
+                <FormularioDeCobranca
+                    titulo={tituloParaCobrar}
+                    perfis={perfisDeCobranca}
+                    erro={typeof errors.cobranca === 'string' ? errors.cobranca : undefined}
+                    aoFechar={() => setTituloParaCobrar(null)}
                 />
             )}
         </AppLayout>
@@ -329,6 +437,221 @@ function FormularioDeEstorno({ baixa, erro, aoFechar }: { baixa: Baixa; erro?: s
                     <DialogFooter>
                         <Button type="submit" variant="destructive" disabled={form.processing}>
                             Confirmar estorno
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function FormularioDeCobranca({
+    titulo,
+    perfis,
+    erro,
+    aoFechar,
+}: {
+    titulo: Titulo;
+    perfis: PerfilDeCobranca[];
+    erro?: string;
+    aoFechar: () => void;
+}) {
+    const form = useForm({
+        type: 'pix' as 'pix' | 'boleto',
+        profile_id: '',
+        payer_name: titulo.nome,
+        payer_email: '',
+        payer_document_type: 'CPF' as 'CPF' | 'CNPJ',
+        payer_document_number: '',
+        payer_address_zip: '',
+        payer_address_street: '',
+        payer_address_number: '',
+        payer_address_neighborhood: '',
+        payer_address_city: '',
+        payer_address_state: '',
+    });
+
+    const enviar = (e: React.FormEvent) => {
+        e.preventDefault();
+        form.post(`/financeiro/titulos/receivable/${titulo.public_id}/cobranca`, {
+            preserveScroll: true,
+            onSuccess: aoFechar,
+        });
+    };
+
+    return (
+        <Dialog open onOpenChange={(aberto) => !aberto && aoFechar()}>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Emitir cobrança — {titulo.nome}</DialogTitle>
+                    <DialogDescription>
+                        Saldo aberto: {emReais(titulo.saldo_aberto)}. O registro no provedor roda em segundo plano — a cobrança nasce "aguardando
+                        emissão".
+                    </DialogDescription>
+                </DialogHeader>
+
+                <form onSubmit={enviar} className="flex flex-col gap-4">
+                    {erro && <p className="text-destructive text-sm">{erro}</p>}
+
+                    <div>
+                        <Label htmlFor="type">Tipo</Label>
+                        <Select value={form.data.type} onValueChange={(v) => form.setData('type', v as 'pix' | 'boleto')}>
+                            <SelectTrigger id="type">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="pix">PIX com vencimento</SelectItem>
+                                <SelectItem value="boleto">Boleto</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {perfis.length > 0 && (
+                        <div>
+                            <Label htmlFor="profile_id">Perfil de cobrança (opcional)</Label>
+                            <Select
+                                value={form.data.profile_id || 'nenhum'}
+                                onValueChange={(v) => form.setData('profile_id', v === 'nenhum' ? '' : v)}
+                            >
+                                <SelectTrigger id="profile_id">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="nenhum">Nenhum</SelectItem>
+                                    {perfis.map((p) => (
+                                        <SelectItem key={p.id} value={String(p.id)}>
+                                            {p.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="payer_name">Nome do pagador</Label>
+                            <Input
+                                id="payer_name"
+                                value={form.data.payer_name}
+                                onChange={(e) => form.setData('payer_name', e.target.value)}
+                                required
+                            />
+                            {form.errors.payer_name && <p className="text-destructive mt-1 text-sm">{form.errors.payer_name}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="payer_email">E-mail do pagador</Label>
+                            <Input
+                                id="payer_email"
+                                type="email"
+                                value={form.data.payer_email}
+                                onChange={(e) => form.setData('payer_email', e.target.value)}
+                                required
+                            />
+                            {form.errors.payer_email && <p className="text-destructive mt-1 text-sm">{form.errors.payer_email}</p>}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="payer_document_type">Documento</Label>
+                            <Select
+                                value={form.data.payer_document_type}
+                                onValueChange={(v) => form.setData('payer_document_type', v as 'CPF' | 'CNPJ')}
+                            >
+                                <SelectTrigger id="payer_document_type">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="CPF">CPF</SelectItem>
+                                    <SelectItem value="CNPJ">CNPJ</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label htmlFor="payer_document_number">Número</Label>
+                            <Input
+                                id="payer_document_number"
+                                value={form.data.payer_document_number}
+                                onChange={(e) => form.setData('payer_document_number', e.target.value)}
+                                required
+                            />
+                            {form.errors.payer_document_number && (
+                                <p className="text-destructive mt-1 text-sm">{form.errors.payer_document_number}</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {form.data.type === 'boleto' && (
+                        <div className="flex flex-col gap-4 rounded-md border p-3">
+                            <p className="text-muted-foreground text-xs">Boleto exige o endereço completo do pagador.</p>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                    <Label htmlFor="payer_address_zip">CEP</Label>
+                                    <Input
+                                        id="payer_address_zip"
+                                        value={form.data.payer_address_zip}
+                                        onChange={(e) => form.setData('payer_address_zip', e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <Label htmlFor="payer_address_street">Rua</Label>
+                                    <Input
+                                        id="payer_address_street"
+                                        value={form.data.payer_address_street}
+                                        onChange={(e) => form.setData('payer_address_street', e.target.value)}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                    <Label htmlFor="payer_address_number">Número</Label>
+                                    <Input
+                                        id="payer_address_number"
+                                        value={form.data.payer_address_number}
+                                        onChange={(e) => form.setData('payer_address_number', e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <Label htmlFor="payer_address_neighborhood">Bairro</Label>
+                                    <Input
+                                        id="payer_address_neighborhood"
+                                        value={form.data.payer_address_neighborhood}
+                                        onChange={(e) => form.setData('payer_address_neighborhood', e.target.value)}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="col-span-2">
+                                    <Label htmlFor="payer_address_city">Cidade</Label>
+                                    <Input
+                                        id="payer_address_city"
+                                        value={form.data.payer_address_city}
+                                        onChange={(e) => form.setData('payer_address_city', e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="payer_address_state">UF</Label>
+                                    <Input
+                                        id="payer_address_state"
+                                        maxLength={2}
+                                        value={form.data.payer_address_state}
+                                        onChange={(e) => form.setData('payer_address_state', e.target.value.toUpperCase())}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button type="submit" disabled={form.processing}>
+                            Solicitar emissão
                         </Button>
                     </DialogFooter>
                 </form>

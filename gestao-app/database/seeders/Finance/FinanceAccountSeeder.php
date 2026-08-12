@@ -7,6 +7,7 @@ namespace Database\Seeders\Finance;
 use App\Modules\Finance\Enums\FinanceAccountType;
 use App\Modules\Finance\Listeners\RegistrarRecebivelAoConfirmarPedido;
 use App\Modules\Finance\Models\FinanceAccount;
+use App\Modules\Finance\Services\ProcessarNotificacaoCobrancaService;
 use Illuminate\Database\Seeder;
 
 /**
@@ -15,9 +16,11 @@ use Illuminate\Database\Seeder;
  * aberto e um aviso vai pro log em vez de estourar (a confirmação do
  * pedido não pode falhar por causa de cadastro financeiro incompleto).
  *
- * Idempotente, mesmo padrão de `FinanceCategorySeeder`. A separação por
- * canal (dinheiro do balcão vs. gateway do site) é a Fase C (cobrança
- * Mercado Pago) — por ora, uma conta só.
+ * A conta "Mercado Pago" tem o mesmo papel para
+ * `ProcessarNotificacaoCobrancaService`: sem ela, uma cobrança paga não
+ * baixa o título (fica registrado em log, nunca quebra o webhook).
+ *
+ * Idempotente, mesmo padrão de `FinanceCategorySeeder`.
  */
 class FinanceAccountSeeder extends Seeder
 {
@@ -27,6 +30,12 @@ class FinanceAccountSeeder extends Seeder
             'name' => RegistrarRecebivelAoConfirmarPedido::CONTA_PADRAO,
         ], [
             'type' => FinanceAccountType::Cash,
+        ]);
+
+        FinanceAccount::query()->firstOrCreate([
+            'name' => ProcessarNotificacaoCobrancaService::CONTA_MERCADO_PAGO,
+        ], [
+            'type' => FinanceAccountType::Gateway,
         ]);
     }
 }

@@ -6,6 +6,8 @@ namespace App\Modules\Finance\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Finance\Exceptions\TituloInvalido;
+use App\Modules\Finance\Models\BillingCharge;
+use App\Modules\Finance\Models\BillingProfile;
 use App\Modules\Finance\Models\FinanceAccount;
 use App\Modules\Finance\Models\FinanceSettlement;
 use App\Modules\Finance\Models\Payable;
@@ -44,7 +46,11 @@ class TitleController extends Controller
         $classe = $tipo === 'payable' ? Payable::class : Receivable::class;
 
         $titulos = $classe::query()
-            ->with(['category', 'settlements.account'])
+            ->with(array_filter([
+                'category',
+                'settlements.account',
+                $tipo === 'receivable' ? 'billingCharges' : null,
+            ]))
             ->when($somenteAbertos, fn ($q) => $q->abertos())
             ->orderByRaw('due_date IS NULL, due_date ASC')
             ->paginate(25)
@@ -74,9 +80,13 @@ class TitleController extends Controller
                     'faixa_aging' => $this->faixaAging($diasVencido),
                     'status' => $titulo->status,
                     'baixas' => $this->baixasParaTela($titulo),
+                    'cobranca' => $tipo === 'receivable' && $titulo instanceof Receivable
+                        ? $this->cobrancaParaTela($titulo)
+                        : null,
                 ];
             }),
             'contas' => FinanceAccount::query()->orderBy('name')->get(['id', 'public_id', 'name']),
+            'perfisDeCobranca' => BillingProfile::query()->orderBy('name')->get(['id', 'public_id', 'name']),
         ]);
     }
 
@@ -173,5 +183,37 @@ class TitleController extends Controller
             'estorno' => $b->estorno(),
             'notas' => $b->notes,
         ])->all();
+    }
+
+    /**
+     * A última tentativa de cobrança do título, qualquer que seja o status
+     * (`Receivable::cobrancaMaisRecente()`) — a tela decide "emitir" vs.
+     * "cancelar" vs. só mostrar o histórico a partir do `status`.
+     *
+     * @return array{public_id: string, type: string, type_label: string, status: string, status_label: string, terminal: bool, digitable_line: string|null, barcode: string|null, pix_payload: string|null, pdf_url: string|null, due_date: string|null, failure_reason: string|null}|null
+     */
+    private function cobrancaParaTela(Receivable $titulo): ?array
+    {
+        /** @var BillingCharge|null $cobranca */
+        $cobranca = $titulo->billingCharges->sortByDesc('id')->first();
+
+        if ($cobranca === null) {
+            return null;
+        }
+
+        return [
+            'public_id' => $cobranca->public_id,
+            'type' => $cobranca->type->value,
+            'type_label' => $cobranca->type->label(),
+            'status' => $cobranca->status->value,
+            'status_label' => $cobranca->status->label(),
+            'terminal' => $cobranca->status->terminal(),
+            'digitable_line' => $cobranca->digitable_line,
+            'barcode' => $cobranca->barcode,
+            'pix_payload' => $cobranca->pix_payload,
+            'pdf_url' => $cobranca->pdf_url,
+            'due_date' => $cobranca->due_date?->toDateString(),
+            'failure_reason' => $cobranca->failure_reason,
+        ];
     }
 }

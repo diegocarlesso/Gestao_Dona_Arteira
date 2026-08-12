@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Integrations\Providers;
 
+use App\Modules\Finance\Contracts\CobrancaGatewayInterface;
 use App\Modules\Integrations\Email\Listeners\EnviarEmailPedidoConfirmado;
 use App\Modules\Integrations\Email\Listeners\EnviarEmailPedidoEnviado;
+use App\Modules\Integrations\MercadoPago\Adapters\MercadoPagoGateway;
 use App\Modules\Integrations\WooCommerce\Console\ApproveWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\ExtractWooCommand;
 use App\Modules\Integrations\WooCommerce\Console\LoadWooCommand;
@@ -40,6 +42,15 @@ class IntegrationsServiceProvider extends ServiceProvider
 
         // Painel operacional (autenticado), docs/16 §5.
         $this->loadRoutesFrom(__DIR__.'/../Routes/web.php');
+
+        // Sobrescreve o `NullCobrancaGateway` (bind padrão do
+        // `FinanceServiceProvider`, registrado antes deste — ordem de
+        // `bootstrap/providers.php`) só quando a credencial de produção
+        // existir. Mesmo espírito do `NFE_ENABLED` do Fiscal: desligado,
+        // o Financeiro nunca finge que emitiu uma cobrança real (ADR-0018).
+        if (config('integrations.mercadopago.enabled')) {
+            $this->app->bind(CobrancaGatewayInterface::class, MercadoPagoGateway::class);
+        }
 
         Gate::policy(WooWebhookEvent::class, WooWebhookEventPolicy::class);
 

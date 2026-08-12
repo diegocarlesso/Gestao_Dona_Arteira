@@ -1,8 +1,8 @@
 # 12 — Financeiro
 
-> **Status:** Núcleo implementado · **Última atualização:** 2026-08-11 · **Responsável:** financial-specialist
+> **Status:** Núcleo + cobrança implementados · **Última atualização:** 2026-08-12 · **Responsável:** financial-specialist
 > **Regras:** BR-501…BR-512 · **Fase:** Gate 04
-> **Documentos:** [Cobrança (boleto e PIX com vencimento)](01-cobranca-e-boletos.md) — 🔧 provedor decidido (Mercado Pago, 2026-08-11); em construção ([ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md))
+> **Documentos:** [Cobrança (boleto e PIX com vencimento)](01-cobranca-e-boletos.md) — 🔧 implementado, falta só a credencial de produção ([ADR-0018](../27-ADR/ADR-0018-cobranca-boleto.md))
 
 > 🔧 **Núcleo implementado em 2026-08-11** (BR-501/BR-502/BR-503/BR-504):
 > `Receivable`, `Payable`, baixa (total/parcial, `finance_settlements`),
@@ -13,8 +13,24 @@
 > automaticamente (`RegistrarRecebivelAoConfirmarPedido`, ouve `Sales\
 > Events\OrderConfirmed`) — se o pedido já nasceu pago (balcão à vista, ou
 > `processing`/`completed` do Woo), o título nasce **já baixado**, sem
-> passo manual. Falta: telas (React), e a cobrança automatizada (Mercado
-> Pago) — próxima etapa imediata.
+> passo manual.
+>
+> 🔧 **Cobrança implementada em 2026-08-12** (BR-505/506/507/509/510, ADR-0018):
+> `CobrancaGatewayInterface` + `NullCobrancaGateway` (padrão até a
+> credencial de produção existir, mesmo desenho do `NfeGatewayInterface`),
+> `billing_profiles`/`billing_charges`/`billing_charge_events`, emissão e
+> cancelamento assíncronos via job (`ProcessarEmissaoCobranca`/
+> `ProcessarCancelamentoCobranca` — nunca travam a tela), notificação do
+> provedor idempotente (`ProcessarNotificacaoCobrancaService`, UNIQUE em
+> `provider_event_id`) que baixa o título e registra a tarifa como despesa
+> já baixada. Tela integrada em `/financeiro` (aba "A receber"): emitir,
+> copiar PIX, abrir boleto, cancelar. Adapter `Integrations\MercadoPago`
+> completo (`Client`, `StatusMap`, verificação de assinatura, webhook,
+> reconciliação horária) — rebind automático quando
+> `integrations.mercadopago.enabled` estiver ligado. **Falta apenas**: o
+> Access Token de produção real (`.env`, nunca no repo); sem ele, o
+> `NullCobrancaGateway` continua ativo e toda emissão vira `failed` com
+> motivo claro, sem fingir sucesso (mesmo princípio do `NullNfeGateway`).
 
 ## 1. Objetivo
 

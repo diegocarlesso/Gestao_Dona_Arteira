@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Integrations\MercadoPago\Jobs\ReconciliarCobrancasMercadoPago;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -63,3 +64,12 @@ Schedule::call(function (): void {
 Schedule::call(function (): void {
     Artisan::call('queue:prune-failed --hours=336');
 })->name('fila-limpeza')->weekly();
+
+/*
+| Reconciliação de cobrança Mercado Pago — a garantia contra webhook
+| perdido (docs/12-Financeiro/01-cobranca-e-boletos.md §6). `Schedule::
+| call`, não `Schedule::command`, pelo mesmo motivo do topo deste arquivo.
+*/
+Schedule::call(fn () => ReconciliarCobrancasMercadoPago::dispatch())
+    ->name('cobranca-mercadopago-reconciliacao')
+    ->hourly();

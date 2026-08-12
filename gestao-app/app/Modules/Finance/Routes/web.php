@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Finance\Http\Controllers\BillingChargeController;
 use App\Modules\Finance\Http\Controllers\CashFlowController;
 use App\Modules\Finance\Http\Controllers\FinanceAccountController;
 use App\Modules\Finance\Http\Controllers\FinanceCategoryController;
@@ -25,6 +26,9 @@ Route::middleware(['web', 'auth', 'conta.ativa', 'senha.trocada', '2fa.confirmad
         Route::get('/', [TitleController::class, 'index'])->name('titles.index');
         Route::post('titulos/{tipo}/{publicId}/baixa', [TitleController::class, 'settle'])->name('titles.settle');
         Route::post('baixas/{settlement:public_id}/estornar', [TitleController::class, 'reverse'])->name('settlements.reverse');
+
+        Route::post('titulos/receivable/{publicId}/cobranca', [BillingChargeController::class, 'store'])->name('billing-charges.store');
+        Route::post('cobrancas/{charge:public_id}/cancelar', [BillingChargeController::class, 'cancel'])->name('billing-charges.cancel');
 
         Route::get('contas', [FinanceAccountController::class, 'index'])->name('accounts.index');
         Route::post('contas', [FinanceAccountController::class, 'store'])->name('accounts.store');
