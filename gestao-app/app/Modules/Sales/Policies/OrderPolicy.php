@@ -68,4 +68,14 @@ class OrderPolicy
     {
         return $usuario->can(Permission::FulfillmentExecute->value);
     }
+
+    /**
+     * `reports.view`, e não `sales.view`: relatório é família de
+     * permissão própria (pasta 20) — quem lança pedido não
+     * necessariamente vê o consolidado por período/canal.
+     */
+    public function viewReports(Authorizable $usuario): bool
+    {
+        return $usuario->can(Permission::ReportsView->value);
+    }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Modules\Sales\Http\Controllers\CustomerController;
 use App\Modules\Sales\Http\Controllers\OrderController;
+use App\Modules\Sales\Http\Controllers\OrderStatusFunnelReportController;
+use App\Modules\Sales\Http\Controllers\SalesByPeriodReportController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -47,4 +49,11 @@ Route::middleware(['web', 'auth', 'conta.ativa', 'senha.trocada', '2fa.confirmad
     Route::post('pedidos/{order}/embalar', [OrderController::class, 'embalar'])->name('sales.orders.embalar');
     Route::post('pedidos/{order}/expedir', [OrderController::class, 'expedir'])->name('sales.orders.expedir');
     Route::post('pedidos/{order}/entregar', [OrderController::class, 'entregar'])->name('sales.orders.entregar');
+
+    // Relatórios (pasta 20 §3.5/§3.6). Permissão `reports.view`, família
+    // própria — mesmo padrão de `catalog.reports.duplicate-names`.
+    Route::get('relatorios/vendas-por-periodo', [SalesByPeriodReportController::class, 'index'])->name('sales.reports.by-period');
+    Route::get('relatorios/vendas-por-periodo/csv', [SalesByPeriodReportController::class, 'export'])->name('sales.reports.by-period.export');
+    Route::get('relatorios/funil-de-pedidos', [OrderStatusFunnelReportController::class, 'index'])->name('sales.reports.status-funnel');
+    Route::get('relatorios/funil-de-pedidos/csv', [OrderStatusFunnelReportController::class, 'export'])->name('sales.reports.status-funnel.export');
 });

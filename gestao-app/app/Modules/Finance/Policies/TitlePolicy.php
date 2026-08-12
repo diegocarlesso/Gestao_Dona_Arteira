@@ -40,4 +40,14 @@ class TitlePolicy
     {
         return $usuario->can(Permission::FinanceManage->value);
     }
+
+    /**
+     * `reports.view`, e não `finance.view`: relatório é família de
+     * permissão própria (pasta 20), quem vê o operacional não
+     * necessariamente vê o relatório consolidado.
+     */
+    public function viewReports(Authorizable $usuario): bool
+    {
+        return $usuario->can(Permission::ReportsView->value);
+    }
 }

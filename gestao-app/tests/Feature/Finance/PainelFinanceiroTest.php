@@ -110,7 +110,17 @@ it('mostra o fluxo de caixa', function () {
             ->component('finance/cash-flow/index')
             ->has('fluxo.projetado')
             ->has('fluxo.realizado')
+            ->where('podeExportar', true)
         );
+});
+
+it('exporta o fluxo de caixa em CSV — ficha da pasta 20 §3.4', function () {
+    $resposta = actingAs(comFinanceiro())->get('/financeiro/fluxo-de-caixa/csv');
+
+    $resposta->assertOk();
+    expect($resposta->streamedContent())
+        ->toStartWith("\xEF\xBB\xBF")
+        ->toContain('Janela;"Projetado (a receber - a pagar)";"Realizado (baixas)"');
 });
 
 it('lista e cria categorias', function () {

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Finance\Http\Controllers\AgingReportController;
 use App\Modules\Finance\Http\Controllers\BillingChargeController;
 use App\Modules\Finance\Http\Controllers\CashFlowController;
 use App\Modules\Finance\Http\Controllers\FinanceAccountController;
@@ -39,4 +40,10 @@ Route::middleware(['web', 'auth', 'conta.ativa', 'senha.trocada', '2fa.confirmad
         Route::put('categorias/{category:public_id}', [FinanceCategoryController::class, 'update'])->name('categories.update');
 
         Route::get('fluxo-de-caixa', [CashFlowController::class, 'index'])->name('cash-flow.index');
+        Route::get('fluxo-de-caixa/csv', [CashFlowController::class, 'export'])->name('cash-flow.export');
+
+        // Relatórios (pasta 20 §3.3). Permissão `reports.view`, família
+        // própria — ver o operacional não garante ver o consolidado.
+        Route::get('relatorios/aging', [AgingReportController::class, 'index'])->name('reports.aging');
+        Route::get('relatorios/aging/csv', [AgingReportController::class, 'export'])->name('reports.aging.export');
     });

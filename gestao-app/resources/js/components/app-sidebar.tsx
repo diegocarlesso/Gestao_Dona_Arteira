@@ -64,6 +64,16 @@ const ITENS: ItemDoMenu[] = [
                 url: '/clientes',
                 permissao: 'sales.view',
             },
+            {
+                title: 'Vendas por período',
+                url: '/relatorios/vendas-por-periodo',
+                permissao: 'reports.view',
+            },
+            {
+                title: 'Funil de pedidos',
+                url: '/relatorios/funil-de-pedidos',
+                permissao: 'reports.view',
+            },
         ],
     },
     {
@@ -99,6 +109,11 @@ const ITENS: ItemDoMenu[] = [
                 title: 'Categorias',
                 url: '/financeiro/categorias',
                 permissao: 'finance.view',
+            },
+            {
+                title: 'Aging (a receber/pagar)',
+                url: '/financeiro/relatorios/aging',
+                permissao: 'reports.view',
             },
         ],
     },

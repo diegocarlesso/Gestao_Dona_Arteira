@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
@@ -9,6 +10,7 @@ interface Props {
         projetado: Janelas;
         realizado: Janelas;
     };
+    podeExportar: boolean;
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -30,18 +32,25 @@ function Cartao({ titulo, valor, descricao }: { titulo: string; valor: string; d
     );
 }
 
-export default function FluxoDeCaixaIndex({ fluxo }: Props) {
+export default function FluxoDeCaixaIndex({ fluxo, podeExportar }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Fluxo de caixa" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <div>
-                    <h1 className="text-xl font-semibold">Fluxo de caixa</h1>
-                    <p className="text-muted-foreground text-sm">
-                        Projetado = títulos abertos por vencimento. Realizado = baixas por data. Saldo por conta se confere contra o extrato bancário
-                        manualmente por enquanto.
-                    </p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-xl font-semibold">Fluxo de caixa</h1>
+                        <p className="text-muted-foreground text-sm">
+                            Projetado = títulos abertos por vencimento. Realizado = baixas por data. Saldo por conta se confere contra o
+                            extrato bancário manualmente por enquanto.
+                        </p>
+                    </div>
+                    {podeExportar && (
+                        <Button asChild size="sm" variant="outline">
+                            <a href="/financeiro/fluxo-de-caixa/csv">Exportar CSV</a>
+                        </Button>
+                    )}
                 </div>
 
                 <section>
