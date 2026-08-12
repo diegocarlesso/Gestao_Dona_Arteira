@@ -31,7 +31,7 @@ Catálogo canônico dos relatórios do ERP e padrões de construção: todo rela
 | Produtividade por etapa/pessoa | gargalos do ateliê? | Produção | 6 |
 | Consumo de MP por período | quanto de peça crua e tinta/verniz consumimos? | Produção+Estoque | 3 |
 | Taxa de quebra por fornecedor/lote | qual fornecedor entrega peça que quebra? | Compras/Estoque | 3 |
-| Contas a receber/pagar com aging 🔧 | quem nos deve / a quem devemos? | Financeiro | 4 |
+| Contas a receber/pagar com vencimento (aging) 🔧 | quem nos deve / a quem devemos? | Financeiro | 4 |
 | Fluxo de caixa realizado × projetado 🔧 | vamos fechar o mês? | Financeiro | 4 |
 | DRE gerencial simplificada | resultado do mês por categoria | Financeiro | 6 |
 | NF-e emitidas por período (+ XMLs em lote) | obrigação com contador | Fiscal | 5 |
@@ -113,19 +113,25 @@ existente (`catalog.products.archive`, BR-008 — produto nunca é excluído).
 Relatório que aponta o problema e obriga a procurar a tela onde se
 resolve é relatório que ninguém usa duas vezes.
 
-### 3.3 Ficha — Aging (a receber/pagar)
+### 3.3 Ficha — Vencimentos (a receber/pagar)
 
 > **Implementado em 2026-08-12**, logo depois do núcleo do Financeiro
 > (Gate 04) fechar — era o próximo item natural do catálogo: os dados já
 > existiam na tela operacional de `/financeiro`, faltava só a consulta
 > dedicada, exportável e sem paginação.
+>
+> Nome do relatório na tela e no menu é **"Vencimentos"**, em português —
+> o termo em inglês para isto ("aging") sobrevive só no código
+> (`AgingReportController`, `TitlesAgingReport`), que é a parte do
+> projeto que fica em inglês por convenção (CLAUDE.md); usuário não vê
+> essa palavra em lugar nenhum.
 
 | | |
 |---|---|
 | **Pergunta** | Quem nos deve? A quem devemos? Há quanto tempo? |
 | **Fonte** | Financeiro (`finance_receivables`, `finance_payables`) |
 | **Filtros** | Tipo (a receber/a pagar), janela de vencimento (data de/até) |
-| **Colunas** | Cliente/Fornecedor, categoria, vencimento, faixa de aging, saldo aberto |
+| **Colunas** | Cliente/Fornecedor, categoria, vencimento, faixa de atraso, saldo aberto |
 | **Permissão** | `reports.view` |
 | **Dono** | Financeiro |
 
@@ -142,8 +148,8 @@ parcial entra pelo que ainda falta, não pelo total.
 tela de totais por faixa) e exportado inteiro, não navegado página a
 página — mesmo raciocínio do relatório de nomes repetidos (§3.2).
 
-**Route:** `GET /financeiro/relatorios/aging` (tela) e
-`/financeiro/relatorios/aging/csv` (exportação). Controller:
+**Route:** `GET /financeiro/relatorios/vencimentos` (tela) e
+`/financeiro/relatorios/vencimentos/csv` (exportação). Controller:
 `Finance\Http\Controllers\AgingReportController`. Consulta:
 `Finance\Repositories\TitlesAgingReport`.
 

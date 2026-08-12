@@ -92,7 +92,7 @@ it('mostra o relatório para quem tem reports.view', function () {
     Receivable::factory()->create(['amount' => '100.00', 'due_date' => now()->subDays(5)->toDateString()]);
 
     actingAs(usuarioComPapel(Role::Finance))
-        ->get('/financeiro/relatorios/aging')
+        ->get('/financeiro/relatorios/vencimentos')
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('finance/reports/aging')
@@ -104,7 +104,7 @@ it('mostra o relatório para quem tem reports.view', function () {
 
 it('barra quem não tem reports.view', function () {
     actingAs(usuarioComPapel(Role::Production))
-        ->get('/financeiro/relatorios/aging')
+        ->get('/financeiro/relatorios/vencimentos')
         ->assertForbidden();
 });
 
@@ -113,7 +113,7 @@ it('barra quem não tem reports.view', function () {
 it('exporta CSV com BOM e separador de ponto e vírgula', function () {
     Receivable::factory()->create(['amount' => '100.00', 'customer_name' => 'Cliente Exportação', 'due_date' => now()->subDays(5)->toDateString()]);
 
-    $resposta = actingAs(usuarioComPapel(Role::Finance))->get('/financeiro/relatorios/aging/csv');
+    $resposta = actingAs(usuarioComPapel(Role::Finance))->get('/financeiro/relatorios/vencimentos/csv');
 
     $resposta->assertOk();
     $csv = $resposta->streamedContent();
@@ -125,6 +125,6 @@ it('exporta CSV com BOM e separador de ponto e vírgula', function () {
 
 it('não deixa quem não tem reports.view baixar o CSV', function () {
     actingAs(usuarioComPapel(Role::Production))
-        ->get('/financeiro/relatorios/aging/csv')
+        ->get('/financeiro/relatorios/vencimentos/csv')
         ->assertForbidden();
 });

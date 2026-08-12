@@ -72,7 +72,7 @@ class AgingReportController extends Controller
             }
 
             fclose($saida);
-        }, "aging-{$tipo}.csv", [
+        }, "vencimentos-{$tipo}.csv", [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Cache-Control' => 'no-store',
         ]);

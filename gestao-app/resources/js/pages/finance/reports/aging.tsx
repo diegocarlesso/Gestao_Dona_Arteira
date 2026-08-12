@@ -29,7 +29,7 @@ interface Props {
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Financeiro', href: '/financeiro' },
-    { title: 'Aging', href: '/financeiro/relatorios/aging' },
+    { title: 'Vencimentos', href: '/financeiro/relatorios/vencimentos' },
 ];
 
 const FAIXA_LABEL: Record<Faixa, string> = {
@@ -49,10 +49,10 @@ const FAIXA_BADGE: Record<Faixa, 'default' | 'secondary' | 'outline' | 'destruct
 const emReais = (valor: string) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor));
 const emData = (data: string) => new Date(`${data}T00:00:00`).toLocaleDateString('pt-BR');
 
-export default function AgingReport({ tipo, dataDe, dataAte, titulos, totais }: Props) {
+export default function RelatorioDeVencimentos({ tipo, dataDe, dataAte, titulos, totais }: Props) {
     const filtrar = (novosFiltros: Partial<{ tipo: string; data_de: string; data_ate: string }>) => {
         router.get(
-            '/financeiro/relatorios/aging',
+            '/financeiro/relatorios/vencimentos',
             {
                 tipo: novosFiltros.tipo ?? tipo,
                 data_de: novosFiltros.data_de ?? dataDe ?? '',
@@ -62,19 +62,19 @@ export default function AgingReport({ tipo, dataDe, dataAte, titulos, totais }: 
         );
     };
 
-    const urlCsv = `/financeiro/relatorios/aging/csv?tipo=${tipo}&data_de=${dataDe ?? ''}&data_ate=${dataAte ?? ''}`;
+    const urlCsv = `/financeiro/relatorios/vencimentos/csv?tipo=${tipo}&data_de=${dataDe ?? ''}&data_ate=${dataAte ?? ''}`;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Aging de títulos" />
+            <Head title="Vencimentos" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-xl font-semibold">Aging — quem nos deve, a quem devemos</h1>
+                        <h1 className="text-xl font-semibold">Vencimentos — quem nos deve, a quem devemos</h1>
                         <p className="text-muted-foreground text-sm">
-                            Todos os títulos abertos, sem paginação — pensado para somar e exportar, não para dar baixa (isso é em
-                            /financeiro).
+                            Lista completa dos títulos em aberto, somados por prazo. Para dar baixa num título, use a tela de Contas a
+                            receber/pagar.
                         </p>
                     </div>
                     <Button asChild size="sm" variant="outline">

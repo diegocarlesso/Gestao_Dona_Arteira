@@ -111,8 +111,8 @@ const ITENS: ItemDoMenu[] = [
                 permissao: 'finance.view',
             },
             {
-                title: 'Aging (a receber/pagar)',
-                url: '/financeiro/relatorios/aging',
+                title: 'Vencimentos (a receber/pagar)',
+                url: '/financeiro/relatorios/vencimentos',
                 permissao: 'reports.view',
             },
         ],

@@ -44,6 +44,9 @@ Route::middleware(['web', 'auth', 'conta.ativa', 'senha.trocada', '2fa.confirmad
 
         // Relatórios (pasta 20 §3.3). Permissão `reports.view`, família
         // própria — ver o operacional não garante ver o consolidado.
-        Route::get('relatorios/aging', [AgingReportController::class, 'index'])->name('reports.aging');
-        Route::get('relatorios/aging/csv', [AgingReportController::class, 'export'])->name('reports.aging.export');
+        // URL em português ("vencimentos"), nome interno da rota em
+        // inglês por convenção do projeto (pasta 20 já faz o mesmo com
+        // `catalog.reports.duplicate-names` → `/relatorios/produtos-repetidos`).
+        Route::get('relatorios/vencimentos', [AgingReportController::class, 'index'])->name('reports.aging');
+        Route::get('relatorios/vencimentos/csv', [AgingReportController::class, 'export'])->name('reports.aging.export');
     });
